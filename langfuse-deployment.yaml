@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: langfuse-deployment
+spec:
+  selector:
+    matchLabels:
+      app: langfuse-app
+  template:
+    metadata:
+      labels:
+        app: langfuse-app
+    spec:
+      containers:
+        - name: langfuse
+          image: ghcr.io/langfuse/langfuse:latest
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-node-env
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-db-url
+            - name: NEXTAUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-nextauth-url
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-nextauth-secret
+            - name: SALT
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-salt
+            - name: TELEMETRY_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-telemetry-enabled
+            - name: NEXT_PUBLIC_SIGN_UP_DISABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-next-public-sign-up-disabled
+            - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-enable-experimentalfeatures
+          ports:
+            - containerPort: 3000
