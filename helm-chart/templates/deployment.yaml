@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "langfuse.fullname" . }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "langfuse.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "langfuse.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-node-env
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-db-url
+            - name: NEXTAUTH_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-nextauth-url
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-nextauth-secret
+            - name: SALT
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-salt
+            - name: TELEMETRY_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-telemetry-enabled
+            - name: NEXT_PUBLIC_SIGN_UP_DISABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-next-public-sign-up-disabled
+            - name: LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-enable-experimentalfeatures
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
