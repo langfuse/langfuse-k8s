@@ -1,0 +1,15 @@
+{{- if (empty .Values.existingConfigMap) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMap.name }}
+data:
+  langfuse-node-env: {{ .Values.configMap.langfuseNodeEnv }}
+  langfuse-db-url: postgresql://{{ .Values.configMap.langfuseDbUrl.username }}:{{ .Values.configMap.langfuseDbUrl.password }}@{{ .Values.configMap.langfuseDbUrl.address }}:{{ .Values.configMap.langfuseDbUrl.port }}/{{ .Values.configMap.langfuseDbUrl.name }}
+  langfuse-nextauth-url: {{ .Values.configMap.langfuseNextauthUrl }}
+  langfuse-nextauth-secret: {{ .Values.configMap.langfuseNextauthSecret }}
+  langfuse-salt: {{ .Values.configMap.langfuseSalt }}
+  langfuse-telemetry-enabled: '{{ .Values.configMap.langfuseTelemetryEnabled }}'
+  langfuse-next-public-sign-up-disabled: '{{ .Values.configMap.langfuseNextPublicSignUpDisabled }}'
+  langfuse-enable-experimentalfeatures: '{{ .Values.configMap.langfuseEnableExperimentalFeatures }}'
+{{- end -}}
