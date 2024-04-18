@@ -9,7 +9,7 @@ We provide an Helm chart that helps you deploy Langfuse on Kubernetes. This Helm
 
 ### Installation
 ```bash
-helm repo add langfuse https://langfuse.github.io/langfuse-helm
+helm repo add langfuse https://langfuse.github.io/langfuse-k8s
 helm repo update
 helm install langfuse langfuse/langfuse
 ```
