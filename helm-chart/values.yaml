@@ -8,7 +8,7 @@ image:
   repository: ghcr.io/langfuse/langfuse
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "2.8.0"
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -68,12 +68,6 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 2
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
 
