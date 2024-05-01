@@ -5,7 +5,7 @@
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
 
 ## Helm Chart
-We provide an Helm chart that helps you deploy Langfuse on Kubernetes. This Helm chart deploy an instance of Langfuse with a Postgres database (as recommended by Langfuse). The database is provided thanks to [Bitnami Postgres Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/postgresql).
+We provide an Helm chart that helps you deploy Langfuse on Kubernetes. This Helm chart could use an external Postgres server or deploy one for you, thanks to [Bitnami Postgres Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/postgresql).
 
 ### Installation
 ```bash
@@ -28,12 +28,36 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `langfuse.nextauth.url` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. | `localhost:3000` |
 | `langfuse.nextauth.secret` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. | `changeme` |
 | `langfuse.salt` | Salt for API key hashing | `changeme` |
-| `telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
+| `langfuse.telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
 | `service.type` | Change the default k8s service type deployed with the application | `ClusterIP` |
 | `service.additionalLabels` | Add additional annotations to the service deployed with the application | `[]` |
 | `ingress.enabled` | Enable ingress for the application | `false` |
 | `ingress.annotations` | Annotation to add the the deployed ingress | `[]` |
-| `postgres.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse | `8Gi` |
+| `postgresql.deploy` | Enable postgres deployment (via Bitnami Helm Chart). If you want to use a postgres server already deployed (or a managed one), set this to false | `true` |
+| `postgresql.auth.username` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. | `postgres` |
+| `postgresql.auth.password` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. | `postgres` |
+| `postgresql.auth.database` | Database name to use for Langfuse. | `langfuse` |
+| `postgresql.host` | If `postgresql.deploy` is set to false, hostname of the external postgres server to use (mandatory) | `nil` |
+| `postgresql.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `8Gi` |
+
+#### Example (external Postgres server):
+```yaml
+langfuse:
+    nextauth:
+        url: "localhost:3000"
+        secret: "changeme"
+    salt: "changeme"
+    telemetryEnabled: true
+service:
+    type: "ClusterIP"
+    additionalLabels: []
+ingress:
+    enabled: false
+    annotations: []
+postgresql:
+    deploy: false
+    host: "my-external-postgres-server.com"
+```
 
 
 ## Repository Structure

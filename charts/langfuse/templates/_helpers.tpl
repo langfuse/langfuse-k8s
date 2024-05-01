@@ -70,8 +70,19 @@ Create the name of the secret for nextauth
 {{- end }}
 
 {{/*
+Create the name of the secret for postgresql if we use an external database
+*/}}
+{{- define "langfuse.postgresqlSecretName" -}}
+{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
 Return PostgreSQL fullname
 */}}
 {{- define "langfuse.postgresql.fullname" -}}
+{{- if .Values.postgresql.deploy }}
 {{- include "common.names.dependency.fullname" (dict "chartName" "postgresql" "chartValues" .Values.postgresql "context" $) -}}
-{{- end -}}
+{{- else }}
+{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}

@@ -44,7 +44,7 @@ spec:
                   name: {{ include "langfuse.postgresql.fullname" . }}
                   key: postgres-password
             - name: DATABASE_HOST
-              value: {{ printf "%s-postgresql" (include "langfuse.fullname" .) | quote }}
+              value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
             - name: DATABASE_NAME
               value: {{ .Values.postgresql.auth.database | quote }}
             - name: NEXTAUTH_URL
@@ -52,7 +52,7 @@ spec:
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "langfuse.nextauthSecretName" .}}
+                  name: {{ include "langfuse.nextauthSecretName" . }}
                   key: nextauth-secret
             - name: SALT
               value: {{ .Values.langfuse.salt | quote }}

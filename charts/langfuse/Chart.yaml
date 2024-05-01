@@ -17,10 +17,10 @@ dependencies:
   - name: postgresql
     version: 15.x.x
     repository: oci://registry-1.docker.io/bitnamicharts
-    condition: postgresql.enabled
+    condition: postgresql.deploy
 maintainers:
   - name: langfuse
     email: contact@langfuse.com
     url: https://langfuse.com/
 icon: https://langfuse.com/langfuse_logo.png
-appVersion: "2.29.2"
+appVersion: "2.37.1"

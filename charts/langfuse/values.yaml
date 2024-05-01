@@ -49,11 +49,11 @@ tolerations: []
 affinity: {}
 
 postgresql:
-  enabled: true
   auth:
     username: postgres
     password: postgres
     database: postgres_langfuse
+  deploy: true
   architecture: standalone
   primary:
     service:
