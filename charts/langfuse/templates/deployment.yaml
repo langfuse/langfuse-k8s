@@ -78,6 +78,10 @@ spec:
               value: {{ .Values.langfuse.nextPublicSignUpDisabled | quote }}
             - name: ENABLE_EXPERIMENTAL_FEATURES
               value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
+            {{- range $key, $value := .Values.langfuse.additionalEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
