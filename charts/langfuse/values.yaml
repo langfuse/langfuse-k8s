@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/langfuse/langfuse
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: ""
 
 imagePullSecrets: []
