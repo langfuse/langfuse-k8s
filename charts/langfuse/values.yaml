@@ -1,0 +1,61 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/langfuse/langfuse
+  pullPolicy: Always
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+langfuse:
+  nodeEnv: production
+  nextauth:
+    url: http://localhost:3000
+    secret: changeme
+  salt: changeme
+  telemetryEnabled: True
+  nextPublicSignUpDisabled: False
+  enableExperimentalFeatures: False
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+
+resources: {}
+
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+postgresql:
+  auth:
+    username: postgres
+    password: postgres
+    database: postgres_langfuse
+  deploy: true
+  architecture: standalone
+  primary:
+    service:
+      ports:
+        postgresql: 5432
