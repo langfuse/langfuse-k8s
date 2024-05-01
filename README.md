@@ -43,23 +43,49 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `postgresql.shadowDatabaseUrl` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. | `nil`
 | `postgresql.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `8Gi` |
 
-#### Example (external Postgres server):
+#### Examples:
+
+##### With an external Postgres server
 ```yaml
 langfuse:
-    nextauth:
-        url: "localhost:3000"
-        secret: "changeme"
-    salt: "changeme"
-    telemetryEnabled: true
+  nextauth:
+    url: localhost:3000
+    secret: changeme
+  salt: changeme
+  telemetryEnabled: true
 service:
-    type: "ClusterIP"
-    additionalLabels: []
+  type: ClusterIP
+  additionalLabels: []
 ingress:
-    enabled: false
-    annotations: []
+  enabled: false
+  annotations: []
 postgresql:
-    deploy: false
-    host: "my-external-postgres-server.com"
+  deploy: false
+  auth:
+    username: postgres
+    password: changeme
+    database: langfuse
+  host: my-external-postgres-server.com
+  directUrl: postgres://user:password@my-external-postgres-server.com
+  shadowDatabaseUrl: postgres://user:password@my-external-postgres-server.com
+```
+
+##### Deploy a Postgres server at the same time
+```yaml
+langfuse:
+  nextauth:
+    url: localhost:3000
+    secret: changeme
+  salt: changeme
+  telemetryEnabled: true
+service:
+  type: ClusterIP
+ingress:
+  enabled: false
+postgresql:
+  deploy: true
+  auth:
+    password: changeme
 ```
 
 
