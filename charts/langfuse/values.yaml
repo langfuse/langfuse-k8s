@@ -53,7 +53,9 @@ postgresql:
     username: postgres
     password: postgres
     database: postgres_langfuse
-  deploy: true
+  deploy: false
+  directUrl: "test.com"
+  shadowDatabaseUrl: "sd;lsd;l"
   architecture: standalone
   primary:
     service:

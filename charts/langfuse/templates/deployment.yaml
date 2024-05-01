@@ -47,6 +47,22 @@ spec:
               value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
             - name: DATABASE_NAME
               value: {{ .Values.postgresql.auth.database | quote }}
+            {{- if not .Values.postgresql.deploy }}
+            {{- if .Values.postgresql.directUrl }}
+            - name: DIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  key: postgres-direct-url
+            {{- end }}
+            {{- if .Values.postgresql.shadowDatabaseUrl }}
+            - name: SHADOW_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  key: postgres-shadow-database-url
+            {{- end }}
+            {{- end }}
             - name: NEXTAUTH_URL
               value: {{ .Values.langfuse.nextauth.url | quote }}
             - name: NEXTAUTH_SECRET

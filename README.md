@@ -38,6 +38,8 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `postgresql.auth.password` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. | `postgres` |
 | `postgresql.auth.database` | Database name to use for Langfuse. | `langfuse` |
 | `postgresql.host` | If `postgresql.deploy` is set to false, hostname of the external postgres server to use (mandatory) | `nil` |
+| `postgresql.directUrl` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. | `nil` |
+| `postgresql.shadowDatabaseUrl` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. | `nil`
 | `postgresql.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `8Gi` |
 
 #### Example (external Postgres server):
