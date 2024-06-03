@@ -30,6 +30,9 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `langfuse.salt` | Salt for API key hashing | `changeme` |
 | `langfuse.telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
 | `langfuse.additionalEnv` | Dict that allow addition of additional env variables | `[]` |
+| `langfuse.extraContainers` | Dict that allow addition of additional containers | `[]` |
+| `langfuse.initContainers` | Dict that allow addition of init containers | `[]` |
+| `langfuse.volumes` | Dict that allow addition of volumes that can be mounted to the containers | `[]` |
 | `service.type` | Change the default k8s service type deployed with the application | `ClusterIP` |
 | `service.additionalLabels` | Add additional annotations to the service deployed with the application | `[]` |
 | `ingress.enabled` | Enable ingress for the application | `false` |
@@ -42,6 +45,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `postgresql.directUrl` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. | `nil` |
 | `postgresql.shadowDatabaseUrl` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. | `nil`
 | `postgresql.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `8Gi` |
+| `extraManifests` | Dict that allow addition of additional k8s resources | `[]` |
 
 #### Examples:
 
