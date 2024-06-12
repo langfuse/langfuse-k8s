@@ -11,6 +11,7 @@ fullnameOverride: ""
 
 langfuse:
   nodeEnv: production
+  hostName: 0.0.0.0
   nextauth:
     url: http://localhost:3000
     secret: changeme

@@ -20,6 +20,11 @@ spec:
                 configMapKeyRef:
                   name: langfuse-configmap
                   key: langfuse-node-env
+            - name: HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: langfuse-configmap
+                  key: langfuse-host-name
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:

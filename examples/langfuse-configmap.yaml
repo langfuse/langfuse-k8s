@@ -4,6 +4,7 @@ metadata:
   name: langfuse-configmap
 data:
   langfuse-node-env: production
+  langfuse-host-name: 0.0.0.0
   langfuse-db-url: postgresql://postgres:postgres@db:5432/postgres
   langfuse-nextauth-url: http://localhost:3000
   langfuse-nextauth-secret: mysecret
