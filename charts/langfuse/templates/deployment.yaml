@@ -37,7 +37,7 @@ spec:
             - name: NODE_ENV
               value: {{ .Values.langfuse.nodeEnv | quote }}
             - name: HOSTNAME
-              value: {{ .Values.langfuse.hostName | quote }}
+              value: {{ .Values.langfuse.hostname | quote }}
             - name: DATABASE_USERNAME
               value: {{ .Values.postgresql.auth.username | quote }}
             - name: DATABASE_PASSWORD
