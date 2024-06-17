@@ -24,7 +24,7 @@ spec:
               valueFrom:
                 configMapKeyRef:
                   name: langfuse-configmap
-                  key: langfuse-host-name
+                  key: langfuse-hostname
             - name: DATABASE_URL
               valueFrom:
                 configMapKeyRef:
