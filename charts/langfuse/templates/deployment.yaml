@@ -39,7 +39,7 @@ spec:
             - name: HOSTNAME
               value: "0.0.0.0"
             - name: PORT
-              value: {{ .Values.langfuse.port | default 3000 | quote }}
+              value: {{ .Values.langfuse.port | quote }}
             - name: DATABASE_USERNAME
               value: {{ .Values.postgresql.auth.username | quote }}
             - name: DATABASE_PASSWORD
@@ -88,7 +88,7 @@ spec:
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.langfuse.port | default 3000 | quote }}
+              containerPort: {{ .Values.langfuse.port | quote }}
               protocol: TCP
           livenessProbe:
             httpGet:
