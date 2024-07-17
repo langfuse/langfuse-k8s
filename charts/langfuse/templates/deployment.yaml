@@ -36,6 +36,10 @@ spec:
           env:
             - name: NODE_ENV
               value: {{ .Values.langfuse.nodeEnv | quote }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: {{ .Values.langfuse.port | default 3000 | quote }}
             - name: DATABASE_USERNAME
               value: {{ .Values.postgresql.auth.username | quote }}
             - name: DATABASE_PASSWORD
@@ -84,7 +88,7 @@ spec:
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.service.port }}
+              containerPort: {{ .Values.langfuse.port | default 3000 | quote }}
               protocol: TCP
           livenessProbe:
             httpGet:

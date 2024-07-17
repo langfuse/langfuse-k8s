@@ -27,10 +27,12 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | --- | --- | --- |
 | `langfuse.nextauth.url` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. | `localhost:3000` |
 | `langfuse.nextauth.secret` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. | `changeme` |
+| `langfuse.port` | Port to run Langfuse on | `3000` |
 | `langfuse.salt` | Salt for API key hashing | `changeme` |
 | `langfuse.telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
-| `langfuse.additionalEnv` | Dict that allow addition of additional env variables, see [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. | `[]` |
+| `langfuse.additionalEnv` | Dict that allow addition of additional env variables, see [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. | `{}` |
 | `service.type` | Change the default k8s service type deployed with the application | `ClusterIP` |
+| `service.port` | Change the default k8s service port deployed with the application | `3000` |
 | `service.additionalLabels` | Add additional annotations to the service deployed with the application | `[]` |
 | `ingress.enabled` | Enable ingress for the application | `false` |
 | `ingress.annotations` | Annotation to add the the deployed ingress | `[]` |

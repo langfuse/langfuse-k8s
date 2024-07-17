@@ -14,7 +14,7 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.service.port | default 3000 }}
       targetPort: http
       protocol: TCP
       name: http
