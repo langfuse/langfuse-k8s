@@ -27,13 +27,13 @@ spec:
       serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.langfuse.initContainers }}
+      {{- if .Values.langfuse.extraInitContainers }}
       initContainers:
-        {{- toYaml .Values.langfuse.initContainers | nindent 8 }}
+        {{- toYaml .Values.langfuse.extraInitContainers | nindent 8 }}
       {{- end }}
-      {{- if .Values.langfuse.volumes }}
+      {{- if .Values.langfuse.extraVolumes }}
       volumes:
-        {{- toYaml .Values.langfuse.volumes | nindent 8 }}
+        {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
       {{- end }}
       containers:
         {{- if .Values.langfuse.extraContainers }}
@@ -107,6 +107,10 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.langfuse.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

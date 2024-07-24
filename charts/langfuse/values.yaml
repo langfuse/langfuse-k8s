@@ -19,8 +19,9 @@ langfuse:
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: False
   extraContainers: []
-  volumes: []
-  initContainers: []
+  extraVolumes: []
+  extraInitContainers: []
+  extraVolumeMounts: []
 
 serviceAccount:
   create: true

@@ -30,8 +30,9 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `langfuse.salt` | Salt for API key hashing | `changeme` |
 | `langfuse.telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
 | `langfuse.extraContainers` | Dict that allow addition of additional containers | `[]` |
-| `langfuse.initContainers` | Dict that allow addition of init containers | `[]` |
-| `langfuse.volumes` | Dict that allow addition of volumes that can be mounted to the containers | `[]` |
+| `langfuse.extraInitContainers` | Dict that allow addition of init containers | `[]` |
+| `langfuse.extraVolumes` | Dict that allow addition of volumes that can be mounted to the containers | `[]` |
+| `langfuse.extraVolumeMounts` | Dict that mounts extra volumes to the langfuse container | `[]` |
 | `langfuse.additionalEnv` | Dict that allow addition of additional env variables, see [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. | `[]` |
 | `service.type` | Change the default k8s service type deployed with the application | `ClusterIP` |
 | `service.additionalLabels` | Add additional annotations to the service deployed with the application | `[]` |
