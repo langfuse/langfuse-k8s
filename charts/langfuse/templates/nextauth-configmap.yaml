@@ -1,0 +1,12 @@
+{{- if (not .Values.langfuse.nextauth.url.valueFrom) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "langfuse.nextauthConfigMapName" . }}
+  labels: 
+    {{- include "langfuse.labels" . | nindent 4 }}
+data:
+  {{- if not .Values.langfuse.nextauth.url.valueFrom }}
+  url: {{ .Values.langfuse.nextauth.url.value | toString | quote }}
+  {{- end }}
+{{- end }}

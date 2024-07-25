@@ -70,6 +70,20 @@ Create the name of the secret for nextauth
 {{- end }}
 
 {{/*
+Create the name of the configmap for nextauth
+*/}}
+{{- define "langfuse.nextauthConfigMapName" -}}
+{{- printf "%s-nextauth" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
+Create the name of the secret for salt
+*/}}
+{{- define "langfuse.saltSecretName" -}}
+{{- printf "%s-salt" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
 Create the name of the secret for postgresql if we use an external database
 */}}
 {{- define "langfuse.postgresqlSecretName" -}}
@@ -84,5 +98,145 @@ Return PostgreSQL fullname
 {{- include "common.names.dependency.fullname" (dict "chartName" "postgresql" "chartValues" .Values.postgresql "context" $) -}}
 {{- else }}
 {{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Create the postgresqlConfigMapName
+*/}}
+{{- define "langfuse.postgresqlConfigMapName" -}}
+{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
+Create the valueFrom json for DATABASE_HOST
+*/}}
+{{- define "langfuse.postgresql.databaseHost.valueFrom" -}}
+{{- if .Values.postgresql.deploy -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-database
+{{- else if .Values.langfuse.postgresql.host.valueFrom -}}
+{{- toYaml .Values.langfuse.postgresql.host.valueFrom }}
+{{- else -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-database
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for DATABASE_USERNAME
+*/}}
+{{- define "langfuse.postgresql.auth.username.valueFrom" -}}
+{{- if .Values.postgresql.deploy -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-username
+{{- else if .Values.langfuse.postgresql.auth.username.valueFrom -}}
+{{- toYaml .Values.langfuse.postgresql.auth.username.valueFrom }}
+{{- else -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-username
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for DATABASE_PASSWORD
+*/}}
+{{- define "langfuse.postgresql.auth.password.valueFrom" -}}
+{{- if .Values.postgresql.deploy -}}
+secretKeyRef:
+  name: {{ include "langfuse.postgresqlSecretName" . }}
+  key: postgres-password
+{{- else if .Values.langfuse.postgresql.auth.password.valueFrom }}
+{{- toYaml .Values.langfuse.postgresql.auth.password.valueFrom }}
+{{- else -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlSecretName" . }}
+  key: postgres-password
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for DATABASE_NAME
+*/}}
+{{- define "langfuse.postgresql.auth.database.valueFrom" -}}
+{{- if .Values.postgresql.deploy -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-database
+{{- else if .Values.langfuse.postgresql.auth.database.valueFrom }}
+{{- toYaml .Values.langfuse.postgresql.auth.database.valueFrom }}
+{{- else -}}
+configMapRef:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  key: postgres-database
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for SALT
+*/}}
+{{- define "langfuse.salt.valueFrom" -}}
+{{- if .Values.langfuse.salt.valueFrom }}
+{{- toYaml .Values.langfuse.salt.valueFrom }}
+{{- else -}}
+secretKeyRef:
+  name: {{ include "langfuse.saltSecretName" . }}
+  key: salt
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for DIRECT_URL
+*/}}
+{{- define "langfuse.postgresql.directURL.valueFrom" -}}
+{{- if .Values.langfuse.postgresql.directURL.valueFrom }}
+{{- toYaml .Values.langfuse.postgresql.directURL.valueFrom }}
+{{- else -}}
+secretKeyRef:
+  name: {{ include "langfuse.postgresqlSecretName" . }}
+  key: postgres-direct-url
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for SHADOW_DATABASE_URL
+*/}}
+{{- define "langfuse.postgresql.shadowDatabaseURL.valueFrom" -}}
+{{- if .Values.langfuse.postgresql.shadowDatabaseURL.valueFrom }}
+{{- toYaml .Values.langfuse.postgresql.shadowDatabaseURL.valueFrom }}
+{{- else -}}
+secretKeyRef:
+  name: {{ include "langfuse.postgresqlSecretName" . }}
+  key: postgres-shadow-database-url
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for NEXTAUTH_URL
+*/}}
+{{- define "langfuse.nextauth.url.valueFrom" -}}
+{{- if .Values.langfuse.nextauth.url.valueFrom }}
+{{- toYaml .Values.langfuse.nextauth.url.valueFrom }}
+{{- else -}}
+configMapRef:
+  name: {{ include "langfuse.nextauthConfigMapName" . }}
+  key: nextauth-url
+{{- end }}
+{{- end }}
+
+{{/*
+Create the valueFrom json for NEXTAUTH_SECRET
+*/}}
+{{- define "langfuse.nextauth.secret.valueFrom" -}}
+{{- if .Values.langfuse.nextauth.secret.valueFrom }}
+{{- toYaml .Values.langfuse.nextauth.secret.valueFrom }}
+{{- else -}}
+secretKeyRef:
+  name: {{ include "langfuse.nextauthSecretName" . }}
+  key: secret
 {{- end }}
 {{- end }}
