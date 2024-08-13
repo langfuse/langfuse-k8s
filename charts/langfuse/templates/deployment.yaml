@@ -80,7 +80,11 @@ spec:
               value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
             {{- range $key, $value := .Values.langfuse.additionalEnv }}
             - name: {{ $key }}
+            {{- if kindIs "map" $value }}
+              {{- toYaml $value | nindent 14 }}
+            {{- else }}
               value: {{ $value | quote }}
+            {{- end }}
             {{- end }}
           ports:
             - name: http
