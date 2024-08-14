@@ -12,12 +12,48 @@ fullnameOverride: ""
 langfuse:
   nodeEnv: production
   nextauth:
-    url: http://localhost:3000
-    secret: changeme
-  salt: changeme
+    url:
+      value: http://localhost:3000
+      valueFrom: {}
+    secret:
+      value: changeme
+      valueFrom: {}
+  salt:
+    value: changeme
+    valueFrom: {}
+  postgresql:
+    host:
+      value: ""
+      valueFrom: {}
+    auth:
+      username:
+        value: postgres
+        valueFrom:
+          configMapRef:
+            name: langfuse
+            key: postgres-username
+      password:
+        value: postgres
+        valueFrom:
+          secretRef:
+            name: langfuse
+            key: postgres-password
+      database:
+        value: postgres_langfuse
+        valueFrom:
+          configMapRef:
+            name: langfuse
+            key: postgres-database
+    directURL:
+      value: ""
+      valueFrom: {}
+    shadowDatabaseUrl:
+      value: ""
+      valueFrom: {}
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: False
+  additionalEnv: []
 
 serviceAccount:
   create: true

@@ -1,0 +1,22 @@
+{{- if (or (not .Values.langfuse.postgresql.auth.username.valueFrom) (not .Values.langfuse.postgresql.auth.database.valueFrom) (not .Values.langfuse.postgresql.host.valueFrom)) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "langfuse.postgresqlConfigMapName" . }}
+  labels: 
+    {{- include "langfuse.labels" . | nindent 4 }}
+data:
+  {{- if not .Values.langfuse.postgresql.auth.username.valueFrom }}
+  postgres-username: {{ .Values.langfuse.postgresql.auth.username.value | toString | quote }}
+  {{- end }}
+  {{- if not .Values.langfuse.postgresql.auth.database.valueFrom }}
+  postgres-database: {{ .Values.langfuse.postgresql.auth.database.value | toString | quote }}
+  {{- end }}
+  {{- if not .Values.langfuse.postgresql.host.valueFrom }}
+  {{- if .Values.langfuse.postgresql.host }}
+  postgres-database: {{ .Values.langfuse.postgresql.auth.database.value | toString | quote }}
+  {{- else }}
+  postgres-database: ""
+  {{- end }}
+  {{- end }}
+{{- end }}
