@@ -49,7 +49,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 ```yaml
 langfuse:
   nextauth:
-    url: localhost:3000
+    url: http://localhost:3000
     secret: changeme
   salt: changeme
   telemetryEnabled: true
@@ -74,7 +74,7 @@ postgresql:
 ```yaml
 langfuse:
   nextauth:
-    url: localhost:3000
+    url: http://localhost:3000
     secret: changeme
   salt: changeme
   telemetryEnabled: true
