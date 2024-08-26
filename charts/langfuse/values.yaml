@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/langfuse/langfuse
   pullPolicy: Always
-  tag: ""
+  tag: "2"
 
 imagePullSecrets: []
 nameOverride: ""

@@ -25,7 +25,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 
 | Parameter | Description | Default |
 | --- | --- | --- |
-| `langfuse.nextauth.url` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. | `localhost:3000` |
+| `langfuse.nextauth.url` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. | `http://localhost:3000` |
 | `langfuse.nextauth.secret` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. | `changeme` |
 | `langfuse.port` | Port to run Langfuse on | `3000` |
 | `langfuse.salt` | Salt for API key hashing | `changeme` |
@@ -51,7 +51,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 ```yaml
 langfuse:
   nextauth:
-    url: localhost:3000
+    url: http://localhost:3000
     secret: changeme
   salt: changeme
   telemetryEnabled: true
@@ -76,7 +76,7 @@ postgresql:
 ```yaml
 langfuse:
   nextauth:
-    url: localhost:3000
+    url: http://localhost:3000
     secret: changeme
   salt: changeme
   telemetryEnabled: true

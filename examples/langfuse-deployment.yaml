@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: langfuse
-          image: ghcr.io/langfuse/langfuse:latest
+          image: ghcr.io/langfuse/langfuse:2
           env:
             - name: NODE_ENV
               valueFrom:
