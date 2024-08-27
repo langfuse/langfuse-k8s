@@ -18,6 +18,10 @@ langfuse:
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: False
+  extraContainers: []
+  extraVolumes: []
+  extraInitContainers: []
+  extraVolumeMounts: []
 
 serviceAccount:
   create: true
@@ -59,3 +63,5 @@ postgresql:
     service:
       ports:
         postgresql: 5432
+
+extraManifests: []
