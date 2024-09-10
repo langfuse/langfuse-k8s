@@ -23,6 +23,20 @@ langfuse:
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
+  additionalEnv: []
+    # example
+    # - name: "DATABASE_PASSWORD"
+    #   valueFrom:
+    #     secretKeyRef:
+    #       name: "my-secrets"
+    #       key: "database-password"
+    # - name: "EMAIL_FROM_ADDRESS"
+    #   valueFrom:
+    #     configMapKeyRef:
+    #       name: "my-configmap"
+    #       key: "email-from-address"
+    # - name: DATABASE_USERNAME
+    #   value: langfuse-postgres  
 
 serviceAccount:
   create: true
