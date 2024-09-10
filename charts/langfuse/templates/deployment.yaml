@@ -93,9 +93,8 @@ spec:
               value: {{ .Values.langfuse.nextPublicSignUpDisabled | quote }}
             - name: ENABLE_EXPERIMENTAL_FEATURES
               value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
-            {{- range $key, $value := .Values.langfuse.additionalEnv }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
+            {{- if .Values.langfuse.additionalEnv }}
+              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
           ports:
             - name: http
