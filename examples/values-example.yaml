@@ -1,5 +1,7 @@
-# This values.yaml files assumes you have created your own secrets and configmap with necessary variables.
-# It's upto user to create secrets manually or via External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
+# This values.yaml file demonstrates how to use the `additonalEnvs` parameter with hard-coded values, configmaps, and secrets.
+# It assumes that you have created your own secrets and configmap with necessary variables.
+# Secrets must be set manually or via External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
+
 replicaCount: 1
 
 langfuse:
