@@ -39,7 +39,8 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `service.port` | Change the default k8s service port deployed with the application | `3000` |
 | `service.additionalLabels` | Add additional annotations to the service deployed with the application | `[]` |
 | `ingress.enabled` | Enable ingress for the application | `false` |
-| `ingress.annotations` | Annotation to add the the deployed ingress | `[]` |
+| `ingress.annotations` | Annotation to add to the deployed ingress | `[]` |
+| `ingress.hosts` | Hosts to define for the deployed ingress. Effective only if `ingress.enabled` is set to true | `[]` |
 | `postgresql.deploy` | Enable postgres deployment (via Bitnami Helm Chart). If you want to use a postgres server already deployed (or a managed one), set this to false | `true` |
 | `postgresql.auth.username` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. | `postgres` |
 | `postgresql.auth.password` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. | `postgres` |
@@ -48,6 +49,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `postgresql.directUrl` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. | `nil` |
 | `postgresql.shadowDatabaseUrl` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. | `nil`
 | `postgresql.primary.persistence.size` | Disk request for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `8Gi` |
+| `postgresql.primary.persistence.storageClass` | Disk PVC Storage Class for the postgres database deployed with Langfuse. Effective only if `postgresql.deploy` is set to true | `` |
 | `extraManifests` | Dict that allow addition of additional k8s resources | `[]` |
 
 #### Examples:
@@ -95,6 +97,23 @@ postgresql:
     password: changeme
 ```
 
+##### Enable ingress
+```yaml
+langfuse:
+  [...]
+service:
+  [...]
+ingress:
+  enabled: true
+  hosts:
+    - host: langfuse.your-host.com
+      paths:
+      - path: /
+        pathType: Prefix
+  annotations: []
+postgresql:
+  [...]
+```
 
 ## Repository Structure
 - `examples` directory contains example `yaml` configurations
