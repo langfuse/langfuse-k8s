@@ -102,7 +102,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /api/public/health
               port: http
           readinessProbe:
             httpGet:
