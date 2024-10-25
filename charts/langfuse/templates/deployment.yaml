@@ -102,11 +102,11 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /api/public/health
               port: http
           readinessProbe:
             httpGet:
-              path: /api/public/health
+              path: /api/public/ready
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
