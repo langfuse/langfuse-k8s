@@ -26,6 +26,10 @@ dependencies:
     version: 1.x.x
     repository: oci://registry-1.docker.io/bitnamicharts
     condition: valkey.deploy
+  - name: minio
+    version: 14.x.x
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: minio.deploy
 maintainers:
   - name: langfuse
     email: contact@langfuse.com

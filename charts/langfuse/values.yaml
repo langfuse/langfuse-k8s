@@ -100,4 +100,7 @@ valkey:
   auth:
     password: changeme
 
+minio:
+  deploy: true
+
 extraManifests: []
