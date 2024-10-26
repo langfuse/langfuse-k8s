@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "langfuse.fullname" . }}
+  name: {{ include "langfuse.fullname" . }}-worker
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
@@ -11,6 +11,7 @@ spec:
   selector:
     matchLabels:
       {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app: worker
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,6 +20,7 @@ spec:
       {{- end }}
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app: worker
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -39,10 +41,10 @@ spec:
         {{- if .Values.langfuse.extraContainers }}
         {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
         {{- end }}
-        - name: {{ .Chart.Name }}
+        - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository }}-worker:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: NODE_ENV
@@ -102,11 +104,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /api/public/health
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /api/public/ready
+              path: /api/health
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

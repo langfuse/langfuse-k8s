@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/langfuse/langfuse
+  repository: langfuse/langfuse
   pullPolicy: Always
-  tag: "2"
+  tag: latest
 
 imagePullSecrets: []
 nameOverride: ""
@@ -18,12 +18,18 @@ langfuse:
   salt: changeme
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
-  enableExperimentalFeatures: False
+  enableExperimentalFeatures: True
   extraContainers: []
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
-  additionalEnv: []
+  additionalEnv:
+    - name: "REDIS_CONNECTION_STRING"
+      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+    - name: "LANGFUSE_ASYNC_INGESTION_PROCESSING"
+      value: "true"
+    - name: "LANGFUSE_LOG_FORMAT"
+      value: "json"
     # example
     # - name: "DATABASE_PASSWORD"
     #   valueFrom:
@@ -50,7 +56,7 @@ podSecurityContext: {}
 securityContext: {}
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 3000
 
 ingress:
@@ -78,5 +84,20 @@ postgresql:
     service:
       ports:
         postgresql: 5432
+
+clickhouse:
+  deploy: true
+  auth:
+    username: default
+    password: changeme
+
+valkey:
+  deploy: true
+  architecture: standalone
+  primary:
+    extraFlags:
+      - "--maxmemory-policy noeviction"
+  auth:
+    password: changeme
 
 extraManifests: []

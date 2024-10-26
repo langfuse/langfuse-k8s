@@ -5,7 +5,9 @@
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
 
 ## Helm Chart
-We provide an Helm chart that helps you deploy Langfuse on Kubernetes. This Helm chart could use an external Postgres server or deploy one for you, thanks to [Bitnami Postgres Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/postgresql).
+
+We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
+This Helm chart could use an external Postgres server or deploy one for you, thanks to [Bitnami Postgres Helm chart](https://github.com/bitnami/charts/tree/main/bitnami/postgresql).
 
 ### Installation
 ```bash
