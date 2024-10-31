@@ -26,9 +26,9 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | Parameter | Description | Default |
 | --- | --- | --- |
 | `langfuse.nextauth.url` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. | `http://localhost:3000` |
-| `langfuse.nextauth.secret` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. | `changeme` |
+| `langfuse.nextauth.secret` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. In case the value is set to `null`, then the default `NEXTAUTH_SECRET` environment variable will not be set. | `changeme` |
 | `langfuse.port` | Port to run Langfuse on | `3000` |
-| `langfuse.salt` | Salt for API key hashing | `changeme` |
+| `langfuse.salt` | Salt for API key hashing. In case the value is set to `null`, then the default `SALT` environment variable will not be set. | `changeme` |
 | `langfuse.telemetryEnabled` | Weither or not to enable telemetry (reports basic usage statistics of self-hosted instances to a centralized server). | `true` |
 | `langfuse.extraContainers` | Dict that allow addition of additional containers | `[]` |
 | `langfuse.extraInitContainers` | Dict that allow addition of init containers | `[]` |
@@ -113,6 +113,47 @@ ingress:
   annotations: []
 postgresql:
   [...]
+```
+
+##### With an external Postgres server with client certificates using own secrets and additionalEnv for mappings
+```yaml
+langfuse:
+  salt: null
+  nextauth: 
+    secret: null
+  extraVolumes:
+    - name: db-keystore   # referencing an existing secret to mount server/client certs for postgres
+      secret:
+        secretName: langfuse-postgres  # contain the following files (server-ca.pem, sslidentity.pk12)
+  extraVolumeMounts:
+    - name: db-keystore
+      mountPath: /secrets/db-keystore  # mounting the db-keystore store certs in the pod under the given path
+      readOnly: true
+  additionalEnv:
+    - name: DATABASE_URL  # Using the certs in the url eg. postgresql://the-db-user:the-password@postgres-host:5432/langfuse?ssl=true&sslmode=require&sslcert=/secrets/db-keystore/server-ca.pem&sslidentity=/secrets/db-keystore/sslidentity.pk12&sslpassword=the-ssl-identity-pw
+      valueFrom:
+        secretKeyRef:
+          name: langfuse-postgres  # referencing an existing secret
+          key: database-url
+    - name: NEXTAUTH_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: langfuse-general # referencing an existing secret
+          key: nextauth-secret
+    - name: SALT
+      valueFrom:
+        secretKeyRef:
+          name: langfuse-general
+          key: salt
+service:
+  [...]
+ingress:
+  [...]
+postgresql:
+  deploy: false
+  auth:
+    password: null
+    username: null
 ```
 
 ## Repository Structure

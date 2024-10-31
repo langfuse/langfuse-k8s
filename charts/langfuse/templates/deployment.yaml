@@ -51,17 +51,25 @@ spec:
               value: "0.0.0.0"
             - name: PORT
               value: {{ .Values.langfuse.port | quote }}
+            {{- if .Values.postgresql.auth.username }}
             - name: DATABASE_USERNAME
               value: {{ .Values.postgresql.auth.username | quote }}
+            {{- end }}
+            {{- if .Values.postgresql.auth.password }}
             - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "langfuse.postgresql.fullname" . }}
                   key: postgres-password
+            {{- end }}
+            {{- if .Values.postgresql.host }}
             - name: DATABASE_HOST
               value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
+            {{- end }}
+            {{- if .Values.postgresql.database }}
             - name: DATABASE_NAME
               value: {{ .Values.postgresql.auth.database | quote }}
+            {{- end }}
             {{- if not .Values.postgresql.deploy }}
             {{- if .Values.postgresql.directUrl }}
             - name: DIRECT_URL
@@ -80,13 +88,17 @@ spec:
             {{- end }}
             - name: NEXTAUTH_URL
               value: {{ .Values.langfuse.nextauth.url | quote }}
+            {{- if .Values.langfuse.nextauth.secret }}
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "langfuse.nextauthSecretName" . }}
                   key: nextauth-secret
+            {{- end }}
+            {{- if .Values.langfuse.salt }}
             - name: SALT
               value: {{ .Values.langfuse.salt | quote }}
+            {{- end }}
             - name: TELEMETRY_ENABLED
               value: {{ .Values.langfuse.telemetryEnabled | quote }}
             - name: NEXT_PUBLIC_SIGN_UP_DISABLED
