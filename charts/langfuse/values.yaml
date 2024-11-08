@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/langfuse/langfuse
+  repository: langfuse/langfuse
   pullPolicy: Always
-  tag: "2"
+  tag: "main"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -42,7 +42,7 @@ serviceAccount:
   create: true
   annotations: {}
   name: ""
-
+DATABASE_URL: postgresql://postgres:postgres@langfuse-postgresql:5432/postgres_langfuse
 podAnnotations: {}
 
 podSecurityContext: {}

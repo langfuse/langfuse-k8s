@@ -55,6 +55,10 @@ spec:
             - name: DATABASE_USERNAME
               value: {{ .Values.postgresql.auth.username | quote }}
             {{- end }}
+          {{- if .Values.DATABASE_URL}}
+            - name: DATABASE_URL
+              value: {{ .Values.DATABASE_URL | quote }}
+            {{- end }}
             {{- if .Values.postgresql.auth.password }}
             - name: DATABASE_PASSWORD
               valueFrom:
