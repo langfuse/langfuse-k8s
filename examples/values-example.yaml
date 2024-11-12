@@ -84,6 +84,7 @@ postgresql:
   deploy: false
   auth:
     username: langfuse
+    password: langfuse
     database: postgres_langfuse
   host: localhost
 

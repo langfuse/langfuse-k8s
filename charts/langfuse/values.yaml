@@ -68,6 +68,7 @@ tolerations: []
 affinity: {}
 
 postgresql:
+  host: langfuse-postgresql
   auth:
     username: postgres
     password: postgres

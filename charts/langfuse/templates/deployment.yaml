@@ -66,7 +66,7 @@ spec:
             - name: DATABASE_HOST
               value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
             {{- end }}
-            {{- if .Values.postgresql.database }}
+            {{- if .Values.postgresql.auth.database }}
             - name: DATABASE_NAME
               value: {{ .Values.postgresql.auth.database | quote }}
             {{- end }}
