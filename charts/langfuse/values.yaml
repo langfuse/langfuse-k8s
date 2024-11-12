@@ -12,6 +12,8 @@ fullnameOverride: ""
 langfuse:
   port: 3000
   nodeEnv: production
+  next:
+    healthcheckBasePath: ""
   nextauth:
     url: http://localhost:3000
     secret: changeme

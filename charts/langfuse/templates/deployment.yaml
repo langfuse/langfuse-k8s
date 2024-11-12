@@ -114,11 +114,11 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /api/public/health
+              path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
               port: http
           readinessProbe:
             httpGet:
-              path: /api/public/ready
+              path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
