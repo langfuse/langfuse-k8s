@@ -26,12 +26,48 @@ langfuse:
   extraInitContainers: []
   extraVolumeMounts: []
   additionalEnv:
-    - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
-    - name: "LANGFUSE_ASYNC_INGESTION_PROCESSING"
-      value: "true"
     - name: "LANGFUSE_LOG_FORMAT"
       value: "json"
+    # Experimental v3 feature flags
+    - name: "LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES"
+      value: "true"
+    - name: "LANGFUSE_ASYNC_INGESTION_PROCESSING"
+      value: "true"
+    - name: "LANGFUSE_ASYNC_CLICKHOUSE_INGESTION_PROCESSING"
+      value: "true"
+    - name: "LANGFUSE_READ_DASHBOARDS_FROM_CLICKHOUSE"
+      value: "true"
+    - name: "LANGFUSE_READ_FROM_POSTGRES_ONLY"
+      value: "false"
+    - name: "LANGFUSE_RETURN_FROM_CLICKHOUSE"
+      value: "true"
+    # REDIS
+    - name: "REDIS_CONNECTION_STRING"
+      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+    # CLICKHOUSE
+    - name: "CLICKHOUSE_MIGRATION_URL"
+      value: "clickhouse://langfuse-clickhouse:9000"
+    - name: "CLICKHOUSE_URL"
+      value: "http://langfuse-clickhouse:8123"
+    - name: "CLICKHOUSE_USER"
+      value: "default"
+    - name: "CLICKHOUSE_PASSWORD"
+      value: "changeme"
+    # S3 / MinIO
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
+      value: "true"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
+      value: "langfuse"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
+      value: "us-east-1"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
+      value: "minio"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
+      value: "miniosecret"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
+      value: "http://langfuse-minio:9000"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
+      value: "true"
     # example
     # - name: "DATABASE_PASSWORD"
     #   valueFrom:
@@ -90,6 +126,10 @@ postgresql:
 
 clickhouse:
   deploy: true
+  # Please do not change, as Langfuse v3 currently doesn't support Clickhouse clusters.
+  shards: 1
+  replicaCount: 1
+  resourcesPreset: large
   auth:
     username: default
     password: changeme
@@ -105,5 +145,9 @@ valkey:
 
 minio:
   deploy: true
+  defaultBuckets: 'langfuse'
+  auth:
+    rootUser: 'minio'
+    rootPassword: 'miniosecret'
 
 extraManifests: []
