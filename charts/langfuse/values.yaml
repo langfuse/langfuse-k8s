@@ -126,9 +126,8 @@ postgresql:
 
 clickhouse:
   deploy: true
-  # Please do not change, as Langfuse v3 currently doesn't support Clickhouse clusters.
-  shards: 1
-  replicaCount: 1
+  shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
+  replicaCount: 3
   resourcesPreset: large
   auth:
     username: default
