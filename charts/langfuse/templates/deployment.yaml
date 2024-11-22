@@ -60,7 +60,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "langfuse.postgresql.fullname" . }}
-                  key: postgres-password
+                  key: password
             {{- end }}
             {{- if .Values.postgresql.host }}
             - name: DATABASE_HOST
