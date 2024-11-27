@@ -6,7 +6,7 @@ metadata:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ coalesce .Values.langfuse.worker.replicas .Values.replicaCount 1 }}
   {{- end }}
   selector:
     matchLabels:

@@ -25,6 +25,12 @@ langfuse:
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
+
+  web:
+    replicas: 1
+  worker:
+    replicas: 1
+
   additionalEnv:
     - name: "LANGFUSE_LOG_FORMAT"
       value: "json"
