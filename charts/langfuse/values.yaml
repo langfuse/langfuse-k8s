@@ -18,6 +18,7 @@ langfuse:
     url: http://localhost:3000
     secret: changeme
   salt: changeme
+  licenseKey: ""
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: True
@@ -25,29 +26,6 @@ langfuse:
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
-
-  web:
-    replicas: 1
-    livenessProbe:
-      initialDelaySeconds: 20
-      periodSeconds: 10
-      timeoutSeconds: 5
-      successThreshold: 1
-      failureThreshold: 5
-    readinessProbe:
-      initialDelaySeconds: 20
-      periodSeconds: 10
-      timeoutSeconds: 5
-      successThreshold: 1
-      failureThreshold: 5
-  worker:
-    replicas: 1
-    livenessProbe:
-      initialDelaySeconds: 20
-      periodSeconds: 10
-      timeoutSeconds: 5
-      successThreshold: 1
-      failureThreshold: 5
 
   additionalEnv:
     - name: "LANGFUSE_LOG_FORMAT"
