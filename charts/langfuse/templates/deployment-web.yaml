@@ -118,10 +118,20 @@ spec:
             httpGet:
               path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
               port: http
+            initialDelaySeconds: {{ coalesce .Values.langfuse.web.livenessProbe.initialDelaySeconds 20 }}
+            periodSeconds: {{ coalesce .Values.langfuse.web.livenessProbe.periodSeconds 10 }}
+            timeoutSeconds: {{ coalesce .Values.langfuse.web.livenessProbe.timeoutSeconds 5 }}
+            successThreshold: {{ coalesce .Values.langfuse.web.livenessProbe.successThreshold 1 }}
+            failureThreshold: {{ coalesce .Values.langfuse.web.livenessProbe.failureThreshold 5 }}
           readinessProbe:
             httpGet:
               path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
               port: http
+            initialDelaySeconds: {{ coalesce .Values.langfuse.web.readinessProbe.initialDelaySeconds 20 }}
+            periodSeconds: {{ coalesce .Values.langfuse.web.readinessProbe.periodSeconds 10 }}
+            timeoutSeconds: {{ coalesce .Values.langfuse.web.readinessProbe.timeoutSeconds 5 }}
+            successThreshold: {{ coalesce .Values.langfuse.web.readinessProbe.successThreshold 1 }}
+            failureThreshold: {{ coalesce .Values.langfuse.web.readinessProbe.failureThreshold 5 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

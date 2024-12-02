@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: langfuse/langfuse
   pullPolicy: Always
-  tag: latest
+  tag: 3.0.0-rc.2
 
 imagePullSecrets: []
 nameOverride: ""
@@ -28,24 +28,31 @@ langfuse:
 
   web:
     replicas: 1
+    livenessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 5
+    readinessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 5
   worker:
     replicas: 1
+    livenessProbe:
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 5
 
   additionalEnv:
     - name: "LANGFUSE_LOG_FORMAT"
       value: "json"
-    # Experimental v3 feature flags
     - name: "LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES"
-      value: "true"
-    - name: "LANGFUSE_ASYNC_INGESTION_PROCESSING"
-      value: "true"
-    - name: "LANGFUSE_ASYNC_CLICKHOUSE_INGESTION_PROCESSING"
-      value: "true"
-    - name: "LANGFUSE_READ_DASHBOARDS_FROM_CLICKHOUSE"
-      value: "true"
-    - name: "LANGFUSE_READ_FROM_POSTGRES_ONLY"
-      value: "false"
-    - name: "LANGFUSE_RETURN_FROM_CLICKHOUSE"
       value: "true"
     # REDIS
     - name: "REDIS_CONNECTION_STRING"
@@ -74,19 +81,6 @@ langfuse:
       value: "http://langfuse-minio:9000"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
       value: "true"
-    # example
-    # - name: "DATABASE_PASSWORD"
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: "my-secrets"
-    #       key: "database-password"
-    # - name: "EMAIL_FROM_ADDRESS"
-    #   valueFrom:
-    #     configMapKeyRef:
-    #       name: "my-configmap"
-    #       key: "email-from-address"
-    # - name: DATABASE_USERNAME
-    #   value: langfuse-postgres  
 
 serviceAccount:
   create: true
