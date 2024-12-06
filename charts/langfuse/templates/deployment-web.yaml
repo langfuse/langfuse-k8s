@@ -1,16 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "langfuse.fullname" . }}
+  name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ coalesce (.Values.langfuse.web).replicas .Values.replicaCount 1 }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app: web
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,6 +20,7 @@ spec:
       {{- end }}
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app: web
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -39,12 +41,14 @@ spec:
         {{- if .Values.langfuse.extraContainers }}
         {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
         {{- end }}
-        - name: {{ .Chart.Name }}
+        - name: {{ .Chart.Name }}-web
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: LANGFUSE_EE_LICENSE_KEY
+              value: {{ .Values.langfuse.licenseKey | quote }}
             - name: NODE_ENV
               value: {{ .Values.langfuse.nodeEnv | quote }}
             - name: HOSTNAME
@@ -116,10 +120,20 @@ spec:
             httpGet:
               path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
               port: http
+            initialDelaySeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).initialDelaySeconds 20 }}
+            periodSeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).periodSeconds 10 }}
+            timeoutSeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).timeoutSeconds 5 }}
+            successThreshold: {{ coalesce ((.Values.langfuse.web).livenessProbe).successThreshold 1 }}
+            failureThreshold: {{ coalesce ((.Values.langfuse.web).livenessProbe).failureThreshold 5 }}
           readinessProbe:
             httpGet:
               path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
               port: http
+            initialDelaySeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).initialDelaySeconds 20 }}
+            periodSeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).periodSeconds 10 }}
+            timeoutSeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).timeoutSeconds 5 }}
+            successThreshold: {{ coalesce ((.Values.langfuse.web).readinessProbe).successThreshold 1 }}
+            failureThreshold: {{ coalesce ((.Values.langfuse.web).readinessProbe).failureThreshold 5 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

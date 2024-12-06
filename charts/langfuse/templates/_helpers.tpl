@@ -61,7 +61,6 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-
 {{/*
 Create the name of the secret for nextauth
 */}}

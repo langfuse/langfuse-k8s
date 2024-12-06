@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "langfuse.fullname" . }}-worker
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ coalesce (.Values.langfuse.worker).replicas .Values.replicaCount 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app: worker
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app: worker
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.langfuse.extraInitContainers }}
+      initContainers:
+        {{- toYaml .Values.langfuse.extraInitContainers | nindent 8 }}
+      {{- end }}
+      {{- if .Values.langfuse.extraVolumes }}
+      volumes:
+        {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if .Values.langfuse.extraContainers }}
+        {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
+        {{- end }}
+        - name: {{ .Chart.Name }}-worker
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}-worker:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: LANGFUSE_EE_LICENSE_KEY
+              value: {{ .Values.langfuse.licenseKey | quote }}
+            - name: NODE_ENV
+              value: {{ .Values.langfuse.nodeEnv | quote }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            - name: PORT
+              value: {{ .Values.langfuse.port | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ .Values.postgresql.auth.username | quote }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.postgresql.fullname" . }}
+                  key: postgres-password
+            - name: DATABASE_HOST
+              value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
+            - name: DATABASE_NAME
+              value: {{ .Values.postgresql.auth.database | quote }}
+            {{- if not .Values.postgresql.deploy }}
+            {{- if .Values.postgresql.directUrl }}
+            - name: DIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  key: postgres-direct-url
+            {{- end }}
+            {{- if .Values.postgresql.shadowDatabaseUrl }}
+            - name: SHADOW_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  key: postgres-shadow-database-url
+            {{- end }}
+            {{- end }}
+            - name: NEXTAUTH_URL
+              value: {{ .Values.langfuse.nextauth.url | quote }}
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "langfuse.nextauthSecretName" . }}
+                  key: nextauth-secret
+            - name: SALT
+              value: {{ .Values.langfuse.salt | quote }}
+            - name: TELEMETRY_ENABLED
+              value: {{ .Values.langfuse.telemetryEnabled | quote }}
+            - name: NEXT_PUBLIC_SIGN_UP_DISABLED
+              value: {{ .Values.langfuse.nextPublicSignUpDisabled | quote }}
+            - name: ENABLE_EXPERIMENTAL_FEATURES
+              value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
+            {{- if .Values.langfuse.additionalEnv }}
+              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.langfuse.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: {{ coalesce ((.Values.langfuse.worker).livenessProbe).initialDelaySeconds 20 }}
+            periodSeconds: {{ coalesce ((.Values.langfuse.worker).livenessProbe).periodSeconds 10 }}
+            timeoutSeconds: {{ coalesce ((.Values.langfuse.worker).livenessProbe).timeoutSeconds 5 }}
+            successThreshold: {{ coalesce ((.Values.langfuse.worker).livenessProbe).successThreshold 1 }}
+            failureThreshold: {{ coalesce ((.Values.langfuse.worker).livenessProbe).failureThreshold 5 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.langfuse.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
