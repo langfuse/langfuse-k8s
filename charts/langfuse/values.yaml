@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: langfuse/langfuse
   pullPolicy: Always
-  tag: 3.0.0-rc.2
+  tag: 3.0.0-rc.4
 
 imagePullSecrets: []
 nameOverride: ""
