@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: langfuse/langfuse
   pullPolicy: Always
-  tag: 3.0.0-rc.4
+  tag: 3
 
 imagePullSecrets: []
 nameOverride: ""
@@ -50,7 +50,7 @@ langfuse:
     - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
       value: "langfuse"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
-      value: "us-east-1"
+      value: "auto"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
       value: "minio"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
