@@ -1,9 +1,9 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/langfuse/langfuse
+  repository: langfuse/langfuse
   pullPolicy: Always
-  tag: "2"
+  tag: 3
 
 imagePullSecrets: []
 nameOverride: ""
@@ -18,6 +18,7 @@ langfuse:
     url: http://localhost:3000
     secret: changeme
   salt: changeme
+  licenseKey: ""
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: False
@@ -25,20 +26,35 @@ langfuse:
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
-  additionalEnv: []
-    # example
-    # - name: "DATABASE_PASSWORD"
-    #   valueFrom:
-    #     secretKeyRef:
-    #       name: "my-secrets"
-    #       key: "database-password"
-    # - name: "EMAIL_FROM_ADDRESS"
-    #   valueFrom:
-    #     configMapKeyRef:
-    #       name: "my-configmap"
-    #       key: "email-from-address"
-    # - name: DATABASE_USERNAME
-    #   value: langfuse-postgres  
+
+  additionalEnv:
+    # REDIS
+    - name: "REDIS_CONNECTION_STRING"
+      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+    # CLICKHOUSE
+    - name: "CLICKHOUSE_MIGRATION_URL"
+      value: "clickhouse://langfuse-clickhouse:9000"
+    - name: "CLICKHOUSE_URL"
+      value: "http://langfuse-clickhouse:8123"
+    - name: "CLICKHOUSE_USER"
+      value: "default"
+    - name: "CLICKHOUSE_PASSWORD"
+      value: "changeme"
+    # S3 / MinIO
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
+      value: "true"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
+      value: "langfuse"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
+      value: "auto"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
+      value: "minio"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
+      value: "miniosecret"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
+      value: "http://langfuse-minio:9000"
+    - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
+      value: "true"
 
 serviceAccount:
   create: true
@@ -81,5 +97,30 @@ postgresql:
     service:
       ports:
         postgresql: 5432
+
+clickhouse:
+  deploy: true
+  shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
+  replicaCount: 3
+  resourcesPreset: large
+  auth:
+    username: default
+    password: changeme
+
+valkey:
+  deploy: true
+  architecture: standalone
+  primary:
+    extraFlags:
+      - "--maxmemory-policy noeviction"
+  auth:
+    password: changeme
+
+minio:
+  deploy: true
+  defaultBuckets: 'langfuse'
+  auth:
+    rootUser: 'minio'
+    rootPassword: 'miniosecret'
 
 extraManifests: []

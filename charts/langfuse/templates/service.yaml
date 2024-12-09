@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "langfuse.fullname" . }}
+  name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
     {{- with .Values.service.additionalLabels }}
@@ -20,3 +20,4 @@ spec:
       name: http
   selector:
     {{- include "langfuse.selectorLabels" . | nindent 4 }}
+    app: web
