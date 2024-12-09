@@ -21,7 +21,7 @@ langfuse:
   licenseKey: ""
   telemetryEnabled: True
   nextPublicSignUpDisabled: False
-  enableExperimentalFeatures: True
+  enableExperimentalFeatures: False
   extraContainers: []
   extraVolumes: []
   extraInitContainers: []
