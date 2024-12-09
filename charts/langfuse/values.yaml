@@ -28,10 +28,6 @@ langfuse:
   extraVolumeMounts: []
 
   additionalEnv:
-    - name: "LANGFUSE_LOG_FORMAT"
-      value: "json"
-    - name: "LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES"
-      value: "true"
     # REDIS
     - name: "REDIS_CONNECTION_STRING"
       value: "redis://default:changeme@langfuse-valkey-master:6379/0"
