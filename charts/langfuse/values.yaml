@@ -27,6 +27,33 @@ langfuse:
   extraInitContainers: []
   extraVolumeMounts: []
 
+  web:
+    hpa:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 2
+      targetCPUUtilizationPercentage: 50
+    vpa:
+      enabled: false
+      controlledResources: []
+      maxAllowed: {}
+      minAllowed: {}
+      updatePolicy:
+        updateMode: Auto
+  worker:
+    hpa:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 2
+      targetCPUUtilizationPercentage: 50
+    vpa:
+      enabled: false
+      controlledResources: []
+      maxAllowed: {}
+      minAllowed: {}
+      updatePolicy:
+        updateMode: Auto
+
   additionalEnv:
     # REDIS
     - name: "REDIS_CONNECTION_STRING"
@@ -75,9 +102,6 @@ ingress:
   enabled: false
 
 resources: {}
-
-autoscaling:
-  enabled: false
 
 nodeSelector: {}
 
