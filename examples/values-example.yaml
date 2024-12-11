@@ -73,9 +73,6 @@ ingress:
 
 resources: {}
 
-autoscaling:
-  enabled: false
-
 nodeSelector: {}
 
 tolerations: []

@@ -1,0 +1,34 @@
+{{- if and (.Capabilities.APIVersions.Has "autoscaling.k8s.io/v1") .Values.langfuse.web.vpa.enabled }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "langfuse.fullname" . }}-web
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+      - containerName: {{ .Chart.Name }}-web
+        {{- with .Values.langfuse.web.vpa.controlledResources }}
+        controlledResources:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.langfuse.web.vpa.maxAllowed }}
+        maxAllowed:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with .Values.langfuse.web.vpa.minAllowed }}
+        minAllowed:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "langfuse.fullname" . }}-web
+  {{- if .Values.langfuse.web.vpa.updatePolicy }}
+  updatePolicy:
+    {{- with .Values.langfuse.web.vpa.updatePolicy.updateMode }}
+    updateMode: {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}
