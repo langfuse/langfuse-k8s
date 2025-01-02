@@ -1,0 +1,58 @@
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: selfsigned-issuer
+# spec:
+#   selfSigned: {}
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: langfuse-root-ca
+#   namespace: cert-manager
+# spec:
+#   isCA: true
+#   commonName: langfuse Root CA
+#   secretName: langfuse-root-ca
+#   privateKey:
+#     algorithm: ECDSA
+#     size: 256
+#   issuerRef:
+#     name: selfsigned-issuer
+#     kind: ClusterIssuer
+#     group: cert-manager.io
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: ClusterIssuer
+# metadata:
+#   name: langfuse-ca-issuer
+# spec:
+#   ca:
+#     secretName: langfuse-root-ca
+# ---
+# apiVersion: cert-manager.io/v1
+# kind: Certificate
+# metadata:
+#   name: langfuse-cert
+#   namespace: langfuse
+# spec:
+#   secretName: langfuse-tls
+#   # Removing DNS names since we're using an IP for access
+#   # dnsNames:
+#   #   - langfuse.local
+#   #   - langfuse.svc.cluster.local
+#   ipAddresses:
+#     - 34.102.137.1
+#   usages:
+#     - digital signature
+#     - key encipherment
+#     - server auth
+#   privateKey:
+#     algorithm: RSA
+#     encoding: PKCS8
+#     size: 2048
+#   issuerRef:
+#     name: langfuse-ca-issuer
+#     kind: ClusterIssuer
+#     group: cert-manager.io

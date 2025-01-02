@@ -1,3 +1,15 @@
+# This is the values.yaml file for deploying Langfuse in GKE
+# 
+# All the secrets have been saved in kubernetes.
+# You can see all the secrets by running:
+#   k get secrets -n langfuse --context gke_xai-research_us-east4_ic-staging
+# 
+# To upgrade deployment, run:
+#   helm repo add langfuse https://langfuse.github.io/langfuse-k8s
+#   helm repo update
+#   helm upgrade langfuse langfuse/langfuse -n langfuse -f <path_to_this_file>
+
+
 replicaCount: 1
 
 image:
@@ -15,11 +27,8 @@ langfuse:
   next:
     healthcheckBasePath: ""
   nextauth:
-    url: http://localhost:3000
-    secret: changeme
-  salt: changeme
-  licenseKey: ""
-  telemetryEnabled: True
+    url: http://34.102.137.1:80
+  telemetryEnabled: False
   nextPublicSignUpDisabled: False
   enableExperimentalFeatures: False
   extraContainers: []
@@ -29,35 +38,45 @@ langfuse:
 
   web:
     hpa:
-      enabled: false
+      enabled: true
       minReplicas: 1
-      maxReplicas: 2
+      maxReplicas: 4
       targetCPUUtilizationPercentage: 50
     vpa:
-      enabled: false
-      controlledResources: []
-      maxAllowed: {}
-      minAllowed: {}
-      updatePolicy:
-        updateMode: Auto
-  worker:
-    hpa:
-      enabled: false
-      minReplicas: 1
-      maxReplicas: 2
-      targetCPUUtilizationPercentage: 50
-    vpa:
-      enabled: false
-      controlledResources: []
-      maxAllowed: {}
-      minAllowed: {}
+      enabled: true
+      controlledResources: ["cpu", "memory"]
+      maxAllowed:
+        cpu: "4"
+        memory: "4Gi"
+      minAllowed:
+        cpu: "100m"
+        memory: "512Mi"
       updatePolicy:
         updateMode: Auto
 
+  worker:
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 50
+    vpa:
+      enabled: true
+      controlledResources: ["cpu", "memory"]
+      maxAllowed:
+        cpu: "4"
+        memory: "4Gi"
+      minAllowed:
+        cpu: "100m"
+        memory: "512Mi"
+      updatePolicy:
+        updateMode: Auto
+  
   additionalEnv:
-    # REDIS
-    - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+    - name: LANGFUSE_LOG_LEVEL
+      value: info
+    - name: LANGFUSE_LOG_FORMAT
+      value: json
     # CLICKHOUSE
     - name: "CLICKHOUSE_MIGRATION_URL"
       value: "clickhouse://langfuse-clickhouse:9000"
@@ -65,8 +84,6 @@ langfuse:
       value: "http://langfuse-clickhouse:8123"
     - name: "CLICKHOUSE_USER"
       value: "default"
-    - name: "CLICKHOUSE_PASSWORD"
-      value: "changeme"
     # S3 / MinIO
     - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
       value: "true"
@@ -76,12 +93,25 @@ langfuse:
       value: "auto"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
       value: "minio"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
-      value: "miniosecret"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
       value: "http://langfuse-minio:9000"
     - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
       value: "true"
+    - name: "LANGFUSE_DEFAULT_ORG_ID"
+      value: "cm5d9p20800036y1qkv26lzaf"
+    - name: "LANGFUSE_DEFAULT_ORG_ROLE"
+      value: "ADMIN"
+    - name: "LANGFUSE_DEFAULT_PROJECT_ID"
+      value: "cm5d9pm3x00086y1qdzyenl8l"
+    - name: "LANGFUSE_DEFAULT_PROJECT_ROLE"
+      value: "ADMIN"    
+    - name: "AUTH_DISABLE_USERNAME_PASSWORD"
+      value: "true"
+    - name: "AUTH_OKTA_CLIENT_ID"
+      value: "0oa1tneab9qMtXZXn1d8"
+    - name: "AUTH_OKTA_ISSUER"
+      value: "https://xai.okta.com/"
+
 
 serviceAccount:
   create: true
@@ -99,7 +129,23 @@ service:
   port: 3000
 
 ingress:
-  enabled: false
+  enabled: true
+  className: "gce"
+  namespace: "langfuse"
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "xai-langfuse-ip"
+    kubernetes.io/ingress.allow-http: "false"
+  tls:
+    - secretName: "langfuse-tls"
+      hosts:
+        - "34.102.137.1"
+  hosts:
+    - host: ""
+      paths:
+        - path: "/"
+          pathType: "Prefix"
+
 
 resources: {}
 
@@ -113,7 +159,6 @@ postgresql:
   host: langfuse-postgresql
   auth:
     username: postgres
-    password: postgres
     database: postgres_langfuse
   deploy: true
   architecture: standalone
@@ -124,12 +169,9 @@ postgresql:
 
 clickhouse:
   deploy: true
-  shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
+  shards: 1 # Langfuse does not support multi-shard clusters.
   replicaCount: 3
   resourcesPreset: large
-  auth:
-    username: default
-    password: changeme
 
 valkey:
   deploy: true
@@ -137,14 +179,9 @@ valkey:
   primary:
     extraFlags:
       - "--maxmemory-policy noeviction"
-  auth:
-    password: changeme
 
 minio:
   deploy: true
   defaultBuckets: 'langfuse'
-  auth:
-    rootUser: 'minio'
-    rootPassword: 'miniosecret'
 
 extraManifests: []
