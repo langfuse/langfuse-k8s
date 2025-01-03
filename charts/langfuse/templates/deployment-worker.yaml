@@ -84,13 +84,17 @@ spec:
             {{- end }}
             - name: NEXTAUTH_URL
               value: {{ .Values.langfuse.nextauth.url | quote }}
+            {{- if .Values.langfuse.nextauth.secret }}
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "langfuse.nextauthSecretName" . }}
                   key: nextauth-secret
+            {{- end }}
+            {{- if .Values.langfuse.salt }}
             - name: SALT
               value: {{ .Values.langfuse.salt | quote }}
+            {{- end }}
             - name: TELEMETRY_ENABLED
               value: {{ .Values.langfuse.telemetryEnabled | quote }}
             - name: NEXT_PUBLIC_SIGN_UP_DISABLED
