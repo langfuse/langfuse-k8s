@@ -97,6 +97,8 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 3000
+  loadBalancerIP: ""
+  nodePort: ""
 
 ingress:
   enabled: false
