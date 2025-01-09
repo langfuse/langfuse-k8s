@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.langfuse.worker.hpa.enabled }}
+  {{- if not ((.Values.langfuse.worker).hpa).enabled }}
   replicas: {{ coalesce (.Values.langfuse.worker).replicas .Values.replicaCount 1 }}
   {{- end }}
   selector:
@@ -118,7 +118,7 @@ spec:
             successThreshold: {{ coalesce ((.Values.langfuse.worker).livenessProbe).successThreshold 1 }}
             failureThreshold: {{ coalesce ((.Values.langfuse.worker).livenessProbe).failureThreshold 5 }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml (coalesce ((.Values.langfuse).worker).resources .Values.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}
           volumeMounts:
             {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
