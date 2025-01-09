@@ -40,12 +40,21 @@ helm.sh/chart: {{ include "langfuse.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+cmdb_bus_svc_id: {{ .Values.cmdbBusinessSvcId }}
+data_class: {{ .Values.dataClass | quote }}
+version: {{ .Values.versionTag }}
+snow_group: {{ .Values.snowGroup }}
+pd_service: {{ .Values.pdService }}
+tags.datadoghq.com/env: {{ .Values.ddEnv }}
+tags.datadoghq.com/service: {{ include "langfuse.name" . }}
+tags.datadoghq.com/version: {{ .Values.versionTag }}
 {{- end }}
 
 {{/*
 Selector labels
 */}}
 {{- define "langfuse.selectorLabels" -}}
+app: {{ include "langfuse.name" . }}
 app.kubernetes.io/name: {{ include "langfuse.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
