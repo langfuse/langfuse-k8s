@@ -28,6 +28,7 @@ langfuse:
   extraVolumeMounts: []
 
   web:
+    resources: {}
     hpa:
       enabled: false
       minReplicas: 1
@@ -41,6 +42,7 @@ langfuse:
       updatePolicy:
         updateMode: Auto
   worker:
+    resources: {}
     hpa:
       enabled: false
       minReplicas: 1
