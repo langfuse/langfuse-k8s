@@ -5,7 +5,7 @@ metadata:
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.langfuse.web.hpa.enabled }}
+  {{- if not ((.Values.langfuse.web).hpa).enabled }}
   replicas: {{ coalesce (.Values.langfuse.web).replicas .Values.replicaCount 1 }}
   {{- end }}
   selector:

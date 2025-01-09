@@ -1,4 +1,4 @@
-{{- if .Values.langfuse.worker.hpa.enabled }}
+{{- if ((.Values.langfuse.worker).hpa).enabled }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
