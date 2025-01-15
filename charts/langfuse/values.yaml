@@ -59,7 +59,7 @@ langfuse:
   additionalEnv:
     # REDIS
     - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+      value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
     # CLICKHOUSE
     - name: "CLICKHOUSE_MIGRATION_URL"
       value: "clickhouse://langfuse-clickhouse:9000"
