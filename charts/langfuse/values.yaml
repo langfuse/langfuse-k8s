@@ -15,7 +15,7 @@ langfuse:
   next:
     healthcheckBasePath: ""
   nextauth:
-    url: http://localhost:32100
+    url: http://localhost:3000
     secret: changeme
   salt: changeme
   licenseKey: ""
@@ -97,9 +97,9 @@ podSecurityContext: {}
 securityContext: {}
 
 service:
-  type: NodePort
+  type: ClusterIP
   port: 3000
-  nodePort: "32100"
+  nodePort: ""
 
 ingress:
   enabled: false
