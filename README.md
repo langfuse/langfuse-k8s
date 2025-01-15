@@ -16,7 +16,7 @@ Replace `langfuse` in the values with your installation name in case you changed
 ```yaml
 # REDIS
 - name: "REDIS_CONNECTION_STRING"
-  value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+  value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
 # CLICKHOUSE
 - name: "CLICKHOUSE_MIGRATION_URL"
   value: "clickhouse://langfuse-clickhouse:9000"
@@ -61,6 +61,8 @@ helm upgrade langfuse langfuse/langfuse
 ### Configuration
 
 The following table lists the useful configurable parameters of the Langfuse chart and their default values.
+This chart sets low default resources for the ClickHouse cluster which may only work for small deployments.
+We recommend to update `clickhouse.resourcesPreset` to `2xlarge` for most deployments to account for ClickHouse's minimum sizing recommendations.
 
 | Parameter                                               | Description                                                                                                                                                                                                                                                                                                                                  | Default                         |
 |---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|

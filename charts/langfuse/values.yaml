@@ -15,7 +15,7 @@ langfuse:
   next:
     healthcheckBasePath: ""
   nextauth:
-    url: http://localhost:3000
+    url: http://localhost:32100
     secret: changeme
   salt: changeme
   licenseKey: ""
@@ -59,7 +59,7 @@ langfuse:
   additionalEnv:
     # REDIS
     - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-master:6379/0"
+      value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
     # CLICKHOUSE
     - name: "CLICKHOUSE_MIGRATION_URL"
       value: "clickhouse://langfuse-clickhouse:9000"
@@ -97,9 +97,9 @@ podSecurityContext: {}
 securityContext: {}
 
 service:
-  type: ClusterIP
+  type: NodePort
   port: 3000
-  nodePort: ""
+  nodePort: "32100"
 
 ingress:
   enabled: false
