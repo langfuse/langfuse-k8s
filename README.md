@@ -99,6 +99,7 @@ We recommend to update `clickhouse.resourcesPreset` to `2xlarge` for most deploy
 | `langfuse.web.vpa.maxAllowed`                           | Maximum resource limits allowed by VPA for the web component.                                                                                                                                                                                                                                                                                | `{}`                            |
 | `langfuse.web.vpa.minAllowed`                           | Minimum resource limits allowed by VPA for the web component.                                                                                                                                                                                                                                                                                | `{}`                            |
 | `langfuse.web.vpa.updatePolicy.updateMode`              | Update mode for VPA (e.g., `Auto`).                                                                                                                                                                                                                                                                                                          | `Auto`                          |
+| `langfuse.web.hostAliases`              | Adding records to /etc/hosts in the pod's network.                                                                                                                                                                                                                                                                                                          | `[]`                          |
 | `langfuse.worker.replicas`                              | Number of replicas to start for the worker container. Defaults to global `replicaCount`.                                                                                                                                                                                                                                                     | `replicaCount`                  |
 | `langfuse.worker.livenessProbe.initialDelaySeconds`     | Initial delay seconds for livenessProbe.                                                                                                                                                                                                                                                                                                     | `20`                            |
 | `langfuse.worker.livenessProbe.periodSeconds`           | Period seconds for livenessProbe.                                                                                                                                                                                                                                                                                                            | `10`                            |
@@ -256,6 +257,20 @@ postgresql:
   auth:
     password: null
     username: null
+```
+
+##### With overrides for hostAliases
+
+This is going to add a record to the /etc/hosts file of all containers
+under the langfuse-web pod in such a way that every traffic towards "oauth.id.jumpcloud.com" is going to be forwarded to the localhost network.
+
+```yaml
+langfuse:
+  web:
+    hostAliases:
+      - ip: 127.0.0.1
+        hostnames:
+          - "oauth.id.jumpcloud.com"
 ```
 
 ## Repository Structure
