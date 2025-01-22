@@ -129,7 +129,7 @@ clickhouse:
   deploy: true
   shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
   replicaCount: 3
-  resourcesPreset: large
+  resourcesPreset: 2xlarge
   auth:
     username: default
     password: changeme
