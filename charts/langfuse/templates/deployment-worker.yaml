@@ -109,18 +109,12 @@ spec:
             - name: SALT
               value: {{ .Values.langfuse.salt | quote }}
             {{- end }}
-            {{- if ne (printf "%v" .Values.langfuse.telemetryEnabled) "null" }}
             - name: TELEMETRY_ENABLED
               value: {{ .Values.langfuse.telemetryEnabled | quote }}
-            {{- end }}
-            {{- if ne (printf "%v" .Values.langfuse.nextPublicSignUpDisabled) "null" }}
             - name: NEXT_PUBLIC_SIGN_UP_DISABLED
               value: {{ .Values.langfuse.nextPublicSignUpDisabled | quote }}
-            {{- end }}
-            {{- if ne (printf "%v" .Values.langfuse.enableExperimentalFeatures) "null" }}
             - name: ENABLE_EXPERIMENTAL_FEATURES
               value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
-            {{- end }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
