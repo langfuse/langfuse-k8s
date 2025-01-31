@@ -116,6 +116,10 @@ spec:
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
+          {{- if .Values.langfuse.envFrom }}
+          envFrom:
+              {{- toYaml .Values.langfuse.envFrom | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.langfuse.port }}

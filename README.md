@@ -116,6 +116,7 @@ The following table lists the useful configurable parameters of the Langfuse cha
 | `langfuse.worker.vpa.minAllowed`                        | Minimum resource limits allowed by VPA for the worker component.                                                                                                                                                                                                                                                                             | `{}`                            |
 | `langfuse.worker.vpa.updatePolicy.updateMode`           | Update mode for VPA (e.g., `Auto`).                                                                                                                                                                                                                                                                                                          | `Auto`                          |
 | `langfuse.additionalEnv`                                | Dict that allow addition of additional env variables, see [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.                                                                                                                                                                     | `{}`                            |
+| `langfuse.envFrom`                                      | Additional env variable from a config map or secret.                                                                                                                                                                                                                                                                                         | `[]`                            |
 | `service.type`                                          | Change the default k8s service type deployed with the application                                                                                                                                                                                                                                                                            | `ClusterIP`                     |
 | `service.port`                                          | Change the default k8s service port deployed with the application                                                                                                                                                                                                                                                                            | `3000`                          |
 | `service.nodePort`                                      | Specify the node port if type is `NodePort`.                                                                                                                                                                                                                                                                                                 |                                 |
@@ -220,7 +221,7 @@ postgresql:
 ```yaml
 langfuse:
   salt: null
-  nextauth: 
+  nextauth:
     secret: null
   extraVolumes:
     - name: db-keystore   # referencing an existing secret to mount server/client certs for postgres

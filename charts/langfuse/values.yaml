@@ -85,6 +85,8 @@ langfuse:
     - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
       value: "true"
 
+  envFrom: []
+
 serviceAccount:
   create: true
   annotations: {}
