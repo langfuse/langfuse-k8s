@@ -1,39 +1,120 @@
-replicaCount: 1
+# Langfuse Helm Chart Configuration
 
-image:
-  repository: langfuse/langfuse
-  pullPolicy: Always
-  tag: 3
-
-imagePullSecrets: []
+# -- Override the name for the selector labels, defaults to the chart name
 nameOverride: ""
+
+# -- Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels
 fullnameOverride: ""
 
+# Core Langfuse Configuration
 langfuse:
-  port: 3000
+
+  # -- Image related settings shared by all langfuse deployments
+  image:
+    pullPolicy: Always
+    pullSecrets: []
+
+  serviceAccount:
+    create: true
+    annotations: {}
+    # -- Override the name of the service account to use, discovered automatically if not set
+    name: ""
+
+  ingress:
+    enabled: false
+
+  # Authentication & Security
+  auth:
+    # NextAuth configuration
+    nextauth:
+      url: http://localhost:3000
+      # -- Configure the secret for the NextAuth application by value or existing secret reference
+      secret:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+    
+    # -- Configure the salt for the hashing by value or existing secret reference
+    salt:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    
+    # -- Configure the license key by value or existing secret reference
+    licenseKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+
+  # -- Feature flags
+  features:
+    # -- Enable telemetry
+    telemetryEnabled: true
+    # -- Disable public sign up
+    signUpDisabled: false
+    # -- Enable experimental features
+    experimentalFeaturesEnabled: false
+
+  # -- Node.js environment to use for all langfuse deployments
   nodeEnv: production
-  next:
-    healthcheckBasePath: ""
-  nextauth:
-    url: http://localhost:3000
-    secret: changeme
-  salt: changeme
-  licenseKey: ""
-  telemetryEnabled: True
-  nextPublicSignUpDisabled: False
-  enableExperimentalFeatures: False
+  # -- Pod annotations for all langfuse deployments
+  podAnnotations: {}
+  # -- Pod security context for all langfuse deployments
+  podSecurityContext: {}
+  # -- Security context for all langfuse deployments
+  securityContext: {}
+  # -- Resources for all langfuse deployments, can be overridden by the individual deployments
+  resources: {}
+  # -- Node selector for all langfuse deployments
+  nodeSelector: {}
+  # -- Tolerations for all langfuse deployments
+  tolerations: []
+  # -- Affinity for all langfuse deployments
+  affinity: {}
+  # -- Additional environment variables for all langfuse deployments
+  additionalEnv: []
+  # -- Optional extra containers to add to all langfuse deployments
   extraContainers: []
+  # -- Optional extra volumes to add to all langfuse deployments
   extraVolumes: []
+  # -- Optional extra init containers to add to all langfuse deployments
   extraInitContainers: []
+  # -- Optional extra volume mounts to add to all langfuse deployments
   extraVolumeMounts: []
 
+  # Web deployment configuration
   web:
+    # -- Image to use for the langfuse web application
+    image:
+      repository: langfuse/langfuse
+      tag: 3
+
+    # -- Service configuration for the langfuse web application
+    service:
+      type: ClusterIP
+      port: 3000
+      nodePort: ""
+
+    # -- Optional base path for the healthcheck endpoint
+    healthcheckBasePath: ""
+
+    # -- Resources for the langfuse web application - defaults to the global resources
     resources: {}
+
+    # -- Number of replicas to use if HPA is not enabled
+    replicaCount: 1
+
+    # -- Horizontal Pod Autoscaler configuration
     hpa:
       enabled: false
       minReplicas: 1
       maxReplicas: 2
       targetCPUUtilizationPercentage: 50
+
+    # -- Vertical Pod Autoscaler configuration
     vpa:
       enabled: false
       controlledResources: []
@@ -41,13 +122,23 @@ langfuse:
       minAllowed: {}
       updatePolicy:
         updateMode: Auto
+  
+  # Worker deployment configuration
   worker:
+    # -- Resources for the langfuse worker application - defaults to the global resources
     resources: {}
+
+    # -- Number of replicas to use if HPA is not enabled
+    replicaCount: 1
+
+    # -- Horizontal Pod Autoscaler configuration
     hpa:
       enabled: false
       minReplicas: 1
       maxReplicas: 2
       targetCPUUtilizationPercentage: 50
+
+    # -- Vertical Pod Autoscaler configuration
     vpa:
       enabled: false
       controlledResources: []
@@ -56,98 +147,118 @@ langfuse:
       updatePolicy:
         updateMode: Auto
 
-  additionalEnv:
-    # REDIS
-    - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
-    # CLICKHOUSE
-    - name: "CLICKHOUSE_MIGRATION_URL"
-      value: "clickhouse://langfuse-clickhouse:9000"
-    - name: "CLICKHOUSE_URL"
-      value: "http://langfuse-clickhouse:8123"
-    - name: "CLICKHOUSE_USER"
-      value: "default"
-    - name: "CLICKHOUSE_PASSWORD"
-      value: "changeme"
-    # S3 / MinIO
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
-      value: "true"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
-      value: "langfuse"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
-      value: "auto"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
-      value: "minio"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
-      value: "miniosecret"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
-      value: "http://langfuse-minio:9000"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
-      value: "true"
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-
-securityContext: {}
-
-service:
-  type: ClusterIP
-  port: 3000
-  nodePort: ""
-
-ingress:
-  enabled: false
-
-resources: {}
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
+# PostgreSQL Configuration
 postgresql:
+  # -- Deploy subchart or use external database
+  deploy: true
+  
+  # -- Connection settings
   host: langfuse-postgresql
+  port: 5432
+  
+  # -- Authentication configuration
   auth:
     username: postgres
-    password: postgres
+    # -- Configure the password by value or existing secret reference
+    password:
+      value: "postgres"
+      secretKeyRef:
+        name: ""
+        key: ""
     database: postgres_langfuse
-  deploy: true
+  
+  # Subchart specific settings
   architecture: standalone
   primary:
     service:
       ports:
         postgresql: 5432
 
-clickhouse:
+# Redis Configuration
+redis:
+  # -- Deploy subchart or use external key-value-store
   deploy: true
-  shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
-  replicaCount: 3
-  resourcesPreset: 2xlarge
-  auth:
-    username: default
-    password: changeme
 
-valkey:
-  deploy: true
+  # -- Connection settings
+  host: langfuse-valkey-primary
+  port: 6379
+  
+  # -- Authentication configuration
+  auth:
+    # -- Configure the password by value or existing secret reference
+    password:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    database: 0
+  
+  # Subchart specific settings
   architecture: standalone
   primary:
     extraFlags:
       - "--maxmemory-policy noeviction"
-  auth:
-    password: changeme
 
-minio:
+# ClickHouse Configuration
+clickhouse:
+  # -- Deploy subchart or use external ClickHouse instance
   deploy: true
-  defaultBuckets: 'langfuse'
+  
+  # -- Connection settings
+  host: langfuse-clickhouse
+  httpPort: 8123
+  nativePort: 9000
+  
+  # -- Authentication configuration
   auth:
-    rootUser: 'minio'
-    rootPassword: 'miniosecret'
+    username: default
+    # -- Configure the password by value or existing secret reference
+    password:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+  
+  # -- Subchart specific settings
+  shards: 1 # Fixed - Langfuse does not support sharding
+  replicaCount: 3
+  resourcesPreset: 2xlarge
 
+# S3/MinIO Configuration
+objectStorage:
+  # -- Deploy subchart or use external S3 instance
+  deploy: true
+  
+  # -- Provider to use for the S3 instance
+  provider: "s3" # s3 or minio
+  
+  # -- Bucket configurations
+  bucket: "langfuse"
+  region: "auto"
+  endpoint: "http://langfuse-minio:9000"
+  forcePathStyle: true
+  
+  # -- Authentication configuration
+  auth:
+    # -- Configure the access key id by value or existing secret reference
+    accessKeyId:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    # -- Configure the secret access key by value or existing secret reference
+    secretAccessKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+
+  # -- MinIO subchart specific settings
+  minio:
+    defaultBuckets: langfuse
+    auth:
+      rootUser: ""
+      rootPassword: ""
+
+# Additional manifests
 extraManifests: []
