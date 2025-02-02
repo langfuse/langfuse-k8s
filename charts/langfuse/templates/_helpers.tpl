@@ -62,20 +62,6 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the name of the secret for nextauth
-*/}}
-{{- define "langfuse.nextauthSecretName" -}}
-{{- printf "%s-nextauth" (include "langfuse.fullname" .) -}}
-{{- end }}
-
-{{/*
-Create the name of the secret for postgresql if we use an external database
-*/}}
-{{- define "langfuse.postgresqlSecretName" -}}
-{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
-{{- end }}
-
-{{/*
 Return PostgreSQL fullname
 */}}
 {{- define "langfuse.postgresql.fullname" -}}
@@ -85,3 +71,19 @@ Return PostgreSQL fullname
 {{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
 {{- end }}
 {{- end }}
+
+{{/*
+Get a value from either a direct value or a secret reference, or null if neither is provided
+*/}}
+{{- define "langfuse.getValueOrSecret" -}}
+{{- if (and .secretKeyRef.name .secretKeyRef.key) -}}
+valueFrom:
+  secretKeyRef:
+    name: {{ .secretKeyRef.name }}
+    key: {{ .secretKeyRef.key }}
+{{- else if .value -}}
+value: {{- .value | quote -}}
+{{- else -}}
+Null
+{{- end -}}
+{{- end -}}

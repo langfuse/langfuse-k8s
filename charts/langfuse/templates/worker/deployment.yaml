@@ -71,14 +71,14 @@ spec:
             - name: DIRECT_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  name: {{ include "langfuse.fullname" . }}-postgresql
                   key: postgres-direct-url
             {{- end }}
             {{- if .Values.postgresql.shadowDatabaseUrl }}
             - name: SHADOW_DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "langfuse.postgresqlSecretName" . }}
+                  name: {{ include "langfuse.fullname" . }}-postgresql
                   key: postgres-shadow-database-url
             {{- end }}
             {{- end }}
@@ -88,7 +88,7 @@ spec:
             - name: NEXTAUTH_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "langfuse.nextauthSecretName" . }}
+                  name: {{ include "langfuse.fullname" . }}-nextauth
                   key: nextauth-secret
             {{- end }}
             {{- if .Values.langfuse.salt }}
