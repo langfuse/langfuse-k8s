@@ -1,0 +1,28 @@
+langfuse:
+  auth:
+    licenseKey:
+      secretKeyRef:
+        name: langfuse-license-key
+        key: license-key
+    nextauth:
+      secret:
+        value: "secretSecret"
+
+postgresql:
+  auth:
+    password: "secretPassword"
+
+clickhouse:
+  auth:
+    password: "secretPassword"
+
+redis:
+  auth:
+    password: "secretPassword"
+
+objectStorage:
+  auth:
+    accessKeyId:
+      value: "secretAccessKeyId"
+    secretAccessKey:
+      value: "secretSecretAccessKey"

@@ -1,6 +1,6 @@
 apiVersion: v2
 name: langfuse
-version: 0.12.1
+version: 1.0.0
 description: Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 type: application
 keywords:
@@ -30,6 +30,9 @@ dependencies:
     version: 14.x.x
     repository: oci://registry-1.docker.io/bitnamicharts
     condition: minio.deploy
+  - name: common
+    version: 2.x.x
+    repository: oci://registry-1.docker.io/bitnamicharts
 maintainers:
   - name: langfuse
     email: contact@langfuse.com

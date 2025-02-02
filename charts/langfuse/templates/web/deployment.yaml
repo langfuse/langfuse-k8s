@@ -5,8 +5,12 @@ metadata:
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
-  {{- if not ((.Values.langfuse.web).hpa).enabled }}
-  replicas: {{ coalesce (.Values.langfuse.web).replicas .Values.replicaCount 1 }}
+  {{- if not .Values.langfuse.web.hpa.enabled }}
+  replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
+  {{- end }}
+  {{- if .Values.langfuse.web.hostAliases }}
+  hostAliases:
+    {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
   {{- end }}
   selector:
     matchLabels:
@@ -14,7 +18,7 @@ spec:
       app: web
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
+      {{- with .Values.langfuse.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -22,17 +26,13 @@ spec:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
         app: web
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.langfuse.image.pullSecrets }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.langfuse.web.hostAliases }}
-      hostAliases:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
       {{- if .Values.langfuse.extraInitContainers }}
       initContainers:
         {{- toYaml .Values.langfuse.extraInitContainers | nindent 8 }}
@@ -47,112 +47,51 @@ spec:
         {{- end }}
         - name: {{ .Chart.Name }}-web
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+            {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
+          image: "{{ .Values.langfuse.web.image.repository }}:{{ .Values.langfuse.web.image.tag }}"
+          imagePullPolicy: {{ .Values.langfuse.image.pullPolicy }}
           env:
-            - name: LANGFUSE_EE_LICENSE_KEY
-              value: {{ .Values.langfuse.licenseKey | quote }}
-            - name: NODE_ENV
-              value: {{ .Values.langfuse.nodeEnv | quote }}
-            - name: HOSTNAME
-              value: "0.0.0.0"
-            - name: PORT
-              value: {{ .Values.langfuse.port | quote }}
-            {{- if .Values.postgresql.auth.username }}
-            - name: DATABASE_USERNAME
-              value: {{ .Values.postgresql.auth.username | quote }}
-            {{- end }}
-            {{- if .Values.postgresql.auth.password }}
-            - name: DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "langfuse.postgresql.fullname" . }}
-                  key: postgres-password
-            {{- end }}
-            {{- if .Values.postgresql.host }}
-            - name: DATABASE_HOST
-              value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
-            {{- end }}
-            {{- if .Values.postgresql.auth.database }}
-            - name: DATABASE_NAME
-              value: {{ .Values.postgresql.auth.database | quote }}
-            {{- end }}
-            {{- if not .Values.postgresql.deploy }}
-            {{- if .Values.postgresql.directUrl }}
-            - name: DIRECT_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "langfuse.fullname" . }}-postgresql
-                  key: postgres-direct-url
-            {{- end }}
-            {{- if .Values.postgresql.shadowDatabaseUrl }}
-            - name: SHADOW_DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "langfuse.fullname" . }}-postgresql
-                  key: postgres-shadow-database-url
-            {{- end }}
-            {{- end }}
-            - name: NEXTAUTH_URL
-              value: {{ .Values.langfuse.nextauth.url | quote }}
-            {{- if .Values.langfuse.nextauth.secret }}
-            - name: NEXTAUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "langfuse.fullname" . }}-nextauth
-                  key: nextauth-secret
-            {{- end }}
-            {{- if .Values.langfuse.salt }}
-            - name: SALT
-              value: {{ .Values.langfuse.salt | quote }}
-            {{- end }}
-            - name: TELEMETRY_ENABLED
-              value: {{ .Values.langfuse.telemetryEnabled | quote }}
-            - name: NEXT_PUBLIC_SIGN_UP_DISABLED
-              value: {{ .Values.langfuse.nextPublicSignUpDisabled | quote }}
-            - name: ENABLE_EXPERIMENTAL_FEATURES
-              value: {{ .Values.langfuse.enableExperimentalFeatures | quote }}
+            {{- include "langfuse.commonEnv" . | nindent 12 }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.langfuse.port }}
+              containerPort: {{ .Values.langfuse.web.service.port }}
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
+              path: {{ .Values.langfuse.web.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
               port: http
-            initialDelaySeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).initialDelaySeconds 20 }}
-            periodSeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).periodSeconds 10 }}
-            timeoutSeconds: {{ coalesce ((.Values.langfuse.web).livenessProbe).timeoutSeconds 5 }}
-            successThreshold: {{ coalesce ((.Values.langfuse.web).livenessProbe).successThreshold 1 }}
-            failureThreshold: {{ coalesce ((.Values.langfuse.web).livenessProbe).failureThreshold 5 }}
+            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.livenessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.livenessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.livenessProbe.failureThreshold | default 5 }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.langfuse.next.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
+              path: {{ .Values.langfuse.web.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
               port: http
-            initialDelaySeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).initialDelaySeconds 20 }}
-            periodSeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).periodSeconds 10 }}
-            timeoutSeconds: {{ coalesce ((.Values.langfuse.web).readinessProbe).timeoutSeconds 5 }}
-            successThreshold: {{ coalesce ((.Values.langfuse.web).readinessProbe).successThreshold 1 }}
-            failureThreshold: {{ coalesce ((.Values.langfuse.web).readinessProbe).failureThreshold 5 }}
+            initialDelaySeconds: {{ .Values.langfuse.web.readinessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
           resources:
-            {{- toYaml (coalesce ((.Values.langfuse).web).resources .Values.resources) | nindent 12 }}
+            {{- toYaml .Values.langfuse.web.resources | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}
           volumeMounts:
             {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
           {{- end }}
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.langfuse.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.langfuse.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.langfuse.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

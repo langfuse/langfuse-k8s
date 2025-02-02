@@ -1,0 +1,8 @@
+# Validate the chart values
+{{- if ne ($.Values.clickhouse.shards | int) 1 -}}
+    {{- fail "Langfuse does not support ClickHouse with mutltiple shards. Set clickhouse.shards to 1 to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.deploy (not (has "--maxmemory-policy noeviction" $.Values.redis.primary.extraFlags)) -}}
+    {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
+{{- end -}}

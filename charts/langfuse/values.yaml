@@ -22,27 +22,41 @@ langfuse:
 
   ingress:
     enabled: false
+    additionalLabels: {}
+    annotations: {}
+    className: ""
+    hosts: []
+    # Example:
+    # - host: "langfuse.example.com"
+    #   paths:
+    #     - path: /
+    #       pathType: ImplementationSpecific
 
+    tls:
+      enabled: false
+      secretName: ""
+  
   # Authentication & Security
   auth:
     # NextAuth configuration
     nextauth:
+      # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
       url: http://localhost:3000
-      # -- Configure the secret for the NextAuth application by value or existing secret reference
+      # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
       secret:
         value: ""
         secretKeyRef:
           name: ""
           key: ""
     
-    # -- Configure the salt for the hashing by value or existing secret reference
+    # -- Used to hash API keys. Can be configured by value or existing secret reference. If neither value nor secretKeyRef is provided, no salt will be used.
     salt:
       value: ""
       secretKeyRef:
         name: ""
         key: ""
     
-    # -- Configure the license key by value or existing secret reference
+    # -- Langfuse EE license key.
     licenseKey:
       value: ""
       secretKeyRef:
@@ -51,7 +65,7 @@ langfuse:
 
   # -- Feature flags
   features:
-    # -- Enable telemetry
+    # -- Weither or not to report basic usage statistics to a centralized server.
     telemetryEnabled: true
     # -- Disable public sign up
     signUpDisabled: false
@@ -66,23 +80,28 @@ langfuse:
   podSecurityContext: {}
   # -- Security context for all langfuse deployments
   securityContext: {}
-  # -- Resources for all langfuse deployments, can be overridden by the individual deployments
-  resources: {}
   # -- Node selector for all langfuse deployments
   nodeSelector: {}
   # -- Tolerations for all langfuse deployments
   tolerations: []
   # -- Affinity for all langfuse deployments
   affinity: {}
-  # -- Additional environment variables for all langfuse deployments
+
+
+  # -- Number of replicas to use for all langfuse deployments, can be overridden by the individual deployments
+  replicas: 1
+  # -- Resources for all langfuse deployments, can be overridden by the individual deployments
+  resources: {}
+
+  # -- List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
   additionalEnv: []
-  # -- Optional extra containers to add to all langfuse deployments
+  # -- Allows additional containers to be added to all langfuse deployments
   extraContainers: []
-  # -- Optional extra volumes to add to all langfuse deployments
+  # -- Allows additional volumes to be added to all langfuse deployments
   extraVolumes: []
-  # -- Optional extra init containers to add to all langfuse deployments
+  # -- Allows additional init containers to be added to all langfuse deployments
   extraInitContainers: []
-  # -- Optional extra volume mounts to add to all langfuse deployments
+  # -- Allows additional volume mounts to be added to all langfuse deployments
   extraVolumeMounts: []
 
   # Web deployment configuration
@@ -96,16 +115,18 @@ langfuse:
     service:
       type: ClusterIP
       port: 3000
-      nodePort: ""
+      nodePort: null
+      additionalLabels: {}
+      annotations: {}
 
-    # -- Optional base path for the healthcheck endpoint
+    # -- Base path for the liveness/readiness probes. Should not include trailing slash.
     healthcheckBasePath: ""
 
-    # -- Resources for the langfuse web application - defaults to the global resources
+    # -- Resources for the langfuse web application. Defaults to the global resources
     resources: {}
 
-    # -- Number of replicas to use if HPA is not enabled
-    replicaCount: 1
+    # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
+    replicas: null
 
     # -- Horizontal Pod Autoscaler configuration
     hpa:
@@ -122,14 +143,41 @@ langfuse:
       minAllowed: {}
       updatePolicy:
         updateMode: Auto
+    
+    # -- Adding records to /etc/hosts in the pod's network.
+    hostAliases: []
+
+    livenessProbe:
+      # -- Initial delay seconds for livenessProbe.
+      initialDelaySeconds: 20
+      # -- Period seconds for livenessProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for livenessProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for livenessProbe.
+      failureThreshold: 3
+      # -- Success threshold for livenessProbe.
+      successThreshold: 1
+
+    readinessProbe:
+      # -- Initial delay seconds for readinessProbe.
+      initialDelaySeconds: 20
+      # -- Period seconds for readinessProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for readinessProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for readinessProbe.
+      failureThreshold: 3
+      # -- Success threshold for readinessProbe.
+      successThreshold: 1
   
   # Worker deployment configuration
   worker:
-    # -- Resources for the langfuse worker application - defaults to the global resources
+    # -- Resources for the langfuse worker application. Defaults to the global resources
     resources: {}
 
-    # -- Number of replicas to use if HPA is not enabled
-    replicaCount: 1
+    # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
+    replicas: null
 
     # -- Horizontal Pod Autoscaler configuration
     hpa:
@@ -146,25 +194,41 @@ langfuse:
       minAllowed: {}
       updatePolicy:
         updateMode: Auto
+    
+    livenessProbe:
+      # -- Initial delay seconds for livenessProbe.
+      initialDelaySeconds: 20
+      # -- Period seconds for livenessProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for livenessProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for livenessProbe.
+      failureThreshold: 3
+      # -- Success threshold for livenessProbe.
+      successThreshold: 1
 
 # PostgreSQL Configuration
 postgresql:
   # -- Deploy subchart or use external database
   deploy: true
   
-  # -- Connection settings
+  # -- If `postgresql.deploy` is set to false, hostname of the external postgres server to use (mandatory)
   host: langfuse-postgresql
   port: 5432
+
+  # -- If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete.
+  directUrl: ""
+
+  # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
+  shadowDatabaseUrl: ""
   
   # -- Authentication configuration
   auth:
+    # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
     username: postgres
-    # -- Configure the password by value or existing secret reference
-    password:
-      value: "postgres"
-      secretKeyRef:
-        name: ""
-        key: ""
+    # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
+    password: ""
+    # -- Database name to use for Langfuse.
     database: postgres_langfuse
   
   # Subchart specific settings
@@ -174,9 +238,9 @@ postgresql:
       ports:
         postgresql: 5432
 
-# Redis Configuration
+# Key-Value Store / Redis Configuration
 redis:
-  # -- Deploy subchart or use external key-value-store
+  # -- Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false.
   deploy: true
 
   # -- Connection settings
@@ -186,22 +250,19 @@ redis:
   # -- Authentication configuration
   auth:
     # -- Configure the password by value or existing secret reference
-    password:
-      value: ""
-      secretKeyRef:
-        name: ""
-        key: ""
+    password: ""
     database: 0
   
   # Subchart specific settings
   architecture: standalone
   primary:
+    # -- Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`.
     extraFlags:
       - "--maxmemory-policy noeviction"
 
 # ClickHouse Configuration
 clickhouse:
-  # -- Deploy subchart or use external ClickHouse instance
+  # -- Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false
   deploy: true
   
   # -- Connection settings
@@ -211,26 +272,21 @@ clickhouse:
   
   # -- Authentication configuration
   auth:
+    # -- Username for the ClickHouse user.
     username: default
-    # -- Configure the password by value or existing secret reference
-    password:
-      value: ""
-      secretKeyRef:
-        name: ""
-        key: ""
+    # -- Password for the ClickHouse user.
+    password: ""
   
   # -- Subchart specific settings
   shards: 1 # Fixed - Langfuse does not support sharding
+  # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
   replicaCount: 3
   resourcesPreset: 2xlarge
 
 # S3/MinIO Configuration
 objectStorage:
-  # -- Deploy subchart or use external S3 instance
+  # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
   deploy: true
-  
-  # -- Provider to use for the S3 instance
-  provider: "s3" # s3 or minio
   
   # -- Bucket configurations
   bucket: "langfuse"
