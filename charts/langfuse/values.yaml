@@ -6,13 +6,51 @@ nameOverride: ""
 # -- Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels
 fullnameOverride: ""
 
-# Core Langfuse Configuration
+# -- Core Langfuse Configuration
 langfuse:
+  # -- Logging configuration
+  logging:
+    # -- Set the log level for the application (trace, debug, info, warn, error, fatal)
+    level: info
+    # -- Set the log format for the application (text or json)
+    format: text
 
-  # -- Image related settings shared by all langfuse deployments
-  image:
-    pullPolicy: Always
-    pullSecrets: []
+  # -- Set to true to set CSP headers to only allow HTTPS connections. Needs to be set at build-time.
+  cspEnforceHttps: false
+
+  # -- Used to hash API keys. Can be configured by value or existing secret reference. If neither value nor secretKeyRef is provided, no salt will be used.
+  salt:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+      
+  # -- Langfuse EE license key.
+  licenseKey:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+
+  # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
+  encryptionKey:
+    key:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+
+  # -- Feature flags
+  features:
+    # -- Whether or not to report basic usage statistics to a centralized server.
+    telemetryEnabled: true
+    # -- Disable public sign up
+    signUpDisabled: false
+    # -- Enable experimental features
+    experimentalFeaturesEnabled: false
+  
+  # -- Node.js environment to use for all langfuse deployments
+  nodeEnv: production
 
   serviceAccount:
     create: true
@@ -35,45 +73,7 @@ langfuse:
     tls:
       enabled: false
       secretName: ""
-  
-  # Authentication & Security
-  auth:
-    # NextAuth configuration
-    nextauth:
-      # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
-      url: http://localhost:3000
-      # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
-      secret:
-        value: ""
-        secretKeyRef:
-          name: ""
-          key: ""
-    
-    # -- Used to hash API keys. Can be configured by value or existing secret reference. If neither value nor secretKeyRef is provided, no salt will be used.
-    salt:
-      value: ""
-      secretKeyRef:
-        name: ""
-        key: ""
-    
-    # -- Langfuse EE license key.
-    licenseKey:
-      value: ""
-      secretKeyRef:
-        name: ""
-        key: ""
 
-  # -- Feature flags
-  features:
-    # -- Weither or not to report basic usage statistics to a centralized server.
-    telemetryEnabled: true
-    # -- Disable public sign up
-    signUpDisabled: false
-    # -- Enable experimental features
-    experimentalFeaturesEnabled: false
-
-  # -- Node.js environment to use for all langfuse deployments
-  nodeEnv: production
   # -- Pod annotations for all langfuse deployments
   podAnnotations: {}
   # -- Pod security context for all langfuse deployments
@@ -110,6 +110,8 @@ langfuse:
     image:
       repository: langfuse/langfuse
       tag: 3
+      pullPolicy: Always
+      pullSecrets: []
 
     # -- Service configuration for the langfuse web application
     service:
@@ -173,6 +175,21 @@ langfuse:
   
   # Worker deployment configuration
   worker:
+    # -- Image to use for the langfuse worker application
+    image:
+      repository: langfuse/langfuse-worker
+      tag: 3
+      pullPolicy: Always
+      pullSecrets: []
+
+    # -- Service configuration for the langfuse worker application
+    service:
+      type: ClusterIP
+      port: 3030
+      nodePort: null
+      additionalLabels: {}
+      annotations: {}
+
     # -- Resources for the langfuse worker application. Defaults to the global resources
     resources: {}
 
@@ -207,7 +224,19 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
-# PostgreSQL Configuration
+
+# -- NextAuth configuration
+nextauth:
+  # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
+  url: http://localhost:3000
+  # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
+  secret:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+
+# -- PostgreSQL Configuration
 postgresql:
   # -- Deploy subchart or use external database
   deploy: true
@@ -221,7 +250,10 @@ postgresql:
 
   # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
   shadowDatabaseUrl: ""
-  
+
+  # -- Optional page size for streaming exports to S3 to avoid memory issues. The page size can be adjusted if needed to optimize performance.
+  exportPageSize: 1000
+
   # -- Authentication configuration
   auth:
     # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
@@ -230,7 +262,14 @@ postgresql:
     password: ""
     # -- Database name to use for Langfuse.
     database: postgres_langfuse
+    # -- Additional database connection arguments
+    args: ""
   
+  # -- Migration configuration
+  migration:
+    # -- Whether to run automatic migrations on startup
+    autoMigrate: false
+
   # Subchart specific settings
   architecture: standalone
   primary:
@@ -277,6 +316,21 @@ clickhouse:
     # -- Password for the ClickHouse user.
     password: ""
   
+  # -- Migration configuration
+  migration:
+    # -- Migration URL (TCP protocol) for clickhouse
+    url: ""
+    # -- Set to true to establish SSL connection for migration
+    ssl: false
+    # -- Whether to run automatic ClickHouse migrations on startup
+    autoMigrate: true
+
+  # -- Whether to run ClickHouse commands ON CLUSTER
+  clusterEnabled: true
+  
+  # -- Database name to use
+  database: default
+
   # -- Subchart specific settings
   shards: 1 # Fixed - Langfuse does not support sharding
   # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
@@ -284,37 +338,119 @@ clickhouse:
   resourcesPreset: 2xlarge
 
 # S3/MinIO Configuration
-objectStorage:
+s3:
   # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
   deploy: true
-  
-  # -- Bucket configurations
-  bucket: "langfuse"
+
+  # -- S3 bucket to use for all uploads. Can be overridden per upload type.
+  bucket: ""
+  # -- Prefix to use for all uploads within the bucket. Can be overridden per upload type.
+  prefix: ""
+  # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
-  endpoint: "http://langfuse-minio:9000"
+  # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
+  endpoint: ""
+  # -- Whether to force path style on requests. Required for MinIO. Can be overridden per upload type.
   forcePathStyle: true
-  
-  # -- Authentication configuration
-  auth:
-    # -- Configure the access key id by value or existing secret reference
+  # -- S3 accessKeyId to use for all uploads. Can be overridden per upload type.
+  accessKeyId:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+  # -- S3 secretAccessKey to use for all uploads. Can be overridden per upload type.
+  secretAccessKey:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+
+  # Event Upload Configuration
+  eventUpload:
+    # -- S3 bucket to use for event uploads.
+    bucket: ""
+    # -- Prefix to use for event uploads within the bucket.
+    prefix: ""
+    # -- S3 region to use for event uploads.
+    region: "auto"
+    # -- S3 endpoint to use for event uploads.
+    endpoint: ""
+    # -- Whether to force path style on requests. Required for MinIO.
+    forcePathStyle: true
+    # -- S3 accessKeyId to use for event uploads.
     accessKeyId:
       value: ""
       secretKeyRef:
         name: ""
         key: ""
-    # -- Configure the secret access key by value or existing secret reference
+    # -- S3 secretAccessKey to use for event uploads.
     secretAccessKey:
       value: ""
       secretKeyRef:
         name: ""
         key: ""
 
-  # -- MinIO subchart specific settings
-  minio:
-    defaultBuckets: langfuse
-    auth:
-      rootUser: ""
-      rootPassword: ""
+  # Batch Export Configuration
+  batchExport:
+    # -- Enable batch export.
+    enabled: false
+    # -- S3 bucket to use for batch exports.
+    bucket: ""
+    # -- Prefix to use for batch exports within the bucket.
+    prefix: ""
+    # -- S3 region to use for batch exports.
+    region: ""
+    # -- S3 endpoint to use for batch exports.
+    endpoint: ""
+    # -- Whether to force path style on requests. Required for MinIO.
+    forcePathStyle: true
+    # -- S3 accessKeyId to use for batch exports.
+    accessKeyId:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    # -- S3 secretAccessKey to use for batch exports.
+    secretAccessKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+
+  # Media Upload Configuration
+  mediaUpload:
+    # -- S3 bucket to use for media uploads.
+    bucket: ""
+    # -- Prefix to use for media uploads within the bucket.
+    prefix: ""
+    # -- S3 region to use for media uploads.
+    region: ""
+    # -- S3 endpoint to use for media uploads.
+    endpoint: ""
+    # -- Whether to force path style on requests. Required for MinIO.
+    forcePathStyle: true
+    # -- S3 accessKeyId to use for media uploads.
+    accessKeyId:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    # -- S3 secretAccessKey to use for media uploads.
+    secretAccessKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    # -- Maximum content length for media uploads. Defaults to 1GB.
+    maxContentLength: 1000000000
+    # -- Expiry time for download URLs. Defaults to 1 hour.
+    downloadUrlExpirySeconds: 3600
+
+  # MinIO subchart specific settings
+  defaultBuckets: langfuse
+  auth:
+    rootUser: ""
+    rootPassword: ""
 
 # Additional manifests
 extraManifests: []

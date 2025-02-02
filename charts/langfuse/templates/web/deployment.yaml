@@ -26,7 +26,7 @@ spec:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
         app: web
     spec:
-      {{- with .Values.langfuse.image.pullSecrets }}
+      {{- with .Values.langfuse.web.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -49,9 +49,11 @@ spec:
           securityContext:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
           image: "{{ .Values.langfuse.web.image.repository }}:{{ .Values.langfuse.web.image.tag }}"
-          imagePullPolicy: {{ .Values.langfuse.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.langfuse.web.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
+            - name: PORT
+              value: {{ .Values.langfuse.web.service.port | quote }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}

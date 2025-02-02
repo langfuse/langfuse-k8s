@@ -1,12 +1,12 @@
 langfuse:
-  auth:
-    licenseKey:
-      secretKeyRef:
-        name: langfuse-license-key
-        key: license-key
-    nextauth:
-      secret:
-        value: "secretSecret"
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse-encryption-key
+      key: encryption-key
+
+nextauth:
+  secret:
+    value: "secretSecret"
 
 postgresql:
   auth:
@@ -20,9 +20,8 @@ redis:
   auth:
     password: "secretPassword"
 
-objectStorage:
-  auth:
-    accessKeyId:
-      value: "secretAccessKeyId"
-    secretAccessKey:
-      value: "secretSecretAccessKey"
+s3:
+  accessKeyId:
+    value: "secretAccessKeyId"
+  secretAccessKey:
+    value: "secretSecretAccessKey"

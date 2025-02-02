@@ -22,7 +22,7 @@ spec:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
         app: worker
     spec:
-      {{- with .Values.langfuse.image.pullSecrets }}
+      {{- with .Values.langfuse.worker.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -44,10 +44,12 @@ spec:
         - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
-          image: "{{ .Values.langfuse.web.image.repository }}-worker:{{ .Values.langfuse.web.image.tag }}"
-          imagePullPolicy: {{ .Values.langfuse.image.pullPolicy }}
+          image: "{{ .Values.langfuse.worker.image.repository }}:{{ .Values.langfuse.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
+            - name: PORT
+              value: {{ .Values.langfuse.worker.service.port | quote }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
