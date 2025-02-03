@@ -18,5 +18,6 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+      nodePort: {{ .Values.service.nodePort }}
   selector:
     {{- include "langfuse.selectorLabels" . | nindent 4 }}
