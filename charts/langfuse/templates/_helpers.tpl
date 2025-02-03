@@ -123,11 +123,11 @@ value: {{ .value.value | quote }}
 {{- if .Values.postgresql.directUrl }}
 - name: DIRECT_URL
   value: {{ .Values.postgresql.directUrl | quote }}
-{{- end -}}
+{{- end }}
 {{- if .Values.postgresql.shadowDatabaseUrl }}
 - name: SHADOW_DATABASE_URL
   value: {{ .Values.postgresql.shadowDatabaseUrl | quote }}
-{{- end -}}
+{{- end }}
 - name: LANGFUSE_AUTO_POSTGRES_MIGRATION_DISABLED
   value: {{ not .Values.postgresql.migration.autoMigrate | quote }}
 - name: DB_EXPORT_PAGE_SIZE
@@ -216,9 +216,9 @@ value: {{ .value.value | quote }}
 */}}
 {{- define "langfuse.getS3ValueOrSecret" -}}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s.%s" .bucket .key) "value" (index .values .bucket .key)) ) -}}
-{{- . | nindent 2 }}
+{{- . }}
 {{- else with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s" .key) "value" (index .values .key)) ) -}}
-{{- . | nindent 2 }}
+{{- . }}
 {{- else -}}
 {{- fail (printf "no valid value or secretKeyRef provided for .Values.s3.[%s].%s" .bucket .key) }}
 {{- end -}}
@@ -232,11 +232,11 @@ value: {{ .value.value | quote }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ENABLED
   value: "true"
 - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
-{{- if $.Values.s3.deploy -}}
+{{- if $.Values.s3.deploy }}
   value: {{ coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets | quote }}
-{{- else -}}
-    value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
-{{- end -}}
+{{- else }}
+  value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
+{{- end }}
 {{- if or .Values.s3.eventUpload.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
   value: {{ .Values.s3.eventUpload.prefix | default .Values.s3.prefix | quote }}
@@ -261,7 +261,6 @@ value: {{ .value.value | quote }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
   value: {{ .Values.s3.eventUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}
-
 - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
   value: {{ .Values.s3.batchExport.enabled | quote }}
 {{- if $.Values.s3.batchExport.enabled -}}
@@ -295,13 +294,13 @@ value: {{ .value.value | quote }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
   value: {{ .Values.s3.batchExport.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}
-{{- end -}}
+{{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
-{{- if $.Values.s3.deploy -}}
+{{- if $.Values.s3.deploy }}
   value: {{ coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets | quote }}
-{{- else -}}
+{{- else }}
   value: {{ required "s3.[mediaUpload].bucket is required" (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
-{{- end -}}
+{{- end }}
 {{- if or .Values.s3.mediaUpload.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
   value: {{ .Values.s3.mediaUpload.prefix | default .Values.s3.prefix | quote }}
@@ -336,10 +335,10 @@ value: {{ .value.value | quote }}
 Common environment variables for all deployments
 */}}
 {{- define "langfuse.commonEnv" -}}
-{{- include "langfuse.serverEnv" . }}
-{{- include "langfuse.nextauthEnv" . }}
-{{- include "langfuse.databaseEnv" . }}
-{{- include "langfuse.redisEnv" . }}
-{{- include "langfuse.clickhouseEnv" . }}
-{{- include "langfuse.s3Env" . }}
+{{ include "langfuse.serverEnv" . }}
+{{ include "langfuse.nextauthEnv" . }}
+{{ include "langfuse.databaseEnv" . }}
+{{ include "langfuse.redisEnv" . }}
+{{ include "langfuse.clickhouseEnv" . }}
+{{ include "langfuse.s3Env" . }}
 {{- end -}}
