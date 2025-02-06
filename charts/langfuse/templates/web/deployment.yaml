@@ -54,6 +54,8 @@ spec:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             - name: PORT
               value: {{ .Values.langfuse.web.service.port | quote }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
@@ -63,7 +65,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: {{ .Values.langfuse.web.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/health
+              path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}
               port: http
             initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
             periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
@@ -72,7 +74,7 @@ spec:
             failureThreshold: {{ .Values.langfuse.web.livenessProbe.failureThreshold | default 5 }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.langfuse.web.healthcheckBasePath | default "" | trimSuffix "/" }}/api/public/ready
+              path: {{ .Values.langfuse.web.readinessProbe.path | default "/api/public/ready" }}
               port: http
             initialDelaySeconds: {{ .Values.langfuse.web.readinessProbe.initialDelaySeconds | default 20 }}
             periodSeconds: {{ .Values.langfuse.web.readinessProbe.periodSeconds | default 10 }}

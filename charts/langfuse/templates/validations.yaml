@@ -11,10 +11,17 @@
     {{- fail "Langfuse does not support ClickHouse with mutltiple shards. Set clickhouse.shards to 1 to continue." -}}
 {{- end -}}
 
+{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) -}}
+    {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
+{{- end -}}
 
 # Validate Redis settings
 {{- if and $.Values.redis.deploy (not (has "--maxmemory-policy noeviction" $.Values.redis.primary.extraFlags)) -}}
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) -}}
+    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
 {{- end -}}
 
 

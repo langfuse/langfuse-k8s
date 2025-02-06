@@ -48,8 +48,6 @@ spec:
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
-            - name: PORT
-              value: {{ .Values.langfuse.worker.service.port | quote }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}

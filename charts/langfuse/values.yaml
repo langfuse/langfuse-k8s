@@ -15,16 +15,13 @@ langfuse:
     # -- Set the log format for the application (text or json)
     format: text
 
-  # -- Set to true to set CSP headers to only allow HTTPS connections. Needs to be set at build-time.
-  cspEnforceHttps: false
-
   # -- Used to hash API keys. Can be configured by value or existing secret reference. If neither value nor secretKeyRef is provided, no salt will be used.
   salt:
     value: ""
     secretKeyRef:
       name: ""
       key: ""
-      
+  
   # -- Langfuse EE license key.
   licenseKey:
     value: ""
@@ -121,9 +118,6 @@ langfuse:
       additionalLabels: {}
       annotations: {}
 
-    # -- Base path for the liveness/readiness probes. Should not include trailing slash.
-    healthcheckBasePath: ""
-
     # -- Resources for the langfuse web application. Defaults to the global resources
     resources: {}
 
@@ -150,6 +144,8 @@ langfuse:
     hostAliases: []
 
     livenessProbe:
+      # -- Path to check for liveness.
+      path: "/api/public/health"
       # -- Initial delay seconds for livenessProbe.
       initialDelaySeconds: 20
       # -- Period seconds for livenessProbe.
@@ -162,6 +158,8 @@ langfuse:
       successThreshold: 1
 
     readinessProbe:
+      # -- Path to check for readiness.
+      path: "/api/public/ready"
       # -- Initial delay seconds for readinessProbe.
       initialDelaySeconds: 20
       # -- Period seconds for readinessProbe.
@@ -181,14 +179,6 @@ langfuse:
       tag: 3
       pullPolicy: Always
       pullSecrets: []
-
-    # -- Service configuration for the langfuse worker application
-    service:
-      type: ClusterIP
-      port: 3030
-      nodePort: null
-      additionalLabels: {}
-      annotations: {}
 
     # -- Resources for the langfuse worker application. Defaults to the global resources
     resources: {}
@@ -241,8 +231,9 @@ postgresql:
   # -- Deploy subchart or use external database
   deploy: true
   
-  # -- If `postgresql.deploy` is set to false, hostname of the external postgres server to use (mandatory)
-  host: langfuse-postgresql
+  # -- Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name.
+  host: ""
+  # -- Port of the postgres server to use.
   port: 5432
 
   # -- If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete.
@@ -260,6 +251,10 @@ postgresql:
     username: postgres
     # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
     password: ""
+    # -- If you want to use an existing secret for the postgres password, set the name of the secret here.
+    existingSecret: ""
+    secretKeys:
+      userPasswordKey: password
     # -- Database name to use for Langfuse.
     database: postgres_langfuse
     # -- Additional database connection arguments
@@ -282,14 +277,20 @@ redis:
   # -- Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false.
   deploy: true
 
-  # -- Connection settings
-  host: langfuse-valkey-primary
+  # -- Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name.
+  host: ""
+  # -- Redis port to connect to.
   port: 6379
   
   # -- Authentication configuration
   auth:
     # -- Configure the password by value or existing secret reference
     password: ""
+    # -- If you want to use an existing secret for the redis password, set the name of the secret here.
+    existingSecret: ""
+    # -- The key in the existing secret that contains the password.
+    existingSecretPasswordKey: ""
+    
     database: 0
   
   # Subchart specific settings
@@ -304,9 +305,11 @@ clickhouse:
   # -- Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false
   deploy: true
   
-  # -- Connection settings
-  host: langfuse-clickhouse
+  # -- ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name.
+  host: ""
+  # -- ClickHouse HTTP port to connect to.
   httpPort: 8123
+  # -- ClickHouse native port to connect to.
   nativePort: 9000
   
   # -- Authentication configuration
@@ -344,8 +347,6 @@ s3:
 
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
   bucket: ""
-  # -- Prefix to use for all uploads within the bucket. Can be overridden per upload type.
-  prefix: ""
   # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
   # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
@@ -393,7 +394,7 @@ s3:
   # Batch Export Configuration
   batchExport:
     # -- Enable batch export.
-    enabled: false
+    enabled: true
     # -- S3 bucket to use for batch exports.
     bucket: ""
     # -- Prefix to use for batch exports within the bucket.
@@ -419,6 +420,8 @@ s3:
 
   # Media Upload Configuration
   mediaUpload:
+    # -- Enable batch export.
+    enabled: true
     # -- S3 bucket to use for media uploads.
     bucket: ""
     # -- Prefix to use for media uploads within the bucket.

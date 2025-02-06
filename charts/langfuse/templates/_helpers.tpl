@@ -62,13 +62,39 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Return PostgreSQL fullname
+Return PostgreSQL hostname
 */}}
-{{- define "langfuse.postgresql.fullname" -}}
-{{- if .Values.postgresql.deploy }}
-{{- include "common.names.dependency.fullname" (dict "chartName" "postgresql" "chartValues" .Values.postgresql "context" $) -}}
-{{- else }}
+{{- define "langfuse.postgresql.hostname" -}}
+{{- if .Values.postgresql.host }}
+{{- .Values.postgresql.host }}
+{{- else if .Values.postgresql.deploy }}
 {{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Return Redis hostname
+*/}}
+{{- define "langfuse.redis.hostname" -}}
+{{- if .Values.redis.host }}
+{{- .Values.redis.host }}
+{{- else if .Values.redis.deploy }}
+{{- printf "%s-valkey-primary" (include "langfuse.fullname" .) -}}
+{{- else }}
+{{- fail "redis.host must be set when redis.deploy is false" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return ClickHouse hostname
+*/}}
+{{- define "langfuse.clickhouse.hostname" -}}
+{{- if .Values.clickhouse.host }}
+{{- .Values.clickhouse.host }}
+{{- else if .Values.clickhouse.deploy }}
+{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- else }}
+{{- fail "clickhouse.host must be set when clickhouse.deploy is false" }}
 {{- end }}
 {{- end }}
 
@@ -108,7 +134,7 @@ value: {{ .value.value | quote }}
 {{- define "langfuse.databaseEnv" -}}
 {{- if .Values.postgresql.host }}
 - name: DATABASE_HOST
-  value: {{ .Values.postgresql.deploy | ternary (include "langfuse.postgresql.fullname" . | quote) (.Values.postgresql.host | quote) }}
+  value: {{ include "langfuse.postgresql.hostname" . | quote }}
 {{- end }}
 {{- if .Values.postgresql.auth.username }}
 - name: DATABASE_USERNAME
@@ -130,8 +156,6 @@ value: {{ .value.value | quote }}
 {{- end }}
 - name: LANGFUSE_AUTO_POSTGRES_MIGRATION_DISABLED
   value: {{ not .Values.postgresql.migration.autoMigrate | quote }}
-- name: DB_EXPORT_PAGE_SIZE
-  value: {{ .Values.postgresql.exportPageSize | quote }}
 {{- end -}}
 
 {{/*
@@ -141,8 +165,6 @@ value: {{ .value.value | quote }}
 {{- define "langfuse.serverEnv" -}}
 - name: NODE_ENV
   value: {{ .Values.langfuse.nodeEnv | quote }}
-- name: LANGFUSE_CSP_ENFORCE_HTTPS
-  value: {{ .Values.langfuse.cspEnforceHttps | quote }}
 - name: LANGFUSE_LOG_LEVEL
   value: {{ .Values.langfuse.logging.level | quote }}
 - name: LANGFUSE_LOG_FORMAT
@@ -155,8 +177,6 @@ value: {{ .value.value | quote }}
 - name: ENCRYPTION_KEY
   {{- . | nindent 2 }}
 {{- end }}
-- name: HOSTNAME
-  value: "0.0.0.0"
 {{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.licenseKey" "value" .Values.langfuse.licenseKey)) }}
 - name: LANGFUSE_EE_LICENSE_KEY
   {{- . | nindent 2 }}
@@ -167,6 +187,8 @@ value: {{ .value.value | quote }}
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
+- name: DB_EXPORT_PAGE_SIZE
+  value: {{ .Values.postgresql.exportPageSize | quote }}
 {{- end -}}
 
 {{/*
@@ -188,7 +210,7 @@ value: {{ .value.value | quote }}
 - name: REDIS_PASSWORD
   value: {{ required "redis.auth.password is required" .Values.redis.auth.password | quote }}
 - name: REDIS_CONNECTION_STRING
-  value: "redis://{{ .Values.redis.auth.username | default "default" }}:$(REDIS_PASSWORD)@{{ .Values.redis.host }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
+  value: "redis://{{ .Values.redis.auth.username | default "default" }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- end -}}
 
 
@@ -198,9 +220,9 @@ value: {{ .value.value | quote }}
 */}}
 {{- define "langfuse.clickhouseEnv" -}}
 - name: CLICKHOUSE_MIGRATION_URL
-  value: "clickhouse://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.nativePort }}"
+  value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
 - name: CLICKHOUSE_URL
-  value: "http://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.httpPort }}"
+  value: "http://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
 - name: CLICKHOUSE_USER
   value: {{ required "clickhouse.auth.username is required" .Values.clickhouse.auth.username | quote }}
 - name: CLICKHOUSE_PASSWORD
@@ -229,17 +251,15 @@ value: {{ .value.value | quote }}
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.s3Env" -}}
-- name: LANGFUSE_S3_EVENT_UPLOAD_ENABLED
-  value: "true"
 - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
 {{- if $.Values.s3.deploy }}
-  value: {{ coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets | quote }}
+  value: {{ required "s3.[eventUpload].bucket is required" (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
 {{- else }}
   value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.prefix .Values.s3.prefix }}
+{{- if .Values.s3.eventUpload.prefix }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
-  value: {{ .Values.s3.eventUpload.prefix | default .Values.s3.prefix | quote }}
+  value: {{ .Values.s3.eventUpload.prefix | quote }}
 {{- end }}
 {{- if or .Values.s3.eventUpload.region .Values.s3.region }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
@@ -252,10 +272,16 @@ value: {{ .value.value | quote }}
 {{- if or .Values.s3.eventUpload.accessKeyId .Values.s3.accessKeyId }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "eventUpload" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy -}}
+- name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+  value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
 {{- if or .Values.s3.eventUpload.secretAccessKey .Values.s3.secretAccessKey }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "eventUpload" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy -}}
+- name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+  value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- if or .Values.s3.eventUpload.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
@@ -263,13 +289,13 @@ value: {{ .value.value | quote }}
 {{- end }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
   value: {{ .Values.s3.batchExport.enabled | quote }}
-{{- if $.Values.s3.batchExport.enabled -}}
+{{- if $.Values.s3.batchExport.enabled }}
 - name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
-{{- if $.Values.s3.deploy -}}
-  value: {{ coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets | quote }}
-{{- else -}}
+{{- if $.Values.s3.deploy }}
+  value: {{ required "s3.[batchExport].bucket is required" (coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+{{- else }}
   value: {{ required "s3.[batchExport].bucket is required" (.Values.s3.batchExport.bucket | default .Values.s3.bucket) | quote }}
-{{- end -}}
+{{- end }}
 {{- if or .Values.s3.batchExport.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_BATCH_EXPORT_PREFIX
   value: {{ .Values.s3.batchExport.prefix | default .Values.s3.prefix | quote }}
@@ -285,10 +311,16 @@ value: {{ .value.value | quote }}
 {{- if or .Values.s3.batchExport.accessKeyId .Values.s3.accessKeyId }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy }}
+- name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
+  value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
 {{- if or .Values.s3.batchExport.secretAccessKey .Values.s3.secretAccessKey }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "batchExport" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy }}
+- name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
+  value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- if or .Values.s3.batchExport.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
@@ -297,7 +329,7 @@ value: {{ .value.value | quote }}
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
 {{- if $.Values.s3.deploy }}
-  value: {{ coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets | quote }}
+  value: {{ required "s3.[mediaUpload].bucket is required" (coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
 {{- else }}
   value: {{ required "s3.[mediaUpload].bucket is required" (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
 {{- end }}
@@ -316,10 +348,16 @@ value: {{ .value.value | quote }}
 {{- if or .Values.s3.mediaUpload.accessKeyId .Values.s3.accessKeyId }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy -}}
+- name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
+  value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
 {{- if or .Values.s3.mediaUpload.secretAccessKey .Values.s3.secretAccessKey }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
   {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "mediaUpload" "values" .Values.s3) | nindent 2 }}
+{{- else if .Values.s3.deploy -}}
+- name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
+  value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- if or .Values.s3.mediaUpload.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
