@@ -6,6 +6,7 @@
     {{- fail "langfuse.logging.format must be one of: text, json" -}}
 {{- end -}}
 
+
 # Validate ClickHouse settings
 {{- if ne ($.Values.clickhouse.shards | int) 1 -}}
     {{- fail "Langfuse does not support ClickHouse with mutltiple shards. Set clickhouse.shards to 1 to continue." -}}

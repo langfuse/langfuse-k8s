@@ -169,7 +169,7 @@ value: {{ .value.value | quote }}
   value: {{ .Values.langfuse.logging.level | quote }}
 - name: LANGFUSE_LOG_FORMAT
   value: {{ .Values.langfuse.logging.format | quote }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.salt" "value" .Values.langfuse.salt) ) }}
+{{- with (include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.salt" "value" .Values.langfuse.salt) ) }}
 - name: SALT
   {{- . | nindent 2 }}
 {{- end }}
@@ -208,7 +208,14 @@ value: {{ .value.value | quote }}
 */}}
 {{- define "langfuse.redisEnv" -}}
 - name: REDIS_PASSWORD
-  value: {{ required "redis.auth.password is required" .Values.redis.auth.password | quote }}
+{{- if .Values.redis.auth.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.redis.auth.existingSecret }}
+      key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
+{{- else }}
+  value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
+{{- end }}
 - name: REDIS_CONNECTION_STRING
   value: "redis://{{ .Values.redis.auth.username | default "default" }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- end -}}
@@ -226,7 +233,14 @@ value: {{ .value.value | quote }}
 - name: CLICKHOUSE_USER
   value: {{ required "clickhouse.auth.username is required" .Values.clickhouse.auth.username | quote }}
 - name: CLICKHOUSE_PASSWORD
-  value: {{ required "clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
+{{- if .Values.clickhouse.auth.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.clickhouse.auth.existingSecret }}
+      key: {{ required "clickhouse.auth.existingSecretKey is required when using an existing secret" .Values.clickhouse.auth.existingSecretKey }}
+{{- else }}
+  value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
+{{- end }}
 {{- if $.Values.clickhouse.replicaCount | int | eq 1 -}}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"

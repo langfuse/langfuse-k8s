@@ -1,3 +1,5 @@
+# This file is used to validate the Chart and sets some values for required fields. It is not used for the deployment.
+# Example usage: `helm lint . --values values.lint.yaml`
 langfuse:
   encryptionKey:
     secretKeyRef:

@@ -44,17 +44,13 @@ spec:
         - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
-          image: "{{ .Values.langfuse.worker.image.repository }}:{{ .Values.langfuse.worker.image.tag }}"
-          imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy }}
+          image: "{{ .Values.langfuse.worker.image.repository }}:{{ .Values.langfuse.worker.image.tag | default .Values.langfuse.image.tag }}"
+          imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.langfuse.web.service.port }}
-              protocol: TCP
           livenessProbe:
             httpGet:
               path: /api/health

@@ -6,16 +6,16 @@ nameOverride: ""
 # -- Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels
 fullnameOverride: ""
 
-# -- Core Langfuse Configuration
+# Core Langfuse Configuration
 langfuse:
-  # -- Logging configuration
+  # Logging configuration
   logging:
     # -- Set the log level for the application (trace, debug, info, warn, error, fatal)
     level: info
     # -- Set the log format for the application (text or json)
     format: text
 
-  # -- Used to hash API keys. Can be configured by value or existing secret reference. If neither value nor secretKeyRef is provided, no salt will be used.
+  # -- Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`.
   salt:
     value: ""
     secretKeyRef:
@@ -31,13 +31,12 @@ langfuse:
 
   # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
   encryptionKey:
-    key:
-      value: ""
-      secretKeyRef:
-        name: ""
-        key: ""
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
 
-  # -- Feature flags
+  # Feature flags
   features:
     # -- Whether or not to report basic usage statistics to a centralized server.
     telemetryEnabled: true
@@ -50,16 +49,23 @@ langfuse:
   nodeEnv: production
 
   serviceAccount:
+    # -- Whether to create a service account for all langfuse deployments
     create: true
+    # -- Annotations for the service account
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
 
   ingress:
+    # -- Set to `true` to enable the ingress resource
     enabled: false
+    # -- Additional labels for the ingress resource
     additionalLabels: {}
+    # -- Annotations for the ingress resource
     annotations: {}
+    # -- The class name for the ingress resource
     className: ""
+    # -- The hosts for the ingress resource
     hosts: []
     # Example:
     # - host: "langfuse.example.com"
@@ -68,7 +74,9 @@ langfuse:
     #       pathType: ImplementationSpecific
 
     tls:
+      # -- Set to `true` to enable use HTTPS on the ingress
       enabled: false
+      # -- The name of the secret to use for TLS Key
       secretName: ""
 
   # -- Pod annotations for all langfuse deployments
@@ -85,10 +93,17 @@ langfuse:
   affinity: {}
 
 
-  # -- Number of replicas to use for all langfuse deployments, can be overridden by the individual deployments
+  # -- Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments
   replicas: 1
-  # -- Resources for all langfuse deployments, can be overridden by the individual deployments
+  # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
   resources: {}
+  image:
+    # -- The image repository to use for all langfuse deployments. Can be overridden by the individual deployments.
+    tag: 3
+    # -- The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments.
+    pullPolicy: Always
+    # -- The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments.
+    pullSecrets: []
 
   # -- List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
   additionalEnv: []
@@ -103,41 +118,57 @@ langfuse:
 
   # Web deployment configuration
   web:
-    # -- Image to use for the langfuse web application
     image:
+      # -- The image repository to use for the langfuse web pods.
       repository: langfuse/langfuse
-      tag: 3
-      pullPolicy: Always
-      pullSecrets: []
+      # -- The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set.
+      tag: Null
+      # -- The pull policy to use for the langfuse web pods. Using `langfuse.image.pullPolicy` if not set.
+      pullPolicy: Null
+      # -- The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set.
+      pullSecrets: Null
 
-    # -- Service configuration for the langfuse web application
     service:
+      # -- The type of service to use for the langfuse web application
       type: ClusterIP
+      # -- The port to use for the langfuse web application
       port: 3000
+      # -- The node port to use for the langfuse web application
       nodePort: null
+      # -- Additional labels for the langfuse web application service
       additionalLabels: {}
+      # -- Annotations for the langfuse web application service
       annotations: {}
 
-    # -- Resources for the langfuse web application. Defaults to the global resources
+    # -- Resources for the langfuse web pods. Defaults to the global resources
     resources: {}
 
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
 
-    # -- Horizontal Pod Autoscaler configuration
+    # Horizontal Pod Autoscaler configuration
     hpa:
+      # -- Set to `true` to enable HPA for the langfuse web pods
       enabled: false
+      # -- The minimum number of replicas to use for the langfuse web pods
       minReplicas: 1
+      # -- The maximum number of replicas to use for the langfuse web pods
       maxReplicas: 2
+      # -- The target CPU utilization percentage for the langfuse web pods
       targetCPUUtilizationPercentage: 50
 
-    # -- Vertical Pod Autoscaler configuration
+    # Vertical Pod Autoscaler configuration
     vpa:
+      # -- Set to `true` to enable VPA for the langfuse web pods
       enabled: false
+      # -- The resources to control for the langfuse web pods
       controlledResources: []
+      # -- The maximum allowed resources for the langfuse web pods
       maxAllowed: {}
+      # -- The minimum allowed resources for the langfuse web pods
       minAllowed: {}
       updatePolicy:
+        # -- The update policy mode for the langfuse web pods
         updateMode: Auto
     
     # -- Adding records to /etc/hosts in the pod's network.
@@ -173,33 +204,45 @@ langfuse:
   
   # Worker deployment configuration
   worker:
-    # -- Image to use for the langfuse worker application
     image:
+      # -- The image repository to use for the langfuse worker pods
       repository: langfuse/langfuse-worker
-      tag: 3
-      pullPolicy: Always
-      pullSecrets: []
+      # -- The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set.
+      tag: Null
+      # -- The pull policy to use for the langfuse worker pods. Using `langfuse.image.pullPolicy` if not set.
+      pullPolicy: Null
+      # -- The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set.
+      pullSecrets: Null
 
-    # -- Resources for the langfuse worker application. Defaults to the global resources
+    # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
 
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
 
-    # -- Horizontal Pod Autoscaler configuration
+    # Horizontal Pod Autoscaler configuration
     hpa:
+      # -- Set to `true` to enable HPA for the langfuse worker pods
       enabled: false
+      # -- The minimum number of replicas to use for the langfuse worker pods
       minReplicas: 1
+      # -- The maximum number of replicas to use for the langfuse worker pods
       maxReplicas: 2
+      # -- The target CPU utilization percentage for the langfuse worker pods
       targetCPUUtilizationPercentage: 50
 
-    # -- Vertical Pod Autoscaler configuration
+    # Vertical Pod Autoscaler configuration
     vpa:
+      # -- Set to `true` to enable VPA for the langfuse worker pods
       enabled: false
+      # -- The resources to control for the langfuse worker pods
       controlledResources: []
+      # -- The maximum allowed resources for the langfuse worker pods
       maxAllowed: {}
+      # -- The minimum allowed resources for the langfuse worker pods
       minAllowed: {}
       updatePolicy:
+        # -- The update policy mode for the langfuse worker pods
         updateMode: Auto
     
     livenessProbe:
@@ -215,7 +258,7 @@ langfuse:
       successThreshold: 1
 
 
-# -- NextAuth configuration
+# NextAuth configuration
 nextauth:
   # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
   url: http://localhost:3000
@@ -226,7 +269,7 @@ nextauth:
       name: ""
       key: ""
 
-# -- PostgreSQL Configuration
+# PostgreSQL Configuration
 postgresql:
   # -- Deploy subchart or use external database
   deploy: true
@@ -245,14 +288,15 @@ postgresql:
   # -- Optional page size for streaming exports to S3 to avoid memory issues. The page size can be adjusted if needed to optimize performance.
   exportPageSize: 1000
 
-  # -- Authentication configuration
+  # Authentication configuration
   auth:
     # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
     username: postgres
     # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
     password: ""
-    # -- If you want to use an existing secret for the postgres password, set the name of the secret here.
+    # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.username` and `postgresql.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
+    # -- The key in the existing secret that contains the password.
     secretKeys:
       userPasswordKey: password
     # -- Database name to use for Langfuse.
@@ -260,7 +304,7 @@ postgresql:
     # -- Additional database connection arguments
     args: ""
   
-  # -- Migration configuration
+  # Migration configuration
   migration:
     # -- Whether to run automatic migrations on startup
     autoMigrate: false
@@ -282,15 +326,15 @@ redis:
   # -- Redis port to connect to.
   port: 6379
   
-  # -- Authentication configuration
+  # Authentication configuration
   auth:
     # -- Configure the password by value or existing secret reference
     password: ""
-    # -- If you want to use an existing secret for the redis password, set the name of the secret here.
+    # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
     # -- The key in the existing secret that contains the password.
     existingSecretPasswordKey: ""
-    
+
     database: 0
   
   # Subchart specific settings
@@ -312,14 +356,18 @@ clickhouse:
   # -- ClickHouse native port to connect to.
   nativePort: 9000
   
-  # -- Authentication configuration
+  # Authentication configuration
   auth:
     # -- Username for the ClickHouse user.
     username: default
     # -- Password for the ClickHouse user.
     password: ""
+    # -- If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.username` and `clickhouse.auth.password` will be ignored and picked up from this secret).
+    existingSecret: ""
+    # -- The key in the existing secret that contains the password.
+    existingSecretKey: ""
   
-  # -- Migration configuration
+  # Migration configuration
   migration:
     # -- Migration URL (TCP protocol) for clickhouse
     url: ""
@@ -338,6 +386,7 @@ clickhouse:
   shards: 1 # Fixed - Langfuse does not support sharding
   # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
   replicaCount: 3
+  # -- The resources preset to use for the ClickHouse cluster.
   resourcesPreset: 2xlarge
 
 # S3/MinIO Configuration
@@ -452,8 +501,14 @@ s3:
   # MinIO subchart specific settings
   defaultBuckets: langfuse
   auth:
-    rootUser: ""
+    # -- root username
+    rootUser: admin
+    # -- Password for MinIO root user
     rootPassword: ""
+    # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret).
+    existingSecret: ""
+    # -- Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret`
+    rootPasswordSecretKey: ""
 
 # Additional manifests
 extraManifests: []
