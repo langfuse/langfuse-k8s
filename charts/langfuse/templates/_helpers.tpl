@@ -249,6 +249,7 @@ value: {{ .value.value | quote }}
 
 {{/*
     Get a s3 related config by value or secret. Lookup the bucket value, if not found lookup the shared config.
+    If no value or secret is found, return an empty value (e.g. for role IRSA on AWS)
 */}}
 {{- define "langfuse.getS3ValueOrSecret" -}}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s.%s" .bucket .key) "value" (index .values .bucket .key)) ) -}}
@@ -256,7 +257,6 @@ value: {{ .value.value | quote }}
 {{- else with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s" .key) "value" (index .values .key)) ) -}}
 {{- . }}
 {{- else -}}
-{{- fail (printf "no valid value or secretKeyRef provided for .Values.s3.[%s].%s" .bucket .key) }}
 {{- end -}}
 {{- end -}}
 
