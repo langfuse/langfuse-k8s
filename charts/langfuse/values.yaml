@@ -378,9 +378,6 @@ clickhouse:
 
   # -- Whether to run ClickHouse commands ON CLUSTER
   clusterEnabled: true
-  
-  # -- Database name to use
-  database: default
 
   # -- Subchart specific settings
   shards: 1 # Fixed - Langfuse does not support sharding

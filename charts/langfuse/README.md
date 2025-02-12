@@ -36,7 +36,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.auth.password | string | `""` | Password for the ClickHouse user. |
 | clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
 | clickhouse.clusterEnabled | bool | `true` | Whether to run ClickHouse commands ON CLUSTER |
-| clickhouse.database | string | `"default"` | Database name to use |
 | clickhouse.deploy | bool | `true` | Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false |
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
