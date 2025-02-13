@@ -276,8 +276,8 @@ postgresql:
   
   # -- Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name.
   host: ""
-  # -- Port of the postgres server to use.
-  port: 5432
+  # -- Port of the postgres server to use. Defaults to 5432.
+  port: null
 
   # -- If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete.
   directUrl: ""

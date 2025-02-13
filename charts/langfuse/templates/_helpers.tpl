@@ -126,22 +126,49 @@ value: {{ .value.value | quote }}
 {{- end -}}
 {{- end -}}
 
+{{/*
+Get value of a specific environment variable from additionalEnv if it exists
+*/}}
+{{- define "langfuse.getEnvVar" -}}
+{{- $envVarName := .name -}}
+{{- range .env -}}
+{{- if eq .name $envVarName -}}
+{{ .value }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
     Database related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.databaseEnv" -}}
+{{- with (include "langfuse.getEnvVar" (dict "env" .Values.langfuse.additionalEnv "name" "DATABASE_URL")) -}}
+- name: DATABASE_URL
+  value: {{ . | quote }}
+{{- else -}}
 {{- if .Values.postgresql.host }}
 - name: DATABASE_HOST
   value: {{ include "langfuse.postgresql.hostname" . | quote }}
+{{- end }}
+{{- if .Values.postgresql.port }}
+- name: DATABASE_PORT
+  value: {{ .Values.postgresql.port | quote }}
 {{- end }}
 {{- if .Values.postgresql.auth.username }}
 - name: DATABASE_USERNAME
   value: {{ .Values.postgresql.auth.username | quote }}
 {{- end }}
 - name: DATABASE_PASSWORD
-  value: {{ required "postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
+{{- if .Values.postgresql.auth.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.postgresql.auth.existingSecret }}
+      key: {{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
+{{- else }}
+  value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
+{{- end }}
+{{- end }}
 {{- if .Values.postgresql.auth.database }}
 - name: DATABASE_NAME
   value: {{ .Values.postgresql.auth.database | quote }}

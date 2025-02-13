@@ -1,4 +1,5 @@
-name: Release
+name: Release Charts
+
 on:
   push:
     branches:
@@ -6,9 +7,29 @@ on:
     paths:
       - 'charts/*/Chart.yaml'
 jobs:
+  validate:
+    name: Validate Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.2
+
+      - name: Run helm lint
+        run: |
+          helm dependency update charts/langfuse/
+          helm lint charts/langfuse/ -f charts/langfuse/values.lint.yaml
+
   release:
     name: Release Helm Chart
     runs-on: ubuntu-latest
+    needs: validate
     permissions:
       contents: write
     steps:
