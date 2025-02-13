@@ -82,7 +82,7 @@ spec:
             successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
             failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
           resources:
-            {{- toYaml .Values.langfuse.web.resources | nindent 12 }}
+            {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}
           volumeMounts:
             {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
