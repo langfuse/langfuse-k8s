@@ -26,11 +26,12 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
         podAnnotations: {}
         podSecurityContext: {}
         securityContext: {}
-        service: [...]
         resources: {}
         nodeSelector: {}
         tolerations: []
         affinity: {}
+        web:
+          service: [...]
     ```
   - The replicaCount parameter got renamed to replicas, and can be overridden per component:
     ```yaml
