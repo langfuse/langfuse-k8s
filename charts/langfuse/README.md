@@ -151,7 +151,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.exportPageSize | int | `1000` | Optional page size for streaming exports to S3 to avoid memory issues. The page size can be adjusted if needed to optimize performance. |
 | postgresql.host | string | `""` | Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name. |
 | postgresql.migration.autoMigrate | bool | `false` | Whether to run automatic migrations on startup |
-| postgresql.port | int | `5432` | Port of the postgres server to use. |
+| postgresql.port | string | `nil` | Port of the postgres server to use. Defaults to 5432. |
 | postgresql.primary.service.ports.postgresql | int | `5432` |  |
 | postgresql.shadowDatabaseUrl | string | `""` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. |
 | redis.architecture | string | `"standalone"` |  |
