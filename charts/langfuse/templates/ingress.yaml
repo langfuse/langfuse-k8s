@@ -1,9 +1,7 @@
-{{- if .Values.ingress.enabled -}}
-{{- $fullName := include "langfuse.fullname" . -}}
-{{- $svcPort := .Values.service.port -}}
-{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
+{{- if .Values.langfuse.ingress.enabled -}}
+{{- if and .Values.langfuse.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
+  {{- if not (hasKey .Values.langfuse.ingress.annotations "kubernetes.io/ingress.class") }}
+  {{- $_ := set .Values.langfuse.ingress.annotations "kubernetes.io/ingress.class" .Values.langfuse.ingress.className}}
   {{- end }}
 {{- end }}
 {{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion -}}
@@ -15,29 +13,30 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{ include "langfuse.fullname" . }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+    {{- toYaml .Values.langfuse.ingress.additionalLabels | nindent 4 }}
+  {{- with .Values.langfuse.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
-  ingressClassName: {{ .Values.ingress.className }}
+  {{- if and .Values.langfuse.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ .Values.langfuse.ingress.className }}
   {{- end }}
-  {{- if .Values.ingress.tls }}
+  {{- if .Values.langfuse.ingress.tls.enabled }}
   tls:
-    {{- range .Values.ingress.tls }}
+    {{- if .Values.langfuse.ingress.tls.enabled }}
     - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
+        {{- range .Values.langfuse.ingress.hosts }}
+        - {{ .host | quote }}
         {{- end }}
-      secretName: {{ .secretName }}
+      secretName: {{ .Values.langfuse.ingress.tls.secretName }}
     {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
+    {{- range .Values.langfuse.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
@@ -49,12 +48,12 @@ spec:
             backend:
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
-                name: {{ $fullName }}-web
+                name: {{ include "langfuse.fullname" . }}-web
                 port:
-                  number: {{ $svcPort }}
+                  name: http
               {{- else }}
-              serviceName: {{ $fullName }}-web
-              servicePort: {{ $svcPort }}
+              serviceName: {{ include "langfuse.fullname" . }}-web
+              servicePort: http
               {{- end }}
           {{- end }}
     {{- end }}
