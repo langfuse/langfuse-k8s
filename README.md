@@ -9,40 +9,6 @@ This is a community-maintained repository that contains resources for deploying 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
 Note that the Helm installation must be named `langfuse` for the chart to work correctly with the default values.yaml.
 
-The following environment variables must be provided via `langfuse.additionalEnv` to configure Redis/Valkey, S3, and ClickHouse.
-See the values.yaml file for more information and an example.
-Replace `langfuse` in the values with your installation name in case you changed it.
-
-```yaml
-# REDIS
-- name: "REDIS_CONNECTION_STRING"
-  value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
-# CLICKHOUSE
-- name: "CLICKHOUSE_MIGRATION_URL"
-  value: "clickhouse://langfuse-clickhouse:9000"
-- name: "CLICKHOUSE_URL"
-  value: "http://langfuse-clickhouse:8123"
-- name: "CLICKHOUSE_USER"
-  value: "default"
-- name: "CLICKHOUSE_PASSWORD"
-  value: "changeme"
-# S3 / MinIO
-- name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
-  value: "true"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
-  value: "langfuse"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
-  value: "auto"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
-  value: "minio"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
-  value: "miniosecret"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
-  value: "http://langfuse-minio:9000"
-- name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
-  value: "true"
-```
-
 ### Installation
 
 ```bash
