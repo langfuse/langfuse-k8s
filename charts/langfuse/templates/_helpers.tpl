@@ -120,7 +120,7 @@ Return Valkey fullname
 */}}
 {{- define "langfuse.valkey.fullname" -}}
 {{- if .Values.valkey.deploy }}
-{{- include "common.names.dependency.fullname" (dict "chartName" "valkey" "chartValues" .Values.clickhouse "context" $) -}}
+{{- include "common.names.dependency.fullname" (dict "chartName" "valkey" "chartValues" .Values.valkey "context" $) -}}
 {{- else }}
 {{- printf "%s-valkey" (include "langfuse.fullname" .) -}}
 {{- end }}
