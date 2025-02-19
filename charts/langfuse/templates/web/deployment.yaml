@@ -24,6 +24,16 @@ spec:
       {{- end }}
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        {{- if .Values.langfuse.podLabels -}}
+        {{- range $key, $value := .Values.langfuse.podLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.langfuse.web.podLabels -}}
+        {{- range $key, $value := .Values.langfuse.web.podLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
         app: web
     spec:
       {{- with (.Values.langfuse.web.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}

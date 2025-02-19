@@ -20,6 +20,16 @@ spec:
       {{- end }}
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        {{- if .Values.langfuse.podLabels -}}
+        {{- range $key, $value := .Values.langfuse.podLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.langfuse.worker.podLabels -}}
+        {{- range $key, $value := .Values.langfuse.worker.podLabels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
         app: worker
     spec:
       {{- with (.Values.langfuse.worker.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}

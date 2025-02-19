@@ -115,6 +115,9 @@ langfuse:
   extraInitContainers: []
   # -- Allows additional volume mounts to be added to all langfuse deployments
   extraVolumeMounts: []
+  # -- pod labels for the langfuse deployments
+  podLabels:
+    # myCustomLabelKey: myCustomLabelValue
 
   # Web deployment configuration
   web:
@@ -139,6 +142,10 @@ langfuse:
       additionalLabels: {}
       # -- Annotations for the langfuse web application service
       annotations: {}
+
+    # -- labels for the langfuse web pods.
+    podLabels:
+    # myCustomLabelKey: myCustomLabelValue
 
     # -- Resources for the langfuse web pods. Defaults to the global resources
     resources: {}
@@ -213,6 +220,10 @@ langfuse:
       pullPolicy: Null
       # -- The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
+
+    # -- labels for the langfuse worker pods.
+    podLabels:
+    # myCustomLabelKey: myCustomLabelValue
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
