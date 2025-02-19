@@ -85,3 +85,83 @@ Return PostgreSQL fullname
 {{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
 {{- end }}
 {{- end }}
+
+{{/*
+Create the name of the secret for clickhouse if we use an external database
+*/}}
+{{- define "langfuse.clickhouseSecretName" -}}
+{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
+Return clickhouse fullname
+*/}}
+{{- define "langfuse.clickhouse.fullname" -}}
+{{- if .Values.clickhouse.deploy }}
+{{- include "common.names.dependency.fullname" (dict "chartName" "clickhouse" "chartValues" .Values.clickhouse "context" $) -}}
+{{- else }}
+{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Clickhouse host
+*/}}
+{{- define "langfuse.clickhouse.host" -}}
+{{- if .Values.clickhouse.deploy }}
+{{- (include "langfuse.clickhouse.fullname" .) -}}
+{{- else }}
+{{- .Values.clickhouse.host -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Return Valkey fullname
+*/}}
+{{- define "langfuse.valkey.fullname" -}}
+{{- if .Values.valkey.deploy }}
+{{- include "common.names.dependency.fullname" (dict "chartName" "valkey" "chartValues" .Values.valkey "context" $) -}}
+{{- else }}
+{{- printf "%s-valkey" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Valkey host
+*/}}
+{{- define "langfuse.valkey.host" -}}
+{{- if .Values.valkey.deploy }}
+{{- printf "%s-primary" (include "langfuse.valkey.fullname" .) -}}
+{{- else }}
+{{- .Values.valkey.host -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Create the name of the secret for minio if we use an external deployment
+*/}}
+{{- define "langfuse.minioSecretName" -}}
+{{- printf "%s-minio" (include "langfuse.fullname" .) -}}
+{{- end }}
+
+{{/*
+Return minio fullname
+*/}}
+{{- define "langfuse.minio.fullname" -}}
+{{- if .Values.minio.deploy }}
+{{- include "common.names.dependency.fullname" (dict "chartName" "minio" "chartValues" .Values.minio "context" $) -}}
+{{- else }}
+{{- printf "%s-minio" (include "langfuse.fullname" .) -}}
+{{- end }}
+{{- end }}
+
+{{/*
+Minio host
+*/}}
+{{- define "langfuse.minio.host" -}}
+{{- if .Values.minio.deploy }}
+{{- (include "langfuse.minio.fullname" .) -}}
+{{- else }}
+{{- .Values.minio.host -}}
+{{- end }}
+{{- end }}
