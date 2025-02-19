@@ -26,8 +26,12 @@ langfuse:
   extraVolumes: []
   extraInitContainers: []
   extraVolumeMounts: []
+  commonPodLabels:
+    # my-custom-label-key: my-custom-label-value
 
   web:
+    podLabels:
+      # my-custom-web-label-key: my-custom-web-label-value
     resources: {}
     hpa:
       enabled: false
@@ -42,6 +46,8 @@ langfuse:
       updatePolicy:
         updateMode: Auto
   worker:
+    podLabels:
+      # my-custom-worker-label-key: my-custom-worker-label-value
     resources: {}
     hpa:
       enabled: false
