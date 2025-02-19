@@ -57,33 +57,6 @@ langfuse:
         updateMode: Auto
 
   additionalEnv:
-    # REDIS
-    - name: "REDIS_CONNECTION_STRING"
-      value: "redis://default:changeme@langfuse-valkey-primary:6379/0"
-    # CLICKHOUSE
-    - name: "CLICKHOUSE_MIGRATION_URL"
-      value: "clickhouse://langfuse-clickhouse:9000"
-    - name: "CLICKHOUSE_URL"
-      value: "http://langfuse-clickhouse:8123"
-    - name: "CLICKHOUSE_USER"
-      value: "default"
-    - name: "CLICKHOUSE_PASSWORD"
-      value: "changeme"
-    # S3 / MinIO
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
-      value: "true"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
-      value: "langfuse"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
-      value: "auto"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
-      value: "minio"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
-      value: "miniosecret"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
-      value: "http://langfuse-minio:9000"
-    - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
-      value: "true"
 
 serviceAccount:
   create: true
@@ -113,12 +86,12 @@ tolerations: []
 affinity: {}
 
 postgresql:
+  deploy: true
   host: langfuse-postgresql
   auth:
     username: postgres
     password: postgres
     database: postgres_langfuse
-  deploy: true
   architecture: standalone
   primary:
     service:
@@ -127,17 +100,27 @@ postgresql:
 
 clickhouse:
   deploy: true
+  host: langfuse-clickhouse
   shards: 1 # Fixed. Langfuse does not support multi-shard clusters.
   replicaCount: 3
   resourcesPreset: 2xlarge
+  service:
+    ports:
+      http: 8123
+      tcp: 9000
   auth:
     username: default
     password: changeme
 
 valkey:
   deploy: true
+  host: langfuse-valkey-primary
+  database: 0
   architecture: standalone
   primary:
+    service:
+      ports:
+        valkey: 6379
     extraFlags:
       - "--maxmemory-policy noeviction"
   auth:
@@ -145,7 +128,11 @@ valkey:
 
 minio:
   deploy: true
+  host: langfuse-minio
   defaultBuckets: 'langfuse'
+  service:
+    ports:
+      api: 9000
   auth:
     rootUser: 'minio'
     rootPassword: 'miniosecret'
