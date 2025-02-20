@@ -287,9 +287,6 @@ postgresql:
   # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
   shadowDatabaseUrl: ""
 
-  # -- Optional page size for streaming exports to S3 to avoid memory issues. The page size can be adjusted if needed to optimize performance.
-  exportPageSize: 1000
-
   # Authentication configuration
   auth:
     # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.

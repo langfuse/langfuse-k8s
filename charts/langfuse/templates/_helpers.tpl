@@ -216,8 +216,6 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
-# - name: DB_EXPORT_PAGE_SIZE
-#   value: {{ .Values.postgresql.exportPageSize | quote}}
 {{- end -}}
 
 {{/*
