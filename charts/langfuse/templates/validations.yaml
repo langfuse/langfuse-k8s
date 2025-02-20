@@ -32,7 +32,7 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.values.s3.bucket $.values.s3.eventUpload.bucket)) -}}
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.eventUpload.bucket)) -}}
     {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.eventUpload.bucket to continue." -}}
 {{- end -}}
 
@@ -42,7 +42,7 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.values.s3.bucket $.values.s3.batchExport.bucket)) -}}
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
     {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.batchExport.bucket to continue." -}}
 {{- end -}}
 {{- end -}}
@@ -52,7 +52,7 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.values.s3.bucket $.values.s3.mediaUpload.bucket)) -}}
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}
     {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.mediaUpload.bucket to continue." -}}
 {{- end -}}
 

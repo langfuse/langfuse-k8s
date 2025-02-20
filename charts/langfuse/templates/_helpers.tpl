@@ -79,7 +79,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-valkey-primary" (include "langfuse.fullname" .) -}}
+{{- printf "%s-redis-primary" (include "langfuse.fullname" .) -}}
 {{- else }}
 {{- fail "redis.host must be set when redis.deploy is false" }}
 {{- end }}
@@ -147,10 +147,8 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: DATABASE_URL
   value: {{ . | quote }}
 {{- else -}}
-{{- if .Values.postgresql.host }}
 - name: DATABASE_HOST
   value: {{ include "langfuse.postgresql.hostname" . | quote }}
-{{- end }}
 {{- if .Values.postgresql.port }}
 - name: DATABASE_PORT
   value: {{ .Values.postgresql.port | quote }}
@@ -172,6 +170,10 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- if .Values.postgresql.auth.database }}
 - name: DATABASE_NAME
   value: {{ .Values.postgresql.auth.database | quote }}
+{{- end }}
+{{- if .Values.postgresql.args }}
+- name: DATABASE_ARGS
+  value: {{ .Values.postgresql.args | quote }}
 {{- end }}
 {{- if .Values.postgresql.directUrl }}
 - name: DIRECT_URL
@@ -214,8 +216,8 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
-- name: DB_EXPORT_PAGE_SIZE
-  value: {{ .Values.postgresql.exportPageSize | quote }}
+# - name: DB_EXPORT_PAGE_SIZE
+#   value: {{ .Values.postgresql.exportPageSize | quote}}
 {{- end -}}
 
 {{/*
