@@ -1,0 +1,14 @@
+nextauth:
+  url: http://langfuse.example.com
+langfuse:
+  ingress:
+    enabled: true
+    # This requires an ingress controller to be installed in the cluster
+    # For example, using the nginx ingress controller:
+    # helm install nginx-ingress ingress-nginx/ingress-nginx
+    className: nginx
+    hosts:
+    - host: langfuse.example.com
+      paths:
+      - path: /
+        pathType: Prefix

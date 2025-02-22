@@ -22,7 +22,7 @@ spec:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
         app: worker
     spec:
-      {{- with .Values.langfuse.worker.image.pullSecrets }}
+      {{- with (.Values.langfuse.worker.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -79,7 +79,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-redis-primary" (include "langfuse.fullname" .) -}}
+{{- printf "%s-%s-primary" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
 {{- else }}
 {{- fail "redis.host must be set when redis.deploy is false" }}
 {{- end }}

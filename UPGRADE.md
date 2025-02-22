@@ -1,4 +1,4 @@
-# Migrating from Langfuse Helm Chart v0.12 to v1.0
+# Upgrading from Langfuse Helm Chart v0.12 to v1.0
 
 This guide outlines the changes needed when upgrading from Langfuse Helm Chart v0.12 to v1.0.
 
@@ -33,6 +33,7 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
         web:
           service: [...]
     ```
+
   - The replicaCount parameter got renamed to replicas, and can be overridden per component:
     ```yaml
       # Old
@@ -42,6 +43,7 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
       langfuse:
         replicas: 1
     ```
+    
     Alternatively, you can set the replicas directly for each component:
     ```yaml
       langfuse:

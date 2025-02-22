@@ -148,7 +148,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.auth.username | string | `"postgres"` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. |
 | postgresql.deploy | bool | `true` | Deploy subchart or use external database |
 | postgresql.directUrl | string | `""` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. |
-| postgresql.exportPageSize | int | `1000` | Optional page size for streaming exports to S3 to avoid memory issues. The page size can be adjusted if needed to optimize performance. |
 | postgresql.host | string | `""` | Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name. |
 | postgresql.migration.autoMigrate | bool | `false` | Whether to run automatic migrations on startup |
 | postgresql.port | string | `nil` | Port of the postgres server to use. Defaults to 5432. |
