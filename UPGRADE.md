@@ -116,7 +116,8 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
     ```
 
 2. **Redis Configuration**
-   - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
+  - The `valkey` section has been renamed to `redis`. To keep the same name, you can set the `nameOverride` to `valkey`.
+  - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
 
     ```yaml
       # Old Redis Configuration
@@ -127,6 +128,7 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
 
       # New Redis Configuration
       redis:
+        nameOverride: valkey
         host: <host>
         port: <port>
         auth:
@@ -144,7 +146,7 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
     ```
 
 3. **Clickhouse Configuration**
-    - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
+  - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
 
     ```yaml
       # Old Clickhouse Configuration (in additionalEnv)
@@ -180,29 +182,31 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
     ```
 
 4. **S3/MinIO Configuration**
-    - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
+  - The `minio` section has been renamed to `s3`. To keep the same name, you can set the `nameOverride` to `minio`.
+  - Previously configured environment variables in `additionalEnv` have been integrated into the chart structure:
 
     ```yaml
       # Old S3/MinIO Configuration (in additionalEnv)
       langfuse:
-      additionalEnv:
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
-          value: "true"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
-          value: "<bucket>"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
-          value: "<region>"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
-          value: "<access-key-id>"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
-          value: "<secret-access-key>"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
-          value: "<endpoint>"
-        - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
-          value: "true"
+        additionalEnv:
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_ENABLED"
+            value: "true"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_BUCKET"
+            value: "<bucket>"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_REGION"
+            value: "<region>"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID"
+            value: "<access-key-id>"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY"
+            value: "<secret-access-key>"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT"
+            value: "<endpoint>"
+          - name: "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE"
+            value: "true"
 
       # New S3/MinIO Configuration - global settings
       s3:
+        nameOverride: minio
         bucket: <bucket>
         region: <region>
         endpoint: <endpoint>
@@ -217,76 +221,77 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
           prefix: "exports/"
         mediaUpload:
           prefix: "media/"
-      ```
+    ```
 
-      Alternatively, you can configure the buckets, endpoints, etc. per upload type:
-      ```yaml
-        s3:
-          eventUpload:
-            bucket: <bucket>
-            [...]
-          batchExport:
-            bucket: <bucket>
-            [...]
-          mediaUpload:
-            bucket: <bucket>
-            [...]
-      ```
+    Alternatively, you can configure the buckets, endpoints, etc. per upload type:
+    ```yaml
+      s3:
+        nameOverride: minio
+        eventUpload:
+          bucket: <bucket>
+          [...]
+        batchExport:
+          bucket: <bucket>
+          [...]
+        mediaUpload:
+          bucket: <bucket>
+          [...]
+    ```
 
 5. **Feature Flags**
-   - Feature flags have been restructured under `langfuse.features`:
-     ```yaml
-     # Old
-     langfuse:
-       telemetryEnabled: true
-       nextPublicSignUpDisabled: false
-       enableExperimentalFeatures: false
+  - Feature flags have been restructured under `langfuse.features`:
+    ```yaml
+      # Old
+      langfuse:
+        telemetryEnabled: true
+        nextPublicSignUpDisabled: false
+        enableExperimentalFeatures: false
 
-     # New
-     langfuse:
-       features:
-         telemetryEnabled: true
-         signUpDisabled: false
-         experimentalFeaturesEnabled: false
-     ```
+      # New
+      langfuse:
+        features:
+          telemetryEnabled: true
+          signUpDisabled: false
+          experimentalFeaturesEnabled: false
+    ```
 
 7. **Image Configuration**
-   - Image configuration has been restructured and can now be overridden per component:
-     ```yaml
-     # Old
-     image:
-       repository: langfuse/langfuse
-       pullPolicy: Always
-       tag: 3
+  - Image configuration has been restructured and can now be overridden per component:
+    ```yaml
+      # Old
+      image:
+        repository: langfuse/langfuse
+        pullPolicy: Always
+        tag: 3
 
-     # New
-     langfuse:
-       image:
-         tag: 3
-         pullPolicy: Always
-         pullSecrets: []
-       
-       web:
-         image:
-           repository: langfuse/langfuse
-           tag: null  # Inherits from langfuse.image.tag if not set
-           pullPolicy: null  # Inherits from langfuse.image.pullPolicy if not set
-       
-       worker:
-         image:
-           repository: langfuse/langfuse-worker
-           tag: null  # Inherits from langfuse.image.tag if not set
-           pullPolicy: null  # Inherits from langfuse.image.pullPolicy if not set
-     ```
+      # New
+      langfuse:
+        image:
+          tag: 3
+          pullPolicy: Always
+          pullSecrets: []
+        
+        web:
+          image:
+            repository: langfuse/langfuse
+            tag: null  # Inherits from langfuse.image.tag if not set
+            pullPolicy: null  # Inherits from langfuse.image.pullPolicy if not set
+        
+        worker:
+          image:
+            repository: langfuse/langfuse-worker
+            tag: null  # Inherits from langfuse.image.tag if not set
+            pullPolicy: null  # Inherits from langfuse.image.pullPolicy if not set
+    ```
 
 7. **Logging Configuration**
-   - New logging configuration section:
-     ```yaml
-     langfuse:
-       logging:
-         level: info  # trace, debug, info, warn, error, fatal
-         format: text # text or json
-     ```
+  - New logging configuration section:
+    ```yaml
+      langfuse:
+        logging:
+          level: info  # trace, debug, info, warn, error, fatal
+          format: text # text or json
+    ```
 
 8. **Health Checks**
   - New health check configurations for web and worker components:
@@ -318,19 +323,16 @@ The following configurations have been removed or replaced:
 
 ## Migration Steps
 
-1. **Backup Your Values**
-   - Before upgrading, backup your existing `values.yaml` file
-
-2. **Required Actions**
+1. **Required Actions**
   - Move your global configurations to the new structure under `langfuse`
   - Update your image configuration to use the new structure
-  - Update secret values or references for the salt, encryption key, license key and nextauth secret to the new structure:
+  - Update relevant secret values or references for the salt, encryption key, license key and nextauth secret to the new structure:
     - If you are referencing by value, use `langfuse.salt.value`, `langfuse.encryptionKey.value` and `langfuse.licenseKey.value`
     - If you are referencing by secret, use `langfuse.salt.secretKeyRef`, `langfuse.encryptionKey.secretKeyRef` and `langfuse.licenseKey.secretKeyRef`
   - Migrate your environment variables to the new integrated structure:
-    - Move Redis configuration from `valkey` and `langfuse.additionalEnv` to `redis`
+    - Move Redis configuration from `valkey` and `langfuse.additionalEnv` to `redis`, add the `nameOverride` to `valkey`
     - Move Clickhouse configuration from `clickhouse` and `langfuse.additionalEnv` to `clickhouse`
-    - Move S3/MinIO configuration from `minio` and `langfuse.additionalEnv` to `s3`
+    - Move S3/MinIO configuration from `minio` and `langfuse.additionalEnv` to `s3`, add the `nameOverride` to `minio`
     - Move the encryption key to the new structure under `langfuse.encryptionKey`
 
 3. **Optional Configurations**
