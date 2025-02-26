@@ -55,12 +55,6 @@ The required configuration options to set are:
 They can alternatively set via secret references (the secrets must exist):
 
 ```yaml
-  langfuse:
-    encryptionKey:
-      secretKeyRef:
-        name: langfuse-encryption-key
-        key: encryption-key
-
   nextauth:
     secret:
       secretKeyRef:
