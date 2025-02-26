@@ -8,6 +8,11 @@ This is a community-maintained repository that contains resources for deploying 
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
 
+### 1.0.0 Release Candidate
+
+This Chart is a release candidate for the 1.0.0 version of the Langfuse Helm Chart.
+Please provide all thoughts and feedbacks on the interface and the upgrade path via our [GitHub Discussion](https://github.com/orgs/langfuse/discussions/5734).
+
 ### Installation
 
 Configure the required secrets and parameters as defined below in a new `values.yaml` file.
