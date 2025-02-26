@@ -1,6 +1,6 @@
-# Upgrading from Langfuse Helm Chart v0.12 to v1.0
+# Upgrading from Langfuse Helm Chart v0.13 to v1.0
 
-This guide outlines the changes needed when upgrading from Langfuse Helm Chart v0.12 to v1.0. For an example of a migration for a minimal example, see the [upgrade example](./examples/upgrade-v0.12-to-v1.0/).
+This guide outlines the changes needed when upgrading from Langfuse Helm Chart v0.13 to v1.0. For an example of a migration for a minimal example, see the [upgrade example](./examples/upgrade-v0.13-to-v1.0/).
 
 ## Breaking Changes
 
