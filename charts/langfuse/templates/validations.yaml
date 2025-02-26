@@ -9,7 +9,7 @@
 
 # Validate ClickHouse settings
 {{- if ne ($.Values.clickhouse.shards | int) 1 -}}
-    {{- fail "Langfuse does not support ClickHouse with mutltiple shards. Set clickhouse.shards to 1 to continue." -}}
+    {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) -}}

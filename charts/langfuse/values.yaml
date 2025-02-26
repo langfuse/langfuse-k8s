@@ -98,8 +98,8 @@ langfuse:
   # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
   resources: {}
   image:
-    # -- The image repository to use for all langfuse deployments. Can be overridden by the individual deployments.
-    tag: 3
+    # -- The image tag to use for all langfuse deployments. Can be overridden by the individual deployments. Falls back to appVersion if not set.
+    tag: Null
     # -- The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments.
     pullPolicy: Always
     # -- The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments.

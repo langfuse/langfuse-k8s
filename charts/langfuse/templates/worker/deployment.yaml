@@ -44,7 +44,7 @@ spec:
         - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
-          image: "{{ .Values.langfuse.worker.image.repository }}:{{ .Values.langfuse.worker.image.tag | default .Values.langfuse.image.tag }}"
+          image: "{{ .Values.langfuse.worker.image.repository }}:{{ coalesce .Values.langfuse.worker.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
