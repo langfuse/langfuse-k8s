@@ -293,9 +293,11 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- define "langfuse.getS3ValueOrSecret" -}}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s.%s" .bucket .key) "value" (index .values .bucket .key)) ) -}}
 {{- . }}
-{{- else with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s" .key) "value" (index .values .key)) ) -}}
+{{- else }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.s3.%s" .key) "value" (index .values .key)) ) -}}
 {{- . }}
 {{- else -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
