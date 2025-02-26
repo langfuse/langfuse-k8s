@@ -49,7 +49,7 @@ The required configuration options to set are:
       password: ""
 ```
 
-They can alternatively set via secret references (the secrets must exits):
+They can alternatively set via secret references (the secrets must exist):
 
 ```yaml
   langfuse:
@@ -118,8 +118,6 @@ langfuse:
 ```
 
 ##### With an external Postgres server with client certificates using own secrets and additionalEnv for mappings
-
-TODO(cb):
 
 ```yaml
 langfuse:

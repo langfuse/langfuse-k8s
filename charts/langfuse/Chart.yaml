@@ -33,7 +33,7 @@ dependencies:
     condition: s3.deploy
     alias: s3
   - name: common
-    version: 2.x.x
+    version: 2.30.0
     repository: oci://registry-1.docker.io/bitnamicharts
 maintainers:
   - name: langfuse

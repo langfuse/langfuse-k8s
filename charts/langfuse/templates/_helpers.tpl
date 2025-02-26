@@ -362,7 +362,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.batchExport.region | default .Values.s3.region | quote }}
 {{- end }}
 {{- with (include "langfuse.s3.endpoint" .) }}
-- name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+- name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT
   value: {{ . | quote }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) ) }}
@@ -403,7 +403,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.mediaUpload.region | default .Values.s3.region | quote }}
 {{- end }}
 {{- with (include "langfuse.s3.endpoint" .) }}
-- name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+- name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
   value: {{ . | quote }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) ) }}
