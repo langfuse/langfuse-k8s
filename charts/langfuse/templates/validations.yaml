@@ -171,6 +171,6 @@
 {{- if and $.Values.langfuse.encryptionKey (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENCRYPTION_KEY")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.encryptionKey or langfuse.additionalEnv[name: ENCRYPTION_KEY] to continue." -}}
 {{- end -}}
-{{- if and $.Values.nextauth.secret (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXTAUTH_SECRET")) -}}
-    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either nextauth.secret or langfuse.additionalEnv[name: NEXTAUTH_SECRET] to continue." -}}
+{{- if and $.Values.langfuse.nextauth.secret (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXTAUTH_SECRET")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.nextauth.secret or langfuse.additionalEnv[name: NEXTAUTH_SECRET] to continue." -}}
 {{- end -}}

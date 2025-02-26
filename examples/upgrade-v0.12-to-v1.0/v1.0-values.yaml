@@ -3,12 +3,10 @@
 langfuse:
   salt:
     value: secureSalt
-  encryptionKey:
-    value: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
-nextauth:
-  secret:
-    value: secretNextAuthSecret
+  nextauth:
+    secret:
+      value: secretNextAuthSecret
 
 postgresql:
   auth:

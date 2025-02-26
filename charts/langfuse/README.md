@@ -44,7 +44,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
 | clickhouse.nativePort | int | `9000` | ClickHouse native port to connect to. |
 | clickhouse.replicaCount | int | `3` | Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment. |
-| clickhouse.resourcesPreset | string | `"2xlarge"` | The resources preset to use for the ClickHouse cluster. |
+| clickhouse.resourcesPreset | string | `"medium"` | The resources preset to use for the ClickHouse cluster. |
 | clickhouse.shards | int | `1` | Subchart specific settings |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
@@ -71,6 +71,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.licenseKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Langfuse EE license key. |
 | langfuse.logging.format | string | `"text"` | Set the log format for the application (text or json) |
 | langfuse.logging.level | string | `"info"` | Set the log level for the application (trace, debug, info, warn, error, fatal) |
+| langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference. |
+| langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
 | langfuse.podAnnotations | object | `{}` | Pod annotations for all langfuse deployments |
@@ -137,9 +139,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse worker pods |
 | langfuse.worker.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse worker pods |
 | nameOverride | string | `""` | Override the name for the selector labels, defaults to the chart name |
-| nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference. |
-| nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
 | postgresql.architecture | string | `"standalone"` |  |
+| postgresql.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.database | string | `"postgres_langfuse"` | Database name to use for Langfuse. |
 | postgresql.auth.existingSecret | string | `""` | If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.username` and `postgresql.auth.password` will be ignored and picked up from this secret). |
@@ -166,7 +167,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret). |
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |
 | s3.auth.rootPasswordSecretKey | string | `""` | Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret` |
-| s3.auth.rootUser | string | `"admin"` | root username |
+| s3.auth.rootUser | string | `"minio"` | root username |
 | s3.batchExport.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for batch exports. |
 | s3.batchExport.bucket | string | `""` | S3 bucket to use for batch exports. |
 | s3.batchExport.enabled | bool | `true` | Enable batch export. |

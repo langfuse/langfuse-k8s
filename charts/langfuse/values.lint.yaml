@@ -3,14 +3,9 @@
 langfuse:
   salt:
     value: "secretSalt"
-  encryptionKey:
-    secretKeyRef:
-      name: langfuse-encryption-key
-      key: encryption-key
-
-nextauth:
-  secret:
-    value: "secretSecret"
+  nextauth:
+    secret:
+      value: "secretSecret"
 
 postgresql:
   auth:

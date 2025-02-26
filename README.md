@@ -29,12 +29,9 @@ The required configuration options to set are:
 
 ```yaml
   langfuse:
-    encryptionKey:
-      value: ""
-
-  nextauth:
-    secret:
-      value: ""
+    nextauth:
+      secret:
+        value: ""
 
   postgresql:
     auth:

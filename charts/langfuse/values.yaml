@@ -257,17 +257,16 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
-
-# NextAuth configuration
-nextauth:
-  # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
-  url: http://localhost:3000
-  # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
-  secret:
-    value: ""
-    secretKeyRef:
-      name: ""
-      key: ""
+  # NextAuth configuration
+  nextauth:
+    # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
+    url: http://localhost:3000
+    # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
+    secret:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
 
 # PostgreSQL Configuration
 postgresql:
@@ -383,7 +382,7 @@ clickhouse:
   # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
   replicaCount: 3
   # -- The resources preset to use for the ClickHouse cluster.
-  resourcesPreset: 2xlarge
+  resourcesPreset: medium
 
 # S3/MinIO Configuration
 s3:
@@ -498,7 +497,7 @@ s3:
   defaultBuckets: langfuse
   auth:
     # -- root username
-    rootUser: admin
+    rootUser: minio
     # -- Password for MinIO root user
     rootPassword: ""
     # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret).

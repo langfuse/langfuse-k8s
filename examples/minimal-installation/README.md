@@ -42,16 +42,12 @@ langfuse:
     secretKeyRef:
       name: langfuse
       key: salt
-  encryptionKey:
-    secretKeyRef:
-      name: langfuse
-      key: encryption-key
 
-nextauth:
-  secret:
-    secretKeyRef:
-      name: langfuse
-      key: nextauth-secret
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
 
 postgresql:
   auth:

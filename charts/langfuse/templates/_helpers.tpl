@@ -99,6 +99,18 @@ Return ClickHouse hostname
 {{- end }}
 
 {{/*
+Return S3/MinIO endpoint -- if not set uses auto-discovery
+*/}}
+{{- define "langfuse.s3.endpoint" -}}
+{{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
+{{- .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint }}
+{{- else if .Values.s3.deploy }}
+{{- printf "http://%s-%s:9000" (include "langfuse.fullname" .) (default "s3" .Values.s3.nameOverride) -}}
+{{- else }}
+{{- end }}
+{{- end }}
+
+{{/*
 Get a value from either a direct value or a secret reference, or nothing if neither is provided
 */}}
 {{- define "langfuse.getValueOrSecret" -}}
@@ -202,7 +214,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: SALT
   {{- . | nindent 2 }}
 {{- end }}
-{{- with (include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey) ) }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey) ) }}
 - name: ENCRYPTION_KEY
   {{- . | nindent 2 }}
 {{- end }}
@@ -224,9 +236,9 @@ Get value of a specific environment variable from additionalEnv if it exists
 */}}
 {{- define "langfuse.nextauthEnv" -}}
 - name: NEXTAUTH_URL
-  value: {{ .Values.nextauth.url | quote }}
+  value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
-  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "nextauth.secret" "value" .Values.nextauth.secret) | nindent 2 }}
+  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
 {{- end -}}
 
 {{/*
@@ -306,23 +318,27 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
   value: {{ .Values.s3.eventUpload.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
+{{- with (include "langfuse.s3.endpoint" .) }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint | quote }}
+  value: {{ . | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.accessKeyId .Values.s3.accessKeyId }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "eventUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "eventUpload" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy -}}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
   value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.secretAccessKey .Values.s3.secretAccessKey }}
+{{- end }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "eventUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "eventUpload" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy -}}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
   value: {{ .Values.s3.auth.rootPassword | quote }}
+{{- end }}
 {{- end }}
 {{- if or .Values.s3.eventUpload.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
@@ -345,23 +361,27 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: LANGFUSE_S3_BATCH_EXPORT_REGION
   value: {{ .Values.s3.batchExport.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.batchExport.endpoint .Values.s3.endpoint }}
-- name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT
-  value: {{ .Values.s3.batchExport.endpoint | default .Values.s3.endpoint | quote }}
+{{- with (include "langfuse.s3.endpoint" .) }}
+- name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+  value: {{ . | quote }}
 {{- end }}
-{{- if or .Values.s3.batchExport.accessKeyId .Values.s3.accessKeyId }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy }}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
   value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
-{{- if or .Values.s3.batchExport.secretAccessKey .Values.s3.secretAccessKey }}
+{{- end }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "batchExport" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "batchExport" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy }}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
   value: {{ .Values.s3.auth.rootPassword | quote }}
+{{- end }}
 {{- end }}
 {{- if or .Values.s3.batchExport.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
@@ -382,23 +402,27 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
   value: {{ .Values.s3.mediaUpload.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.endpoint .Values.s3.endpoint }}
-- name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.mediaUpload.endpoint | default .Values.s3.endpoint | quote }}
+{{- with (include "langfuse.s3.endpoint" .) }}
+- name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+  value: {{ . | quote }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.accessKeyId .Values.s3.accessKeyId }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy -}}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
   value: {{ .Values.s3.auth.rootUser | quote }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.secretAccessKey .Values.s3.secretAccessKey }}
+{{- end }}
+{{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "mediaUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
-  {{- include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "mediaUpload" "values" .Values.s3) | nindent 2 }}
-{{- else if .Values.s3.deploy -}}
+  {{- . | nindent 2 }}
+{{- else }}
+{{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
   value: {{ .Values.s3.auth.rootPassword | quote }}
+{{- end }}
 {{- end }}
 {{- if or .Values.s3.mediaUpload.forcePathStyle .Values.s3.forcePathStyle }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE

@@ -1,6 +1,6 @@
-nextauth:
-  url: http://langfuse.example.com
 langfuse:
+  nextauth:
+    url: http://langfuse.example.com
   ingress:
     enabled: true
     # This requires an ingress controller to be installed in the cluster

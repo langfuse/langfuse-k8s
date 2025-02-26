@@ -35,6 +35,7 @@ langfuse:
 clickhouse:
   auth:
     password: secretClickhousePassword
+  resourcesPreset: medium
 valkey:
   auth:
     password: secretValkeyPassword

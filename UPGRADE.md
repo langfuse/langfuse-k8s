@@ -1,6 +1,6 @@
 # Upgrading from Langfuse Helm Chart v0.12 to v1.0
 
-This guide outlines the changes needed when upgrading from Langfuse Helm Chart v0.12 to v1.0.
+This guide outlines the changes needed when upgrading from Langfuse Helm Chart v0.12 to v1.0. For an example of a migration for a minimal example, see the [upgrade example](./examples/upgrade-v0.12-to-v1.0/).
 
 ## Breaking Changes
 
@@ -81,7 +81,7 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
       # New
       langfuse:
         encryptionKey:
-          value: "<encryption-key>"  # Must be 256 bits (64 characters in hex format)
+          value: "<encryption-key>"
     ```
 
     Alternatively, you can use an existing secret for the encryption key:
@@ -336,14 +336,14 @@ The following configurations have been removed or replaced:
     - Move the encryption key to the new structure under `langfuse.encryptionKey`
 
 3. **Optional Configurations**
-   - Configure the new logging settings if needed
-   - Set up health check parameters if you need custom values
-   - Review and configure the new feature flags structure
+  - Configure the new logging settings if needed
+  - Set up health check parameters if you need custom values
+  - Review and configure the new feature flags structure
 
 4. **Dependencies**
-   - Review the configuration of dependent services (Redis, PostgreSQL, Clickhouse, MinIO)
-   - Check that all required environment variables are properly migrated to the new structure
-   - Any remaining custom environment variables can still be set in `langfuse.additionalEnv`
+  - Review the configuration of dependent services (Redis, PostgreSQL, Clickhouse, MinIO)
+  - Check that all required environment variables are properly migrated to the new structure
+  - Any remaining custom environment variables can still be set in `langfuse.additionalEnv`
 
 ## Additional Notes
 
