@@ -464,7 +464,7 @@ s3:
 
   # Media Upload Configuration
   mediaUpload:
-    # -- Enable batch export.
+    # -- Enable media uploads.
     enabled: true
     # -- S3 bucket to use for media uploads.
     bucket: ""
