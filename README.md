@@ -34,10 +34,14 @@ If yes, follow the guide for the respective sub-chart to upgrade it.
 The required configuration options to set are:
 
 ```yaml
-  langfuse:
-    nextauth:
-      secret:
-        value: ""
+  # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
+  #  langfuse:
+  #    encryptionKey:
+  #      value: ""
+    
+  nextauth:
+    secret:
+      value: ""
 
   postgresql:
     auth:
@@ -55,6 +59,13 @@ The required configuration options to set are:
 They can alternatively set via secret references (the secrets must exist):
 
 ```yaml
+    # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
+    #  langfuse:
+    #    encryptionKey:
+    #      secretKeyRef:
+    #        name: langfuse-encryption-key-secret
+    #        key: encryptionKey
+
   nextauth:
     secret:
       secretKeyRef:
