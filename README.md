@@ -58,6 +58,9 @@ helm repo update
 helm upgrade langfuse langfuse/langfuse
 ```
 
+Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
+If yes, follow the guide for the respective sub-chart to upgrade it.
+
 ### Configuration
 
 The following table lists the useful configurable parameters of the Langfuse chart and their default values.
