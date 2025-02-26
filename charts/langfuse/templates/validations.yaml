@@ -1,0 +1,176 @@
+# Validate Langfuse Server settings
+{{- if not (has $.Values.langfuse.logging.level (list "trace" "debug" "info" "warn" "error" "fatal")) -}}
+    {{- fail "langfuse.logging.level must be one of: trace, debug, info, warn, error, fatal" -}}
+{{- end -}}
+{{- if not (has $.Values.langfuse.logging.format (list "text" "json")) -}}
+    {{- fail "langfuse.logging.format must be one of: text, json" -}}
+{{- end -}}
+
+
+# Validate ClickHouse settings
+{{- if ne ($.Values.clickhouse.shards | int) 1 -}}
+    {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) -}}
+    {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
+{{- end -}}
+
+# Validate Redis settings
+{{- if and $.Values.redis.deploy (not (has "--maxmemory-policy noeviction" $.Values.redis.primary.extraFlags)) -}}
+    {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) -}}
+    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
+{{- end -}}
+
+
+# Validate S3 settings
+#   Event Upload
+{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
+    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.eventUpload.bucket)) -}}
+    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.eventUpload.bucket to continue." -}}
+{{- end -}}
+
+#   Batch Export
+{{- if $.Values.s3.batchExport.enabled -}}
+{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.batchExport.forcePathStyle)) -}}
+    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
+    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.batchExport.bucket to continue." -}}
+{{- end -}}
+{{- end -}}
+
+#   Media Upload
+{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.mediaUpload.forcePathStyle)) -}}
+    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
+{{- end -}}
+
+{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}
+    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.mediaUpload.bucket to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for PostgreSQL
+{{- if and $.Values.postgresql.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "DATABASE_HOST")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either postgresql.host or langfuse.additionalEnv[name: DATABASE_HOST] to continue." -}}
+{{- end -}}
+{{- if and $.Values.postgresql.port (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "DATABASE_PORT")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either postgresql.port or langfuse.additionalEnv[name: DATABASE_PORT] to continue." -}}
+{{- end -}}
+{{- if and $.Values.postgresql.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "DATABASE_USERNAME")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either postgresql.auth.username or langfuse.additionalEnv[name: DATABASE_USERNAME] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.postgresql.auth.password $.Values.postgresql.auth.existingSecret) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "DATABASE_PASSWORD")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either postgresql.auth.password/existingSecret or langfuse.additionalEnv[name: DATABASE_PASSWORD] to continue." -}}
+{{- end -}}
+{{- if and $.Values.postgresql.auth.database (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "DATABASE_NAME")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either postgresql.auth.database or langfuse.additionalEnv[name: DATABASE_NAME] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for Redis
+{{- if and $.Values.redis.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either redis configuration or langfuse.additionalEnv[name: REDIS_CONNECTION_STRING] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for ClickHouse
+{{- if and $.Values.clickhouse.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_MIGRATION_URL")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse configuration or langfuse.additionalEnv[name: CLICKHOUSE_MIGRATION_URL] to continue." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse configuration or langfuse.additionalEnv[name: CLICKHOUSE_URL] to continue." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_USER")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse.auth.username or langfuse.additionalEnv[name: CLICKHOUSE_USER] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.clickhouse.auth.password $.Values.clickhouse.auth.existingSecret) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_PASSWORD")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse.auth.password or langfuse.additionalEnv[name: CLICKHOUSE_PASSWORD] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for S3/MinIO
+## Event Upload - Check both specific and global settings
+{{- if and (or $.Values.s3.eventUpload.bucket $.Values.s3.bucket) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_BUCKET")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]bucket or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.eventUpload.region $.Values.s3.region) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_REGION")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]region or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_REGION] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.eventUpload.accessKeyId.value $.Values.s3.eventUpload.accessKeyId.secretKeyRef.name) (or $.Values.s3.accessKeyId.value $.Values.s3.accessKeyId.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]accessKeyId or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.eventUpload.secretAccessKey.value $.Values.s3.eventUpload.secretAccessKey.secretKeyRef.name) (or $.Values.s3.secretAccessKey.value $.Values.s3.secretAccessKey.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]secretAccessKey or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.eventUpload.endpoint $.Values.s3.endpoint) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]endpoint or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.eventUpload.forcePathStyle $.Values.s3.forcePathStyle) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[eventUpload.]forcePathStyle or langfuse.additionalEnv[name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE] to continue." -}}
+{{- end -}}
+
+## Batch Export - Check both specific and global settings
+{{- if and (or $.Values.s3.batchExport.bucket $.Values.s3.bucket) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_BUCKET")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]bucket or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_BUCKET] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.batchExport.region $.Values.s3.region) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_REGION")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]region or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_REGION] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.batchExport.accessKeyId.value $.Values.s3.batchExport.accessKeyId.secretKeyRef.name) (or $.Values.s3.accessKeyId.value $.Values.s3.accessKeyId.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]accessKeyId or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.batchExport.secretAccessKey.value $.Values.s3.batchExport.secretAccessKey.secretKeyRef.name) (or $.Values.s3.secretAccessKey.value $.Values.s3.secretAccessKey.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]secretAccessKey or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.batchExport.endpoint $.Values.s3.endpoint) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_ENDPOINT")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]endpoint or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.batchExport.forcePathStyle $.Values.s3.forcePathStyle) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[batchExport.]forcePathStyle or langfuse.additionalEnv[name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE] to continue." -}}
+{{- end -}}
+
+## Media Upload - Check both specific and global settings
+{{- if and (or $.Values.s3.mediaUpload.bucket $.Values.s3.bucket) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_BUCKET")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]bucket or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.mediaUpload.region $.Values.s3.region) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_REGION")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]region or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_REGION] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.mediaUpload.accessKeyId.value $.Values.s3.mediaUpload.accessKeyId.secretKeyRef.name) (or $.Values.s3.accessKeyId.value $.Values.s3.accessKeyId.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]accessKeyId or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID] to continue." -}}
+{{- end -}}
+{{- if and (or (or $.Values.s3.mediaUpload.secretAccessKey.value $.Values.s3.mediaUpload.secretAccessKey.secretKeyRef.name) (or $.Values.s3.secretAccessKey.value $.Values.s3.secretAccessKey.secretKeyRef.name)) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]secretAccessKey or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.mediaUpload.endpoint $.Values.s3.endpoint) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]endpoint or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT] to continue." -}}
+{{- end -}}
+{{- if and (or $.Values.s3.mediaUpload.forcePathStyle $.Values.s3.forcePathStyle) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either s3.[mediaUpload.]forcePathStyle or langfuse.additionalEnv[name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for Feature Flags
+{{- if and $.Values.langfuse.features.telemetryEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "TELEMETRY_ENABLED")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.telemetryEnabled or langfuse.additionalEnv[name: TELEMETRY_ENABLED] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.features.signUpDisabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXT_PUBLIC_SIGN_UP_DISABLED")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.signUpDisabled or langfuse.additionalEnv[name: NEXT_PUBLIC_SIGN_UP_DISABLED] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.features.experimentalFeaturesEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENABLE_EXPERIMENTAL_FEATURES")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.experimentalFeaturesEnabled or langfuse.additionalEnv[name: ENABLE_EXPERIMENTAL_FEATURES] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for Authentication and Security
+{{- if and $.Values.langfuse.salt (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "SALT")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.salt or langfuse.additionalEnv[name: SALT] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.encryptionKey (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENCRYPTION_KEY")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.encryptionKey or langfuse.additionalEnv[name: ENCRYPTION_KEY] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.nextauth.secret (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXTAUTH_SECRET")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.nextauth.secret or langfuse.additionalEnv[name: NEXTAUTH_SECRET] to continue." -}}
+{{- end -}}

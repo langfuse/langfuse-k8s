@@ -1,0 +1,20 @@
+# This file is used to validate the Chart and sets some values for required fields. It is not used for the deployment.
+# Example usage: `helm lint . --values values.lint.yaml`
+langfuse:
+  salt:
+    value: "secretSalt"
+  nextauth:
+    secret:
+      value: "secretSecret"
+
+postgresql:
+  auth:
+    password: "secretPassword"
+
+clickhouse:
+  auth:
+    password: "secretPassword"
+
+redis:
+  auth:
+    password: "secretPassword"

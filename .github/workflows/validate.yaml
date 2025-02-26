@@ -1,0 +1,40 @@
+name: Validate Helm Charts
+on:
+  pull_request:
+    paths:
+      - 'charts/**'
+jobs:
+  validate:
+    name: Validate Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.13.2
+
+      - name: Install helm-docs
+        run: |
+          wget -O /tmp/helm-docs.deb https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.deb
+          sudo dpkg -i /tmp/helm-docs.deb
+
+      - name: Update dependencies
+        run: helm dependency update charts/langfuse/
+
+      - name: Run helm lint
+        run: helm lint charts/langfuse/ -f charts/langfuse/values.lint.yaml
+
+      - name: Validate helm-docs
+        run: |
+          helm-docs charts/langfuse/
+          if [[ $(git diff --stat) != '' ]]; then
+            echo 'Chart documentation is out of date. Please run helm-docs and commit the changes.'
+            echo 'Git diff:'
+            git diff
+            exit 1
+          fi

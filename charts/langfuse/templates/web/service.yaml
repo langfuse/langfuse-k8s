@@ -4,23 +4,21 @@ metadata:
   name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
-    {{- with .Values.service.additionalLabels }}
+    {{- with .Values.langfuse.web.service.additionalLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- if .Values.service.annotations }}
+{{- with .Values.langfuse.web.service.annotations }}
   annotations:
-    {{- with .Values.service.annotations }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
-  {{- end }}
+{{- end }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.langfuse.web.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
+    - port: {{ .Values.langfuse.web.service.port }}
       targetPort: http
       protocol: TCP
       name: http
-      nodePort: {{ .Values.service.nodePort }}
+      nodePort: {{ .Values.langfuse.web.service.nodePort }}
   selector:
     {{- include "langfuse.selectorLabels" . | nindent 4 }}
     app: web

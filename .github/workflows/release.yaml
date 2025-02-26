@@ -1,4 +1,5 @@
-name: Release
+name: Release Charts
+
 on:
   push:
     branches:

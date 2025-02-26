@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "langfuse.fullname" . }}-web
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.langfuse.web.hpa.enabled }}
+  replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
+  {{- end }}
+  {{- if .Values.langfuse.web.hostAliases }}
+  hostAliases:
+    {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app: web
+  template:
+    metadata:
+      {{- with .Values.langfuse.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app: web
+    spec:
+      {{- with (.Values.langfuse.web.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
+      {{- if .Values.langfuse.extraInitContainers }}
+      initContainers:
+        {{- toYaml .Values.langfuse.extraInitContainers | nindent 8 }}
+      {{- end }}
+      {{- if .Values.langfuse.extraVolumes }}
+      volumes:
+        {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- if .Values.langfuse.extraContainers }}
+        {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
+        {{- end }}
+        - name: {{ .Chart.Name }}-web
+          securityContext:
+            {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
+          image: "{{ .Values.langfuse.web.image.repository }}:{{ coalesce .Values.langfuse.web.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.langfuse.web.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
+          env:
+            {{- include "langfuse.commonEnv" . | nindent 12 }}
+            - name: PORT
+              value: {{ .Values.langfuse.web.service.port | quote }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            {{- if .Values.langfuse.additionalEnv }}
+              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.langfuse.web.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.livenessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.livenessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.livenessProbe.failureThreshold | default 5 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.langfuse.web.readinessProbe.path | default "/api/public/ready" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.readinessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
+          resources:
+            {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
+          {{- if .Values.langfuse.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
+          {{- end }}
+      {{- with .Values.langfuse.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.langfuse.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.langfuse.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
