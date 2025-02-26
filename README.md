@@ -13,6 +13,8 @@ We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
 This Chart is a release candidate for the 1.0.0 version of the Langfuse Helm Chart.
 Please provide all thoughts and feedbacks on the interface and the upgrade path via our [GitHub Discussion](https://github.com/orgs/langfuse/discussions/5734).
 
+For details on how to migrate from 0.13.x to 1.0.0, refer to our [migration guide](./UPGRADE.md).
+
 ### Installation
 
 Configure the required secrets and parameters as defined below in a new `values.yaml` file.
