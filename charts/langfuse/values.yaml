@@ -3,7 +3,8 @@ replicaCount: 1
 image:
   repository: langfuse/langfuse
   pullPolicy: Always
-  tag: 3
+  # Overwrite to use a specific docker tag. Falls back to chart.appVersion if not set.
+  # tag: 3
 
 imagePullSecrets: []
 nameOverride: ""
