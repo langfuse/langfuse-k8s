@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.1](https://img.shields.io/badge/Version-1.0.0--rc.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.2](https://img.shields.io/badge/Version-1.0.0--rc.2-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -44,7 +44,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
 | clickhouse.nativePort | int | `9000` | ClickHouse native port to connect to. |
 | clickhouse.replicaCount | int | `3` | Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment. |
-| clickhouse.resourcesPreset | string | `"medium"` | The resources preset to use for the ClickHouse cluster. |
+| clickhouse.resourcesPreset | string | `"2xlarge"` | The resources preset to use for the ClickHouse cluster. |
 | clickhouse.shards | int | `1` | Subchart specific settings |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
