@@ -1,6 +1,14 @@
 # This values.yaml file demonstrates how to use the basic chart with a single, pre-created secret.
 # Secrets must be set manually or via External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
 langfuse:
+  pod:
+    labels:
+      global: label
+  web:
+    pod:
+      labels:
+        pod: label
+
   salt:
     value: secureSalt
 

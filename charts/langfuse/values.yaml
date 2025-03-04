@@ -92,6 +92,8 @@ langfuse:
   pod:
     # -- Annotations for all langfuse pods
     annotations: {}
+    # -- Labels for all langfuse pods
+    labels: {}
   deployment:
     # -- Annotations for all langfuse deployments
     annotations: {}
@@ -135,6 +137,8 @@ langfuse:
     pod:
       # -- Annotations for the web pods
       annotations: {}
+      # -- Labels for the web pods
+      labels: {}
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -226,6 +230,8 @@ langfuse:
     pod:
       # -- Annotations for the worker pods
       annotations: {}
+      # -- Labels for the worker pods
+      labels: {}
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
