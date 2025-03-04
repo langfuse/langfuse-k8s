@@ -4,6 +4,10 @@ metadata:
   name: {{ include "langfuse.fullname" . }}-worker
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+  {{- with (coalesce .Values.langfuse.worker.deployment.annotations .Values.langfuse.deployment.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.langfuse.worker.hpa.enabled }}
   replicas: {{ .Values.langfuse.worker.replicas | default .Values.langfuse.replicas }}
@@ -14,7 +18,8 @@ spec:
       app: worker
   template:
     metadata:
-      {{- with .Values.langfuse.podAnnotations }}
+      {{- $podAnnotations := merge (.Values.langfuse.worker.pod.annotations | default dict) (.Values.langfuse.pod.annotations | default dict) }}
+      {{- with $podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -51,6 +56,10 @@ spec:
             {{- if .Values.langfuse.additionalEnv }}
               {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
             {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.langfuse.worker.port | default 3000 }}
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /api/health
