@@ -255,6 +255,8 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
+- name: REDIS_TLS_ENABLED
+  value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
   value: "redis://{{ .Values.redis.auth.username | default "default" }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- end -}}

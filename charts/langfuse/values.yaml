@@ -324,6 +324,11 @@ redis:
   # -- Redis port to connect to.
   port: 6379
   
+  # TLS configuration
+  tls:
+    # -- Set to `true` to enable TLS/SSL encrypted connection to the Redis server
+    enabled: false
+  
   # Authentication configuration
   auth:
     # -- Configure the password by value or existing secret reference
