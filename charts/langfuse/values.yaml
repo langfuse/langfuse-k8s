@@ -324,6 +324,17 @@ redis:
   # -- Redis port to connect to.
   port: 6379
   
+  # Redis TLS configuration
+  tls:
+    # -- Set to `true` to enable TLS/SSL encrypted connection to the Redis server
+    enabled: false
+    # -- Path to the CA certificate file for TLS verification
+    caPath: ""
+    # -- Path to the client certificate file for mutual TLS authentication
+    certPath: ""
+    # -- Path to the client private key file for mutual TLS authentication
+    keyPath: ""
+  
   # Authentication configuration
   auth:
     # -- Configure the password by value or existing secret reference
