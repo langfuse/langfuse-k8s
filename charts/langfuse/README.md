@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.4](https://img.shields.io/badge/Version-1.0.0--rc.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.5](https://img.shields.io/badge/Version-1.0.0--rc.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -50,6 +50,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
+| langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
@@ -75,7 +76,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
-| langfuse.podAnnotations | object | `{}` | Pod annotations for all langfuse deployments |
+| langfuse.pod.annotations | object | `{}` | Annotations for all langfuse pods |
 | langfuse.podSecurityContext | object | `{}` | Pod security context for all langfuse deployments |
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
@@ -85,6 +86,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
+| langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
 | langfuse.web.hostAliases | list | `[]` | Adding records to /etc/hosts in the pod's network. |
 | langfuse.web.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse web pods |
 | langfuse.web.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse web pods |
@@ -100,6 +102,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
 | langfuse.web.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
 | langfuse.web.readinessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for readinessProbe. |
 | langfuse.web.readinessProbe.path | string | `"/api/public/ready"` | Path to check for readiness. |
@@ -118,6 +121,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse web pods |
+| langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
 | langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods |
 | langfuse.worker.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
 | langfuse.worker.hpa.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse worker pods |
@@ -131,6 +135,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
@@ -163,6 +168,10 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.port | int | `6379` | Redis port to connect to. |
 | redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
+| redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
+| redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication |
+| redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
+| redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication |
 | s3.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for all uploads. Can be overridden per upload type. |
 | s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret). |
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |

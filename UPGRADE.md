@@ -23,7 +23,8 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
       # New
       langfuse:
         serviceAccount: [...]
-        podAnnotations: {}
+        pod:
+          annotations: {}
         podSecurityContext: {}
         securityContext: {}
         resources: {}

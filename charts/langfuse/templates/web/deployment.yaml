@@ -4,6 +4,10 @@ metadata:
   name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+  {{- with (coalesce .Values.langfuse.web.deployment.annotations .Values.langfuse.deployment.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if not .Values.langfuse.web.hpa.enabled }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
@@ -18,7 +22,8 @@ spec:
       app: web
   template:
     metadata:
-      {{- with .Values.langfuse.podAnnotations }}
+      {{- $podAnnotations := merge (.Values.langfuse.web.pod.annotations | default dict) (.Values.langfuse.pod.annotations | default dict) }}
+      {{- with $podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
