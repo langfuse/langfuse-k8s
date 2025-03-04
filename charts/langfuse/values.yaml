@@ -305,7 +305,7 @@ postgresql:
   # Migration configuration
   migration:
     # -- Whether to run automatic migrations on startup
-    autoMigrate: false
+    autoMigrate: true
 
   # Subchart specific settings
   architecture: standalone

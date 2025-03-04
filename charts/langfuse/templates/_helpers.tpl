@@ -284,6 +284,8 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
 {{- end -}}
+- name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
+  value: {{ not .Values.clickhouse.migration.autoMigrate | quote }}
 {{- end -}}
 
 {{/*
