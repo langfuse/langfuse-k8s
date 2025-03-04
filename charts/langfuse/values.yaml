@@ -79,8 +79,6 @@ langfuse:
       # -- The name of the secret to use for TLS Key
       secretName: ""
 
-  # -- Pod annotations for all langfuse deployments
-  podAnnotations: {}
   # -- Pod security context for all langfuse deployments
   podSecurityContext: {}
   # -- Security context for all langfuse deployments
@@ -91,8 +89,12 @@ langfuse:
   tolerations: []
   # -- Affinity for all langfuse deployments
   affinity: {}
-
-
+  pod:
+    # -- Annotations for all langfuse pods
+    annotations: {}
+  deployment:
+    # -- Annotations for all langfuse deployments
+    annotations: {}
   # -- Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments
   replicas: 1
   # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
@@ -127,7 +129,12 @@ langfuse:
       pullPolicy: Null
       # -- The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
-
+    deployment:
+      # -- Annotations for the web deployment
+      annotations: {}
+    pod:
+      # -- Annotations for the web pods
+      annotations: {}
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -213,6 +220,12 @@ langfuse:
       pullPolicy: Null
       # -- The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
+    deployment:
+      # -- Annotations for the worker deployment
+      annotations: {}
+    pod:
+      # -- Annotations for the worker pods
+      annotations: {}
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
