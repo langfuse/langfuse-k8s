@@ -163,10 +163,10 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.port | int | `6379` | Redis port to connect to. |
 | redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
-| redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server. When enabled, automatically uses `rediss://` protocol. |
-| redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification. Sets environment variable `REDIS_TLS_CA_PATH`. |
-| redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication. Sets environment variable `REDIS_TLS_CERT_PATH`. |
-| redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication. Sets environment variable `REDIS_TLS_KEY_PATH`. |
+| redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
+| redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
+| redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication |
+| redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication |
 | s3.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for all uploads. Can be overridden per upload type. |
 | s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret). |
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |
