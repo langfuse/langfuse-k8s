@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.5](https://img.shields.io/badge/Version-1.0.0--rc.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.6](https://img.shields.io/badge/Version-1.0.0--rc.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -77,6 +77,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
 | langfuse.pod.annotations | object | `{}` | Annotations for all langfuse pods |
+| langfuse.pod.labels | object | `{}` | Labels for all langfuse pods |
 | langfuse.podSecurityContext | object | `{}` | Pod security context for all langfuse deployments |
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
@@ -103,6 +104,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
+| langfuse.web.pod.labels | object | `{}` | Labels for the web pods |
 | langfuse.web.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
 | langfuse.web.readinessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for readinessProbe. |
 | langfuse.web.readinessProbe.path | string | `"/api/public/ready"` | Path to check for readiness. |
@@ -136,6 +138,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
 | langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
+| langfuse.worker.pod.labels | object | `{}` | Labels for the worker pods |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |

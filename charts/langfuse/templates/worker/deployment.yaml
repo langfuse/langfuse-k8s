@@ -26,6 +26,10 @@ spec:
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
         app: worker
+        {{- $podLabels := merge (.Values.langfuse.worker.pod.labels | default dict) (.Values.langfuse.pod.labels | default dict) }}
+        {{- with $podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with (.Values.langfuse.worker.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
       imagePullSecrets:
