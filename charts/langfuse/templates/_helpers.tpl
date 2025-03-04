@@ -283,7 +283,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- if $.Values.clickhouse.replicaCount | int | eq 1 -}}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
-{{- end -}}
+{{- end }}
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
   value: {{ not .Values.clickhouse.migration.autoMigrate | quote }}
 {{- end -}}
