@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.6](https://img.shields.io/badge/Version-1.0.0--rc.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.7](https://img.shields.io/badge/Version-1.0.0--rc.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -189,6 +189,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.batchExport.region | string | `""` | S3 region to use for batch exports. |
 | s3.batchExport.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for batch exports. |
 | s3.bucket | string | `""` | S3 bucket to use for all uploads. Can be overridden per upload type. |
+| s3.concurrency.reads | int | `50` | Maximum number of concurrent read operations to S3. Defaults to 50. |
+| s3.concurrency.writes | int | `50` | Maximum number of concurrent write operations to S3. Defaults to 50. |
 | s3.defaultBuckets | string | `"langfuse"` |  |
 | s3.deploy | bool | `true` | Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false. |
 | s3.endpoint | string | `""` | S3 endpoint to use for all uploads. Can be overridden per upload type. |

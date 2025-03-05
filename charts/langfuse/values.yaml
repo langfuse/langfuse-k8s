@@ -440,6 +440,13 @@ s3:
       name: ""
       key: ""
 
+  # S3 Concurrency Configuration
+  concurrency:
+    # -- Maximum number of concurrent read operations to S3. Defaults to 50.
+    reads: 50
+    # -- Maximum number of concurrent write operations to S3. Defaults to 50.
+    writes: 50
+
   # Event Upload Configuration
   eventUpload:
     # -- S3 bucket to use for event uploads.
