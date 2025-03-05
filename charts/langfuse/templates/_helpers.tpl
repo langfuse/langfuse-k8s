@@ -452,6 +452,16 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.mediaUpload.maxContentLength | quote }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_DOWNLOAD_URL_EXPIRY_SECONDS
   value: {{ .Values.s3.mediaUpload.downloadUrlExpirySeconds | quote }}
+{{- if hasKey .Values.s3 "concurrency" }}
+{{- if hasKey .Values.s3.concurrency "reads" }}
+- name: LANGFUSE_S3_CONCURRENT_READS
+  value: {{ .Values.s3.concurrency.reads | quote }}
+{{- end }}
+{{- if hasKey .Values.s3.concurrency "writes" }}
+- name: LANGFUSE_S3_CONCURRENT_WRITES
+  value: {{ .Values.s3.concurrency.writes | quote }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
