@@ -189,6 +189,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.batchExport.region | string | `""` | S3 region to use for batch exports. |
 | s3.batchExport.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for batch exports. |
 | s3.bucket | string | `""` | S3 bucket to use for all uploads. Can be overridden per upload type. |
+| s3.concurrency.reads | int | `50` | Maximum number of concurrent read operations to S3. Defaults to 50. |
+| s3.concurrency.writes | int | `50` | Maximum number of concurrent write operations to S3. Defaults to 50. |
 | s3.defaultBuckets | string | `"langfuse"` |  |
 | s3.deploy | bool | `true` | Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false. |
 | s3.endpoint | string | `""` | S3 endpoint to use for all uploads. Can be overridden per upload type. |
