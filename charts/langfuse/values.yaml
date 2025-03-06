@@ -454,7 +454,7 @@ s3:
     # -- Prefix to use for event uploads within the bucket.
     prefix: ""
     # -- S3 region to use for event uploads.
-    region: "auto"
+    region: ""
     # -- S3 endpoint to use for event uploads.
     endpoint: ""
     # -- Whether to force path style on requests. Required for MinIO.
