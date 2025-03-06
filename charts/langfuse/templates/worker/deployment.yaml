@@ -62,7 +62,7 @@ spec:
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ .Values.langfuse.worker.port | default 3000 }}
+              containerPort: {{ .Values.langfuse.worker.port | default 3030 }}
               protocol: TCP
           livenessProbe:
             httpGet:
