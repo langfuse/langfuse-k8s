@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.8](https://img.shields.io/badge/Version-1.0.0--rc.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.9](https://img.shields.io/badge/Version-1.0.0--rc.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -199,7 +199,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.eventUpload.endpoint | string | `""` | S3 endpoint to use for event uploads. |
 | s3.eventUpload.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. |
 | s3.eventUpload.prefix | string | `""` | Prefix to use for event uploads within the bucket. |
-| s3.eventUpload.region | string | `"auto"` | S3 region to use for event uploads. |
+| s3.eventUpload.region | string | `""` | S3 region to use for event uploads. |
 | s3.eventUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for event uploads. |
 | s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. Can be overridden per upload type. |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
