@@ -1,4 +1,4 @@
-{{- if ((.Values.langfuse.web).hpa).enabled }}
+{{- if and ((.Values.langfuse.web).hpa).enabled (not ((.Values.langfuse.web).keda).enabled) }}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:

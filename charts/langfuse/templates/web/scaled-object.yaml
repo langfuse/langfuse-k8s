@@ -1,0 +1,23 @@
+{{- if and ((.Values.langfuse.web).keda).enabled (not ((.Values.langfuse.web).hpa).enabled) }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "langfuse.fullname" . }}-web
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "langfuse.fullname" . }}-web
+  minReplicaCount: {{ .Values.langfuse.web.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.langfuse.web.keda.maxReplicas }}
+  pollingInterval: {{ .Values.langfuse.web.keda.pollingInterval }}
+  cooldownPeriod: {{ .Values.langfuse.web.keda.cooldownPeriod }}
+  triggers:
+    - type: cpu
+      metricType: {{ .Values.langfuse.web.keda.cpu.metricType }}
+      metadata:
+        value: "{{ .Values.langfuse.web.keda.cpu.value }}"
+        {{- if .Values.langfuse.web.keda.cpu.containerName }}
+        containerName: "{{ .Values.langfuse.web.keda.cpu.containerName }}"
+        {{- end }}
+{{- end }}
