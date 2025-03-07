@@ -1,4 +1,4 @@
-{{- if and ((.Values.langfuse.web).keda).enabled (not ((.Values.langfuse.web).hpa).enabled) }}
+{{- if ((.Values.langfuse.web).keda).enabled }}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -12,11 +12,11 @@ spec:
   maxReplicaCount: {{ .Values.langfuse.web.keda.maxReplicas }}
   pollingInterval: {{ .Values.langfuse.web.keda.pollingInterval }}
   triggers:
-    - type: cpu
-      metricType: {{ .Values.langfuse.web.keda.cpu.metricType }}
+    - type: {{ .Values.langfuse.web.keda.triggerType }}
+      metricType: {{ .Values.langfuse.web.keda.metricType }}
       metadata:
-        value: "{{ .Values.langfuse.web.keda.cpu.value }}"
-        {{- if .Values.langfuse.web.keda.cpu.containerName }}
-        containerName: "{{ .Values.langfuse.web.keda.cpu.containerName }}"
+        value: "{{ .Values.langfuse.web.keda.value }}"
+        {{- if .Values.langfuse.web.keda.containerName }}
+        containerName: "{{ .Values.langfuse.web.keda.containerName }}"
         {{- end }}
 {{- end }}

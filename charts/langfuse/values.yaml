@@ -160,7 +160,7 @@ langfuse:
     # KEDA ScaledObject configuration
     keda:
       # -- Set to `true` to enable KEDA for the langfuse web pods
-      # Note: KEDA and HPA should not be enabled simultaneously. If both are enabled, HPA will be ignored.
+      # Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored.
       enabled: false
       # -- The minimum number of replicas to use for the langfuse web pods
       minReplicas: 1
@@ -168,14 +168,14 @@ langfuse:
       maxReplicas: 2
       # -- The polling interval in seconds for checking metrics
       pollingInterval: 30
-      # -- CPU trigger configuration
-      cpu:
-        # -- The metric type for CPU scaling (Utilization or AverageValue)
-        metricType: "Utilization"
-        # -- The target CPU utilization percentage for the langfuse web pods
-        value: "50"
-        # -- Optional container name to target for CPU metrics (leave empty to target all containers)
-        containerName: ""
+      # -- The trigger type for scaling (cpu or memory)
+      triggerType: "cpu"
+      # -- The metric type for scaling (Utilization or AverageValue)
+      metricType: "Utilization"
+      # -- The target utilization percentage for the langfuse web pods
+      value: "50"
+      # -- Optional container name to target for metrics (leave empty to target all containers)
+      containerName: ""
 
     # Horizontal Pod Autoscaler configuration
     hpa:
@@ -263,7 +263,7 @@ langfuse:
     # KEDA ScaledObject configuration
     keda:
       # -- Set to `true` to enable KEDA for the langfuse worker pods
-      # Note: KEDA and HPA should not be enabled simultaneously. If both are enabled, HPA will be ignored.
+      # Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored.
       enabled: false
       # -- The minimum number of replicas to use for the langfuse worker pods
       minReplicas: 1
@@ -271,14 +271,14 @@ langfuse:
       maxReplicas: 2
       # -- The polling interval in seconds for checking metrics
       pollingInterval: 30
-      # -- CPU trigger configuration
-      cpu:
-        # -- The metric type for CPU scaling (Utilization or AverageValue)
-        metricType: "Utilization"
-        # -- The target CPU utilization percentage for the langfuse worker pods
-        value: "50"
-        # -- Optional container name to target for CPU metrics (leave empty to target all containers)
-        containerName: ""
+      # -- The trigger type for scaling (cpu or memory)
+      triggerType: "cpu"
+      # -- The metric type for scaling (Utilization or AverageValue)
+      metricType: "Utilization"
+      # -- The target utilization percentage for the langfuse worker pods
+      value: "50"
+      # -- Optional container name to target for metrics (leave empty to target all containers)
+      containerName: ""
 
     # Horizontal Pod Autoscaler configuration
     hpa:
