@@ -45,6 +45,9 @@ The required configuration options to set are:
   #  langfuse:
   #    encryptionKey:
   #      value: ""
+  langfuse: 
+    salt:
+      value: secureSalt
     
   nextauth:
     secret:
@@ -66,12 +69,17 @@ The required configuration options to set are:
 They can alternatively set via secret references (the secrets must exist):
 
 ```yaml
-    # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
-    #  langfuse:
-    #    encryptionKey:
-    #      secretKeyRef:
-    #        name: langfuse-encryption-key-secret
-    #        key: encryptionKey
+  # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
+  #  langfuse:
+  #    encryptionKey:
+  #      secretKeyRef:
+  #        name: langfuse-encryption-key-secret
+  #        key: encryptionKey
+  langfuse: 
+    salt:
+      secretKeyRef:
+        name: langfuse-general
+        key: salt
 
   nextauth:
     secret:
@@ -115,6 +123,28 @@ postgresql:
   host: my-external-postgres-server.com
   directUrl: postgres://my-username:my-password@my-external-postgres-server.com
   shadowDatabaseUrl: postgres://my-username:my-password@my-external-postgres-server.com
+```
+
+#### With an external S3 bucket
+
+```yaml
+[...]
+s3:
+  deploy: false
+  bucket: "langfuse-bucket"
+  region: "eu-west-1"
+  endpoint: "https://s3.eu-west-1.amazonaws.com"
+  forcePathStyle: false
+  accessKeyId:
+    value: "mykey"
+  secretAccessKey:
+    value: "mysecret"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
 ```
 
 ##### Enable ingress

@@ -360,7 +360,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.forcePathStyle .Values.s3.forcePathStyle }}
+{{- if or (hasKey .Values.s3.eventUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
   value: {{ .Values.s3.eventUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}
@@ -403,7 +403,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- end }}
-{{- if or .Values.s3.batchExport.forcePathStyle .Values.s3.forcePathStyle }}
+{{- if or (hasKey .Values.s3.batchExport "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
   value: {{ .Values.s3.batchExport.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}
@@ -444,7 +444,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.s3.auth.rootPassword | quote }}
 {{- end }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.forcePathStyle .Values.s3.forcePathStyle }}
+{{- if or (hasKey .Values.s3.mediaUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
   value: {{ .Values.s3.mediaUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}

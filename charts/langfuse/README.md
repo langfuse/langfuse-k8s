@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.9](https://img.shields.io/badge/Version-1.0.0--rc.9-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.10](https://img.shields.io/badge/Version-1.0.0--rc.10-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -184,7 +184,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.batchExport.bucket | string | `""` | S3 bucket to use for batch exports. |
 | s3.batchExport.enabled | bool | `true` | Enable batch export. |
 | s3.batchExport.endpoint | string | `""` | S3 endpoint to use for batch exports. |
-| s3.batchExport.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. |
+| s3.batchExport.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
 | s3.batchExport.prefix | string | `""` | Prefix to use for batch exports within the bucket. |
 | s3.batchExport.region | string | `""` | S3 region to use for batch exports. |
 | s3.batchExport.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for batch exports. |
@@ -197,7 +197,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.eventUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for event uploads. |
 | s3.eventUpload.bucket | string | `""` | S3 bucket to use for event uploads. |
 | s3.eventUpload.endpoint | string | `""` | S3 endpoint to use for event uploads. |
-| s3.eventUpload.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. |
+| s3.eventUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
 | s3.eventUpload.prefix | string | `""` | Prefix to use for event uploads within the bucket. |
 | s3.eventUpload.region | string | `""` | S3 region to use for event uploads. |
 | s3.eventUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for event uploads. |
@@ -207,7 +207,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.mediaUpload.downloadUrlExpirySeconds | int | `3600` | Expiry time for download URLs. Defaults to 1 hour. |
 | s3.mediaUpload.enabled | bool | `true` | Enable media uploads. |
 | s3.mediaUpload.endpoint | string | `""` | S3 endpoint to use for media uploads. |
-| s3.mediaUpload.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. |
+| s3.mediaUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
 | s3.mediaUpload.maxContentLength | int | `1000000000` | Maximum content length for media uploads. Defaults to 1GB. |
 | s3.mediaUpload.prefix | string | `""` | Prefix to use for media uploads within the bucket. |
 | s3.mediaUpload.region | string | `""` | S3 region to use for media uploads. |
