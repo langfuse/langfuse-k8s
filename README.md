@@ -47,7 +47,7 @@ The required configuration options to set are:
   #      value: ""
   langfuse: 
     salt:
-      value: securetSalt
+      value: secureSalt
     
   nextauth:
     secret:
