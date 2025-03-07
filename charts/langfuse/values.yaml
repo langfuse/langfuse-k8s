@@ -260,9 +260,30 @@ langfuse:
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
 
+    # KEDA ScaledObject configuration
+    keda:
+      # -- Set to `true` to enable KEDA for the langfuse worker pods
+      # Note: KEDA and HPA should not be enabled simultaneously. If both are enabled, HPA will be ignored.
+      enabled: false
+      # -- The minimum number of replicas to use for the langfuse worker pods
+      minReplicas: 1
+      # -- The maximum number of replicas to use for the langfuse worker pods
+      maxReplicas: 2
+      # -- The polling interval in seconds for checking metrics
+      pollingInterval: 30
+      # -- CPU trigger configuration
+      cpu:
+        # -- The metric type for CPU scaling (Utilization or AverageValue)
+        metricType: "Utilization"
+        # -- The target CPU utilization percentage for the langfuse worker pods
+        value: "50"
+        # -- Optional container name to target for CPU metrics (leave empty to target all containers)
+        containerName: ""
+
     # Horizontal Pod Autoscaler configuration
     hpa:
       # -- Set to `true` to enable HPA for the langfuse worker pods
+      # Note: HPA and KEDA should not be enabled simultaneously. If both are enabled, HPA will be ignored.
       enabled: false
       # -- The minimum number of replicas to use for the langfuse worker pods
       minReplicas: 1
