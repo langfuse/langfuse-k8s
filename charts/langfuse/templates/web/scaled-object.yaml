@@ -1,4 +1,4 @@
-{{- if ((.Values.langfuse.web).keda).enabled }}
+{{- if .Values.langfuse.web.keda.enabled }}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
