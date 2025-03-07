@@ -458,7 +458,7 @@ s3:
     # -- S3 endpoint to use for event uploads.
     endpoint: ""
     # -- Whether to force path style on requests. Required for MinIO.
-    forcePathStyle: true
+    forcePathStyle: Null
     # -- S3 accessKeyId to use for event uploads.
     accessKeyId:
       value: ""
@@ -485,7 +485,7 @@ s3:
     # -- S3 endpoint to use for batch exports.
     endpoint: ""
     # -- Whether to force path style on requests. Required for MinIO.
-    forcePathStyle: true
+    forcePathStyle: Null
     # -- S3 accessKeyId to use for batch exports.
     accessKeyId:
       value: ""
@@ -512,7 +512,7 @@ s3:
     # -- S3 endpoint to use for media uploads.
     endpoint: ""
     # -- Whether to force path style on requests. Required for MinIO.
-    forcePathStyle: true
+    forcePathStyle: Null
     # -- S3 accessKeyId to use for media uploads.
     accessKeyId:
       value: ""
