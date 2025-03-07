@@ -296,7 +296,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
   value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
 {{- end }}
-{{- if $.Values.clickhouse.replicaCount | int | eq 1 -}}
+{{- if $.Values.clickhouse.replicaCount | int | eq 1 }}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
 {{- end }}
