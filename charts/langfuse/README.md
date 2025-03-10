@@ -97,6 +97,14 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set. |
 | langfuse.web.image.repository | string | `"langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
 | langfuse.web.image.tag | string | `nil` | The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set. |
+| langfuse.web.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
+| langfuse.web.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse web pods. Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored. |
+| langfuse.web.keda.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse web pods |
+| langfuse.web.keda.metricType | string | `"Utilization"` | The metric type for scaling (Utilization or AverageValue) |
+| langfuse.web.keda.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse web pods |
+| langfuse.web.keda.pollingInterval | int | `30` | The polling interval in seconds for checking metrics |
+| langfuse.web.keda.triggerType | string | `"cpu"` | The trigger type for scaling (cpu or memory) |
+| langfuse.web.keda.value | string | `"50"` | The target utilization percentage for the langfuse web pods |
 | langfuse.web.livenessProbe.failureThreshold | int | `3` | Failure threshold for livenessProbe. |
 | langfuse.web.livenessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for livenessProbe. |
 | langfuse.web.livenessProbe.path | string | `"/api/public/health"` | Path to check for liveness. |
@@ -132,6 +140,14 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set. |
 | langfuse.worker.image.repository | string | `"langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
 | langfuse.worker.image.tag | string | `nil` | The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set. |
+| langfuse.worker.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
+| langfuse.worker.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse worker pods. Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored. |
+| langfuse.worker.keda.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
+| langfuse.worker.keda.metricType | string | `"Utilization"` | The metric type for scaling (Utilization or AverageValue) |
+| langfuse.worker.keda.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse worker pods |
+| langfuse.worker.keda.pollingInterval | int | `30` | The polling interval in seconds for checking metrics |
+| langfuse.worker.keda.triggerType | string | `"cpu"` | The trigger type for scaling (cpu or memory) |
+| langfuse.worker.keda.value | string | `"50"` | The target utilization percentage for the langfuse worker pods |
 | langfuse.worker.livenessProbe.failureThreshold | int | `3` | Failure threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |

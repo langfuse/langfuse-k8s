@@ -9,7 +9,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.langfuse.web.hpa.enabled }}
+  {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
   {{- end }}
   {{- if .Values.langfuse.web.hostAliases }}
