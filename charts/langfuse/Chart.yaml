@@ -19,7 +19,7 @@ dependencies:
     repository: oci://registry-1.docker.io/bitnamicharts
     condition: postgresql.deploy
   - name: clickhouse
-    version: 7.2.0
+    version: 8.0.5
     repository: oci://registry-1.docker.io/bitnamicharts
     condition: clickhouse.deploy
   - name: valkey

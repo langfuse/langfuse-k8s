@@ -21,7 +21,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://registry-1.docker.io/bitnamicharts | clickhouse | 7.2.0 |
+| oci://registry-1.docker.io/bitnamicharts | clickhouse | 8.0.5 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.30.0 |
 | oci://registry-1.docker.io/bitnamicharts | s3(minio) | 14.10.5 |
 | oci://registry-1.docker.io/bitnamicharts | postgresql | 16.4.9 |
