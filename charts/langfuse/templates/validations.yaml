@@ -174,3 +174,12 @@
 {{- if and $.Values.langfuse.nextauth.secret (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXTAUTH_SECRET")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.nextauth.secret or langfuse.additionalEnv[name: NEXTAUTH_SECRET] to continue." -}}
 {{- end -}}
+
+# Validate scaling configurations
+{{- if and $.Values.langfuse.web.keda.enabled (or $.Values.langfuse.web.hpa.enabled $.Values.langfuse.web.vpa.enabled) -}}
+    {{- fail "If keda is enabled for web component, you cannot enable hpa or vpa. Please disable either keda or both hpa and vpa." -}}
+{{- end -}}
+
+{{- if and $.Values.langfuse.worker.keda.enabled (or $.Values.langfuse.worker.hpa.enabled $.Values.langfuse.worker.vpa.enabled) -}}
+    {{- fail "If keda is enabled for worker component, you cannot enable hpa or vpa. Please disable either keda or both hpa and vpa." -}}
+{{- end -}}

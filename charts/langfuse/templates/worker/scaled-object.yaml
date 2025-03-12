@@ -1,0 +1,22 @@
+{{- if .Values.langfuse.worker.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "langfuse.fullname" . }}-worker
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "langfuse.fullname" . }}-worker
+  minReplicaCount: {{ .Values.langfuse.worker.keda.minReplicas }}
+  maxReplicaCount: {{ .Values.langfuse.worker.keda.maxReplicas }}
+  pollingInterval: {{ .Values.langfuse.worker.keda.pollingInterval }}
+  triggers:
+    - type: {{ .Values.langfuse.worker.keda.triggerType }}
+      metricType: {{ .Values.langfuse.worker.keda.metricType }}
+      metadata:
+        value: "{{ .Values.langfuse.worker.keda.value }}"
+        {{- if .Values.langfuse.worker.keda.containerName }}
+        containerName: "{{ .Values.langfuse.worker.keda.containerName }}"
+        {{- end }}
+{{- end }}
