@@ -331,10 +331,10 @@ langfuse:
 
 # PostgreSQL Configuration
 postgresql:
-  # -- Deploy subchart or use external database
+  # -- Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false
   deploy: true
   
-  # -- Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name.
+  # -- PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name.
   host: ""
   # -- Port of the postgres server to use. Defaults to 5432.
   port: null
@@ -406,7 +406,7 @@ redis:
     existingSecretPasswordKey: ""
 
     database: 0
-  
+
   # Subchart specific settings
   architecture: standalone
   primary:

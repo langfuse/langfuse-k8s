@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.11](https://img.shields.io/badge/Version-1.0.0--rc.11-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.29.1](https://img.shields.io/badge/AppVersion-3.29.1-informational?style=flat-square)
+![Version: 1.0.0-rc.13](https://img.shields.io/badge/Version-1.0.0--rc.13-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.38.0](https://img.shields.io/badge/AppVersion-3.38.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -21,7 +21,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://registry-1.docker.io/bitnamicharts | clickhouse | 7.2.0 |
+| oci://registry-1.docker.io/bitnamicharts | clickhouse | 8.0.5 |
 | oci://registry-1.docker.io/bitnamicharts | common | 2.30.0 |
 | oci://registry-1.docker.io/bitnamicharts | s3(minio) | 14.10.5 |
 | oci://registry-1.docker.io/bitnamicharts | postgresql | 16.4.9 |
@@ -171,9 +171,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.auth.password | string | `""` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. |
 | postgresql.auth.secretKeys | object | `{"userPasswordKey":"password"}` | The key in the existing secret that contains the password. |
 | postgresql.auth.username | string | `"postgres"` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. |
-| postgresql.deploy | bool | `true` | Deploy subchart or use external database |
+| postgresql.deploy | bool | `true` | Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false |
 | postgresql.directUrl | string | `""` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. |
-| postgresql.host | string | `""` | Hostname of the postgres server to use. If `postgresql.deploy` is true, this will be set automatically based on the release name. |
+| postgresql.host | string | `""` | PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name. |
 | postgresql.migration.autoMigrate | bool | `true` | Whether to run automatic migrations on startup |
 | postgresql.port | string | `nil` | Port of the postgres server to use. Defaults to 5432. |
 | postgresql.primary.service.ports.postgresql | int | `5432` |  |

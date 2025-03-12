@@ -162,6 +162,39 @@ langfuse:
     annotations: []
 ```
 
+#### Custom Storage Class Definition
+
+The Langfuse chart supports configuring storage classes for all persistent volumes in the deployment. You can configure storage classes in two ways:
+
+1. **Global Storage Class**: Set a global storage class that will be used for all persistent volumes unless overridden.
+```yaml
+global:
+  defaultStorageClass: "your-storage-class"
+```
+
+2. **Component-specific Storage Classes**: Override the storage class for specific components.
+```yaml
+postgresql:
+  primary:
+    persistence:
+      storageClass: "postgres-storage-class"
+   
+redis:
+  primary:
+    persistence:
+      storageClass: "redis-storage-class"
+
+clickhouse:
+  persistence:
+    storageClass: "clickhouse-storage-class"
+
+s3:
+  persistence:
+    storageClass: "minio-storage-class"
+```
+
+If no storage class is specified, the cluster's default storage class will be used.
+
 ##### With an external Postgres server with client certificates using own secrets and additionalEnv for mappings
 
 ```yaml
