@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.14](https://img.shields.io/badge/Version-1.0.0--rc.13-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.38.0](https://img.shields.io/badge/AppVersion-3.38.0-informational?style=flat-square)
+![Version: 1.0.0-rc.14](https://img.shields.io/badge/Version-1.0.0--rc.14-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.38.0](https://img.shields.io/badge/AppVersion-3.38.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -89,7 +89,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
 | langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
 | langfuse.web.hostAliases | list | `[]` | Adding records to /etc/hosts in the pod's network. |
-| langfuse.web.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse web pods |
+| langfuse.web.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse web pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.web.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse web pods |
 | langfuse.web.hpa.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse web pods |
 | langfuse.web.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse web pods |
@@ -98,7 +98,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.image.repository | string | `"langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
 | langfuse.web.image.tag | string | `nil` | The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set. |
 | langfuse.web.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
-| langfuse.web.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse web pods. Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored. |
+| langfuse.web.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse web pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.web.keda.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse web pods |
 | langfuse.web.keda.metricType | string | `"Utilization"` | The metric type for scaling (Utilization or AverageValue) |
 | langfuse.web.keda.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse web pods |
@@ -132,7 +132,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse web pods |
 | langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
-| langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods |
+| langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.worker.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
 | langfuse.worker.hpa.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse worker pods |
 | langfuse.worker.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse worker pods |
@@ -141,7 +141,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.image.repository | string | `"langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
 | langfuse.worker.image.tag | string | `nil` | The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set. |
 | langfuse.worker.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
-| langfuse.worker.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse worker pods. Note: When both KEDA and HPA are enabled, KEDA will take precedence and HPA will be ignored. |
+| langfuse.worker.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.worker.keda.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
 | langfuse.worker.keda.metricType | string | `"Utilization"` | The metric type for scaling (Utilization or AverageValue) |
 | langfuse.worker.keda.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse worker pods |
