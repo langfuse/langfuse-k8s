@@ -147,6 +147,19 @@ s3:
     prefix: "media/"
 ```
 
+#### Use custom deployment strategy
+
+```yaml
+[...]
+langfuse:
+  deployment:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 50%
+        maxUnavailable: 50%
+```
+
 ##### Enable ingress
 
 ```yaml

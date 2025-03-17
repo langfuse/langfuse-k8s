@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.0.0-rc.14](https://img.shields.io/badge/Version-1.0.0--rc.14-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.38.0](https://img.shields.io/badge/AppVersion-3.38.0-informational?style=flat-square)
+![Version: 1.0.0-rc.15](https://img.shields.io/badge/Version-1.0.0--rc.15-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.42.1](https://img.shields.io/badge/AppVersion-3.42.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -51,6 +51,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
+| langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
@@ -88,6 +89,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
 | langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
+| langfuse.web.deployment.strategy | object | `{}` | Deployment strategy for the web deployment. Overrides the global deployment strategy |
 | langfuse.web.hostAliases | list | `[]` | Adding records to /etc/hosts in the pod's network. |
 | langfuse.web.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse web pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.web.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse web pods |
@@ -132,6 +134,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse web pods |
 | langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
+| langfuse.worker.deployment.strategy | object | `{}` | Deployment strategy for the worker deployment. Overrides the global deployment strategy |
 | langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.worker.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
 | langfuse.worker.hpa.minReplicas | int | `1` | The minimum number of replicas to use for the langfuse worker pods |
