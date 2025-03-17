@@ -97,6 +97,8 @@ langfuse:
   deployment:
     # -- Annotations for all langfuse deployments
     annotations: {}
+    # -- Deployment strategy for all langfuse deployments (can be overridden by individual deployments)
+    strategy: {}
   # -- Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments
   replicas: 1
   # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
@@ -134,6 +136,8 @@ langfuse:
     deployment:
       # -- Annotations for the web deployment
       annotations: {}
+      # -- Deployment strategy for the web deployment. Overrides the global deployment strategy
+      strategy: {}
     pod:
       # -- Annotations for the web pods
       annotations: {}
@@ -248,6 +252,8 @@ langfuse:
     deployment:
       # -- Annotations for the worker deployment
       annotations: {}
+      # -- Deployment strategy for the worker deployment. Overrides the global deployment strategy
+      strategy: {}
     pod:
       # -- Annotations for the worker pods
       annotations: {}

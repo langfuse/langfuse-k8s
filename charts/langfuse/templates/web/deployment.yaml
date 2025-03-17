@@ -16,6 +16,10 @@ spec:
   hostAliases:
     {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
   {{- end }}
+  {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "langfuse.selectorLabels" . | nindent 6 }}
