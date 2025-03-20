@@ -41,69 +41,67 @@ If yes, follow the guide for the respective sub-chart to upgrade it.
 The required configuration options to set are:
 
 ```yaml
-  # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
-  #  langfuse:
-  #    encryptionKey:
-  #      value: ""
-  langfuse: 
-    salt:
-      value: secureSalt
-    
+# Optional, but highly recommended. Generate via `openssl rand -hex 32`.
+#  langfuse:
+#    encryptionKey:
+#      value: ""
+langfuse: 
+  salt:
+    value: secureSalt
   nextauth:
     secret:
       value: ""
 
-  postgresql:
-    auth:
-      password: ""
+postgresql:
+  auth:
+    password: ""
 
-  clickhouse:
-    auth:
-      password: ""
+clickhouse:
+  auth:
+    password: ""
 
-  redis:
-    auth:
-      password: ""
+redis:
+  auth:
+    password: ""
 ```
 
 They can alternatively set via secret references (the secrets must exist):
 
 ```yaml
-  # Optional, but highly recommended. Generate via `openssl rand -hex 32`.
-  #  langfuse:
-  #    encryptionKey:
-  #      secretKeyRef:
-  #        name: langfuse-encryption-key-secret
-  #        key: encryptionKey
-  langfuse: 
-    salt:
-      secretKeyRef:
-        name: langfuse-general
-        key: salt
-
+# Optional, but highly recommended. Generate via `openssl rand -hex 32`.
+#  langfuse:
+#    encryptionKey:
+#      secretKeyRef:
+#        name: langfuse-encryption-key-secret
+#        key: encryptionKey
+langfuse: 
+  salt:
+    secretKeyRef:
+      name: langfuse-general
+      key: salt
   nextauth:
     secret:
       secretKeyRef:
         name: langfuse-nextauth-secret
         key: nextauth-secret
 
-  postgresql:
-    auth:
-      existingSecret: langfuse-postgresql-auth
-      secretKeys:
-        userPasswordKey: password
+postgresql:
+  auth:
+    existingSecret: langfuse-postgresql-auth
+    secretKeys:
+      userPasswordKey: password
 
-  clickhouse:
-    auth:
-      existingSecret: langfuse-clickhouse-auth
-      secretKeys:
-        userPasswordKey: password
+clickhouse:
+  auth:
+    existingSecret: langfuse-clickhouse-auth
+    secretKeys:
+      userPasswordKey: password
 
-  redis:
-    auth:
-      existingSecret: langfuse-redis-auth
-      secretKeys:
-        userPasswordKey: password
+redis:
+  auth:
+    existingSecret: langfuse-redis-auth
+    secretKeys:
+      userPasswordKey: password
 ```
       
 See the [Helm README](./charts/langfuse/README.md) for a full list of all configuration options.
