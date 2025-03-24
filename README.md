@@ -262,6 +262,44 @@ langfuse:
           - "oauth.id.jumpcloud.com"
 ```
 
+##### With topology spread constraints
+
+Distribute pods evenly across different zones to improve high availability:
+
+```yaml
+langfuse:
+  # Global topology spread constraints applied to all langfuse pods
+  pod:
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/instance: langfuse
+  
+  # Component-specific topology spread constraints
+  web:
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: web
+  
+  worker:
+    pod:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: worker
+```
+
 ## Repository Structure
 
 - `examples` directory contains example `yaml` configurations

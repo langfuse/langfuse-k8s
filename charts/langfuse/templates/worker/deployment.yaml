@@ -95,3 +95,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with (coalesce .Values.langfuse.worker.pod.topologySpreadConstraints .Values.langfuse.pod.topologySpreadConstraints) }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
