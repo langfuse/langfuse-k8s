@@ -63,6 +63,10 @@ clickhouse:
 redis:
   auth:
     password: ""
+
+s3:
+  auth:
+    rootPassword: ""
 ```
 
 They can alternatively set via secret references (the secrets must exist):
@@ -102,6 +106,11 @@ redis:
     existingSecret: langfuse-redis-auth
     secretKeys:
       userPasswordKey: password
+
+s3:
+  auth:
+    existingSecret: langfuse-s3-auth
+    rootPasswordSecretKey: rootPassword
 ```
       
 See the [Helm README](./charts/langfuse/README.md) for a full list of all configuration options.
