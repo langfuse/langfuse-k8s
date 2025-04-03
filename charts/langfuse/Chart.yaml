@@ -1,6 +1,6 @@
 apiVersion: v2
 name: langfuse
-version: 1.1.0
+version: 1.2.0
 description: Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 type: application
 keywords:
@@ -40,4 +40,4 @@ maintainers:
     email: contact@langfuse.com
     url: https://langfuse.com/
 icon: https://langfuse.com/langfuse_logo.png
-appVersion: "3.43.0"
+appVersion: "3.48.0"
