@@ -258,7 +258,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username | default "default" }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
+  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- if .Values.redis.tls.enabled }}
 {{- if .Values.redis.tls.caPath }}
 - name: REDIS_TLS_CA_PATH

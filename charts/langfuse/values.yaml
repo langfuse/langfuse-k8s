@@ -21,7 +21,7 @@ langfuse:
     secretKeyRef:
       name: ""
       key: ""
-  
+
   # -- Langfuse EE license key.
   licenseKey:
     value: ""
@@ -44,7 +44,7 @@ langfuse:
     signUpDisabled: false
     # -- Enable experimental features
     experimentalFeaturesEnabled: false
-  
+
   # -- Node.js environment to use for all langfuse deployments
   nodeEnv: production
 
@@ -210,7 +210,7 @@ langfuse:
       updatePolicy:
         # -- The update policy mode for the langfuse web pods
         updateMode: Auto
-    
+
     # -- Adding records to /etc/hosts in the pod's network.
     hostAliases: []
 
@@ -241,7 +241,7 @@ langfuse:
       failureThreshold: 3
       # -- Success threshold for readinessProbe.
       successThreshold: 1
-  
+
   # Worker deployment configuration
   worker:
     image:
@@ -317,7 +317,7 @@ langfuse:
       updatePolicy:
         # -- The update policy mode for the langfuse worker pods
         updateMode: Auto
-    
+
     livenessProbe:
       # -- Initial delay seconds for livenessProbe.
       initialDelaySeconds: 20
@@ -345,7 +345,7 @@ langfuse:
 postgresql:
   # -- Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false
   deploy: true
-  
+
   # -- PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name.
   host: ""
   # -- Port of the postgres server to use. Defaults to 5432.
@@ -374,7 +374,7 @@ postgresql:
     database: postgres_langfuse
     # -- Additional database connection arguments
     args: ""
-  
+
   # Migration configuration
   migration:
     # -- Whether to run automatic migrations on startup
@@ -396,7 +396,7 @@ redis:
   host: ""
   # -- Redis port to connect to.
   port: 6379
-  
+
   # Redis TLS configuration
   tls:
     # -- Set to `true` to enable TLS/SSL encrypted connection to the Redis server
@@ -407,9 +407,11 @@ redis:
     certPath: ""
     # -- Path to the client private key file for mutual TLS authentication
     keyPath: ""
-  
+
   # Authentication configuration
   auth:
+    # -- Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string.
+    username: "default"
     # -- Configure the password by value or existing secret reference
     password: ""
     # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
@@ -430,14 +432,14 @@ redis:
 clickhouse:
   # -- Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false
   deploy: true
-  
+
   # -- ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name.
   host: ""
   # -- ClickHouse HTTP port to connect to.
   httpPort: 8123
   # -- ClickHouse native port to connect to.
   nativePort: 9000
-  
+
   # Authentication configuration
   auth:
     # -- Username for the ClickHouse user.
@@ -448,7 +450,7 @@ clickhouse:
     existingSecret: ""
     # -- The key in the existing secret that contains the password.
     existingSecretKey: ""
-  
+
   # Migration configuration
   migration:
     # -- Migration URL (TCP protocol) for clickhouse

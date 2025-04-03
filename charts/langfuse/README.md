@@ -189,6 +189,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.existingSecret | string | `""` | If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret). |
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
 | redis.auth.password | string | `""` | Configure the password by value or existing secret reference |
+| redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.port | int | `6379` | Redis port to connect to. |
