@@ -27,3 +27,9 @@ redis:
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
+
+s3:
+  auth:
+    existingSecret: langfuse
+    rootUserSecretKey: s3-user
+    rootPasswordSecretKey: s3-password

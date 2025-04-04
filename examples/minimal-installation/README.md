@@ -65,6 +65,13 @@ redis:
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
+
+s3:
+  auth:
+    # If existingSecret is set, both root user and root password must be supplied via the secret
+    existingSecret: langfuse
+    rootUserSecretKey: s3-user
+    rootPasswordSecretKey: s3-password
 ```
 
 ### `with-ingress.yaml` (Optional)
