@@ -109,7 +109,9 @@ redis:
 
 s3:
   auth:
+    # If existingSecret is set, both root user and root password must be supplied via the secret
     existingSecret: langfuse-s3-auth
+    rootUserSecretKey: rootUser
     rootPasswordSecretKey: rootPassword
 ```
       

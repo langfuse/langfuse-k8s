@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.48.0](https://img.shields.io/badge/AppVersion-3.48.0-informational?style=flat-square)
+![Version: 1.2.1](https://img.shields.io/badge/Version-1.2.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.48.0](https://img.shields.io/badge/AppVersion-3.48.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -188,7 +188,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.database | int | `0` |  |
 | redis.auth.existingSecret | string | `""` | If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret). |
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
-| redis.auth.password | string | `""` | Configure the password by value or existing secret reference |
+| redis.auth.password | string | `""` | Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password. |
 | redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
@@ -203,6 +203,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |
 | s3.auth.rootPasswordSecretKey | string | `""` | Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret` |
 | s3.auth.rootUser | string | `"minio"` | root username |
+| s3.auth.rootUserSecretKey | string | `""` | Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret` |
 | s3.batchExport.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for batch exports. |
 | s3.batchExport.bucket | string | `""` | S3 bucket to use for batch exports. |
 | s3.batchExport.enabled | bool | `true` | Enable batch export. |

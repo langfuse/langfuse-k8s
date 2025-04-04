@@ -412,7 +412,7 @@ redis:
   auth:
     # -- Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string.
     username: "default"
-    # -- Configure the password by value or existing secret reference
+    # -- Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password.
     password: ""
     # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
@@ -595,6 +595,8 @@ s3:
     rootPassword: ""
     # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret).
     existingSecret: ""
+    # -- Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret`
+    rootUserSecretKey: ""
     # -- Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret`
     rootPasswordSecretKey: ""
 

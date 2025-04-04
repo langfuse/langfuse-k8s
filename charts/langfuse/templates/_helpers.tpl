@@ -348,7 +348,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootUserSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootUser | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "eventUpload" "values" .Values.s3) ) }}
@@ -357,7 +364,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootPassword | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- if or (hasKey .Values.s3.eventUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
@@ -391,7 +405,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootUserSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootUser | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "batchExport" "values" .Values.s3) ) }}
@@ -400,7 +421,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootPassword | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- if or (hasKey .Values.s3.batchExport "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
@@ -432,7 +460,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootUserSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootUser | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "secretAccessKey" "bucket" "mediaUpload" "values" .Values.s3) ) }}
@@ -441,7 +476,14 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
+  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.s3.auth.existingSecret }}
+      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+  {{- else }}
   value: {{ .Values.s3.auth.rootPassword | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- if or (hasKey .Values.s3.mediaUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
