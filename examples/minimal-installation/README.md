@@ -65,6 +65,11 @@ redis:
   auth:
     existingSecret: langfuse
     existingSecretPasswordKey: redis-password
+
+s3:
+  auth:
+    existingSecret: langfuse
+    existingSecretPasswordKey: s3-password
 ```
 
 ### `with-ingress.yaml` (Optional)
