@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.2.0](https://img.shields.io/badge/Version-1.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.48.0](https://img.shields.io/badge/AppVersion-3.48.0-informational?style=flat-square)
+![Version: 1.2.1](https://img.shields.io/badge/Version-1.2.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.48.0](https://img.shields.io/badge/AppVersion-3.48.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -203,6 +203,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |
 | s3.auth.rootPasswordSecretKey | string | `""` | Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret` |
 | s3.auth.rootUser | string | `"minio"` | root username |
+| s3.auth.rootUserSecretKey | string | `""` | Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret` |
 | s3.batchExport.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for batch exports. |
 | s3.batchExport.bucket | string | `""` | S3 bucket to use for batch exports. |
 | s3.batchExport.enabled | bool | `true` | Enable batch export. |
