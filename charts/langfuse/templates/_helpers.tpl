@@ -283,6 +283,8 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- define "langfuse.clickhouseEnv" -}}
 - name: CLICKHOUSE_MIGRATION_URL
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
+- name: CLICKHOUSE_MIGRATION_SSL
+  value: {{ .Values.clickhouse.migration.ssl | quote }}
 - name: CLICKHOUSE_URL
   value: "http://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
 - name: CLICKHOUSE_USER
