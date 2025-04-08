@@ -86,11 +86,17 @@ Return Redis hostname
 {{- end }}
 
 {{/*
-Return ClickHouse hostname
+Return ClickHouse hostname (without protocol)
 */}}
 {{- define "langfuse.clickhouse.hostname" -}}
 {{- if .Values.clickhouse.host }}
-{{- .Values.clickhouse.host }}
+{{- if hasPrefix "http://" .Values.clickhouse.host -}}
+{{- trimPrefix "http://" .Values.clickhouse.host -}}
+{{- else if hasPrefix "https://" .Values.clickhouse.host -}}
+{{- trimPrefix "https://" .Values.clickhouse.host -}}
+{{- else -}}
+{{- .Values.clickhouse.host -}}
+{{- end -}}
 {{- else if .Values.clickhouse.deploy }}
 {{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
 {{- else }}
@@ -277,16 +283,35 @@ Get value of a specific environment variable from additionalEnv if it exists
 
 
 {{/*
+Return ClickHouse protocol (http or https)
+*/}}
+{{- define "langfuse.clickhouse.protocol" -}}
+{{- if .Values.clickhouse.host }}
+{{- if hasPrefix "https://" .Values.clickhouse.host -}}
+{{- print "https" -}}
+{{- else -}}
+{{- print "http" -}}
+{{- end -}}
+{{- else -}}
+{{- print "http" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
     Clickhouse related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.clickhouseEnv" -}}
 - name: CLICKHOUSE_MIGRATION_URL
+  {{- if .Values.clickhouse.migration.url }}
+  value: {{ .Values.clickhouse.migration.url | quote }}
+  {{- else }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
+  {{- end }}
 - name: CLICKHOUSE_MIGRATION_SSL
   value: {{ .Values.clickhouse.migration.ssl | quote }}
 - name: CLICKHOUSE_URL
-  value: "http://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
+  value: "{{ include "langfuse.clickhouse.protocol" . }}://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
 - name: CLICKHOUSE_USER
   value: {{ required "clickhouse.auth.username is required" .Values.clickhouse.auth.username | quote }}
 - name: CLICKHOUSE_PASSWORD
