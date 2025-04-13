@@ -70,7 +70,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /api/health
+              path: {{ .Values.langfuse.worker.livenessProbe.path | default "/api/health" }}
               port: http
             initialDelaySeconds: {{ .Values.langfuse.worker.livenessProbe.initialDelaySeconds | default 20 }}
             periodSeconds: {{ .Values.langfuse.worker.livenessProbe.periodSeconds | default 10 }}
