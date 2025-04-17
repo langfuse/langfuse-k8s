@@ -54,6 +54,8 @@ langfuse:
 
 postgresql:
   auth:
+    # If you want to use `postgres` as the username, you need to provide postgresPassword instead of password.
+    username: langfuse
     password: ""
 
 clickhouse:
@@ -91,6 +93,8 @@ langfuse:
 
 postgresql:
   auth:
+    # If you want to use `postgres` as the username, you need to provide a adminPasswordKey in secretKeys.
+    username: langfuse
     existingSecret: langfuse-postgresql-auth
     secretKeys:
       userPasswordKey: password
