@@ -162,8 +162,9 @@ Get value of a specific environment variable from additionalEnv if it exists
 */}}
 {{- define "langfuse.databaseEnv" -}}
 {{- with (include "langfuse.getEnvVar" (dict "env" .Values.langfuse.additionalEnv "name" "DATABASE_URL")) -}}
-- name: DATABASE_URL
-  value: {{ . | quote }}
+{{/*
+    If DATABASE_URL is set, we do nothing in databaseEnv.
+*/}}
 {{- else -}}
 - name: DATABASE_HOST
   value: {{ include "langfuse.postgresql.hostname" . | quote }}
