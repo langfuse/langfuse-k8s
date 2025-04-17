@@ -2,6 +2,8 @@
 
 # langfuse-k8s
 
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/langfuse-k8s)](https://artifacthub.io/packages/search?repo=langfuse-k8s)
+
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
 
 ## Helm Chart
