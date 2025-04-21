@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "langfuse.fullname" . }}-web
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
     {{- with .Values.langfuse.web.service.additionalLabels }}
