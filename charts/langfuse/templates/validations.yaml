@@ -157,8 +157,8 @@
 {{- if and $.Values.langfuse.features.telemetryEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "TELEMETRY_ENABLED")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.telemetryEnabled or langfuse.additionalEnv[name: TELEMETRY_ENABLED] to continue." -}}
 {{- end -}}
-{{- if and $.Values.langfuse.features.signUpDisabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXT_PUBLIC_SIGN_UP_DISABLED")) -}}
-    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.signUpDisabled or langfuse.additionalEnv[name: NEXT_PUBLIC_SIGN_UP_DISABLED] to continue." -}}
+{{- if and $.Values.langfuse.features.signUpDisabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "AUTH_DISABLE_SIGNUP")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.signUpDisabled or langfuse.additionalEnv[name: AUTH_DISABLE_SIGNUP] to continue." -}}
 {{- end -}}
 {{- if and $.Values.langfuse.features.experimentalFeaturesEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENABLE_EXPERIMENTAL_FEATURES")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.experimentalFeaturesEnabled or langfuse.additionalEnv[name: ENABLE_EXPERIMENTAL_FEATURES] to continue." -}}

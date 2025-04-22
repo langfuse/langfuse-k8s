@@ -231,7 +231,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- end }}
 - name: TELEMETRY_ENABLED
   value: {{ .Values.langfuse.features.telemetryEnabled | quote }}
-- name: NEXT_PUBLIC_SIGN_UP_DISABLED
+- name: AUTH_DISABLE_SIGNUP
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
