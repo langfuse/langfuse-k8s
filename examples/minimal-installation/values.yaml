@@ -1,6 +1,11 @@
 # This values.yaml file demonstrates how to use the basic chart with a single, pre-created secret.
 # Secrets must be set manually or via External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
 langfuse:
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+
   salt:
     secretKeyRef:
       name: langfuse
@@ -16,6 +21,7 @@ postgresql:
   auth:
     existingSecret: langfuse
     secretKeys:
+      adminPasswordKey: postgresql-password
       userPasswordKey: postgresql-password
 
 clickhouse:
