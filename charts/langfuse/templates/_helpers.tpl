@@ -181,7 +181,7 @@ Get value of a specific environment variable from additionalEnv if it exists
   valueFrom:
     secretKeyRef:
       name: {{ .Values.postgresql.auth.existingSecret }}
-      key: {{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
+      key: {{ required "postgresql.auth.username is required when using an existing secret" .Values.postgresql.auth.username }}-{{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
 {{- else }}
   value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
 {{- end }}
