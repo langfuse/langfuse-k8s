@@ -5,6 +5,14 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/langfuse-k8s)](https://artifacthub.io/packages/search?repo=langfuse-k8s)
 
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
+Please feel free to contribute any improvements or suggestions.
+
+Langfuse self-hosting documentation: https://langfuse.com/self-hosting
+
+## Repository Structure
+
+- `examples` directory contains example `yaml` configurations
+- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
 ## Helm Chart
 
@@ -309,12 +317,3 @@ langfuse:
             matchLabels:
               app: worker
 ```
-
-## Repository Structure
-
-- `examples` directory contains example `yaml` configurations
-- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
-
-Please feel free to contribute any improvements or suggestions.
-
-Langfuse deployment docs: https://langfuse.com/docs/deployment/self-host
