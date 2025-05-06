@@ -105,14 +105,12 @@ postgresql:
 clickhouse:
   auth:
     existingSecret: langfuse-clickhouse-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretKey: password
 
 redis:
   auth:
     existingSecret: langfuse-redis-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretPasswordKey: password
 
 s3:
   auth:
