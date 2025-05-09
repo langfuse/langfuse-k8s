@@ -21,8 +21,8 @@
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) -}}
-    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
+    {{- fail "For external Redis, either set redis.host or provide REDIS_CONNECTION_STRING via additionalEnv." -}}
 {{- end -}}
 
 
