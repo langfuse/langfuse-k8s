@@ -43,7 +43,7 @@ If yes, follow the guide for the respective sub-chart to upgrade it.
 
 By default, the chart will run with the minimum resources to provide a stable experience.
 For production environments, we recommend to adjust the following parameters in the values.yaml.
-See [Langfuse documentation](http://localhost:3333/self-hosting/scaling) for our full sizing guide.
+See [Langfuse documentation](https://langfuse.com/self-hosting/scaling) for our full sizing guide.
 
 ```yaml
 langfuse:
