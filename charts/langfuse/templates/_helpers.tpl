@@ -260,6 +260,18 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
+- name: AUTH_DISABLE_USERNAME_PASSWORD
+  value: {{ .Values.langfuse.auth.disableUsernamePassword | quote }}
+{{- end }}
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
+{{- range $providerName, $provider := .Values.langfuse.auth.providers }}
+{{- range $optionKey, $optionVal := $provider }}
+- name: AUTH_{{ $providerName | snakecase | upper }}_{{ $optionKey | snakecase | upper }}
+  value: {{ $optionVal | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*

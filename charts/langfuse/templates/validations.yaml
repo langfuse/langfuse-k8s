@@ -6,6 +6,14 @@
     {{- fail "langfuse.logging.format must be one of: text, json" -}}
 {{- end -}}
 
+# Validate auth providers settings
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
+{{- range $providerName, $provider := .Values.langfuse.auth.providers -}}
+{{- if not (has ($providerName | snakecase | upper) (list "AUTH0" "COGNITO" "AZURE_AD" "GITHUB" "GITHUB_ENTERPRISE" "GITLAB" "GOOGLE" "KEYCLOAK" "OKTA" "WORKOS" "CUSTOM")) -}}
+  {{- fail (printf "langfuse.auth: invalid auth provider %s" $providerName)}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 # Validate ClickHouse settings
 {{- if ne ($.Values.clickhouse.shards | int) 1 -}}
