@@ -39,6 +39,60 @@ helm upgrade langfuse langfuse/langfuse
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
 
+### Sizing
+
+By default, the chart will run with the minimum resources to provide a stable experience.
+For production environments, we recommend to adjust the following parameters in the values.yaml.
+See [Langfuse documentation](http://localhost:3333/self-hosting/scaling) for our full sizing guide.
+
+```yaml
+langfuse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+
+clickhouse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+      
+  keeper:
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+
+redis:
+  primary:
+    resources:
+      limits:
+        cpu: "1"
+        memory: "1.5Gi"
+      requests:
+        cpu: "1"
+        memory: "1.5Gi"
+
+s3:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+```
+
 ### Configuration
 
 The required configuration options to set are:
