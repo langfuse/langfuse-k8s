@@ -235,6 +235,14 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
+{{- if hasKey .Values.langfuse "smtp" }}
+{{- if .Values.langfuse.smtp.connectionUrl }}
+- name: SMTP_CONNECTION_URL
+  value: {{ .Values.langfuse.smtp.connectionUrl | quote }}
+- name: EMAIL_FROM_ADDRESS
+  value: {{ required "langfuse.smtp.fromAddress has to be set if langfuse.smtp.connectionUrl is configured" .Values.langfuse.smtp.fromAddress | quote }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
