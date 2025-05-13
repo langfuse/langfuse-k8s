@@ -14,7 +14,7 @@ metadata:
 spec:
   type: {{ .Values.langfuse.web.service.type }}
   ports:
-    - port: {{ .Values.langfuse.web.service.port }}
+    - port: {{ .Values.langfuse.web.service.externalPort }}
       targetPort: http
       protocol: TCP
       name: http
