@@ -29,6 +29,9 @@ langfuse:
       name: ""
       key: ""
 
+  # -- EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators)
+  allowedOrganizationCreators: []
+
   # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
   encryptionKey:
     value: ""

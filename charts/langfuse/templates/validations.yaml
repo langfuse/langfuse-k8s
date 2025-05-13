@@ -172,6 +172,11 @@
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.smtp.fromAddress or langfuse.additionalEnv[name: EMAIL_FROM_ADDRESS] to continue." -}}
 {{- end -}}
 
+# Validate that only one of additionalEnv or new structure is configured for Allowed Organization Creators
+{{- if and $.Values.langfuse.allowedOrganizationCreators (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_ALLOWED_ORGANIZATION_CREATORS")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.allowedOrganizationCreators or langfuse.additionalEnv[name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS] to continue." -}}
+{{- end -}}
+
 # Validate that only one of additionalEnv or new structure is configured for Authentication and Security
 {{- if and $.Values.langfuse.salt (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "SALT")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.salt or langfuse.additionalEnv[name: SALT] to continue." -}}

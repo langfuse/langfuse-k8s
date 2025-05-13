@@ -243,6 +243,12 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ required "langfuse.smtp.fromAddress has to be set if langfuse.smtp.connectionUrl is configured" .Values.langfuse.smtp.fromAddress | quote }}
 {{- end }}
 {{- end }}
+{{- if hasKey .Values.langfuse "allowedOrganizationCreators" }}
+{{- if .Values.langfuse.allowedOrganizationCreators }}
+- name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS
+  value: {{ join "," .Values.langfuse.allowedOrganizationCreators | quote }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
