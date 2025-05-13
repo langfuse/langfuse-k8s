@@ -5,17 +5,18 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/langfuse-k8s)](https://artifacthub.io/packages/search?repo=langfuse-k8s)
 
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
+Please feel free to contribute any improvements or suggestions.
+
+Langfuse self-hosting documentation: https://langfuse.com/self-hosting
+
+## Repository Structure
+
+- `examples` directory contains example `yaml` configurations
+- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
 ## Helm Chart
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
-
-### 1.0.0 Release Candidate
-
-This Chart is a release candidate for the 1.0.0 version of the Langfuse Helm Chart.
-Please provide all thoughts and feedbacks on the interface and the upgrade path via our [GitHub Discussion](https://github.com/orgs/langfuse/discussions/5734).
-
-For details on how to migrate from 0.13.x to 1.0.0, refer to our [migration guide](./UPGRADE.md).
 
 ### Installation
 
@@ -37,6 +38,60 @@ helm upgrade langfuse langfuse/langfuse
 
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
+
+### Sizing
+
+By default, the chart will run with the minimum resources to provide a stable experience.
+For production environments, we recommend to adjust the following parameters in the values.yaml.
+See [Langfuse documentation](https://langfuse.com/self-hosting/scaling) for our full sizing guide.
+
+```yaml
+langfuse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+
+clickhouse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+      
+  keeper:
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+
+redis:
+  primary:
+    resources:
+      limits:
+        cpu: "1"
+        memory: "1.5Gi"
+      requests:
+        cpu: "1"
+        memory: "1.5Gi"
+
+s3:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+```
 
 ### Configuration
 
@@ -104,14 +159,12 @@ postgresql:
 clickhouse:
   auth:
     existingSecret: langfuse-clickhouse-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretKey: password
 
 redis:
   auth:
     existingSecret: langfuse-redis-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretPasswordKey: password
 
 s3:
   auth:
@@ -316,12 +369,3 @@ langfuse:
             matchLabels:
               app: worker
 ```
-
-## Repository Structure
-
-- `examples` directory contains example `yaml` configurations
-- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
-
-Please feel free to contribute any improvements or suggestions.
-
-Langfuse deployment docs: https://langfuse.com/docs/deployment/self-host
