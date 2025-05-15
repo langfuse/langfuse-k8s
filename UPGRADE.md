@@ -92,29 +92,6 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
           existingSecret: <secret-name>
           existingSecretKey: <secret-key>
     ```
-  
-  - `langfuse.nextauth.url` and `langfuse.nextauth.secret` are now handled moved into a dedicated `nextauth` section:
-    ```yaml
-      # Old
-      langfuse:
-        nextauth:
-          url: "<url>"
-          secret: "<secret>"
-
-      # New
-      nextauth:
-        url: "<url>"
-        secret:
-          value: "<secret>"
-    ```
-
-    Alternatively, you can use an existing secret for the secret:
-    ```yaml
-      nextauth:
-        secret:
-          existingSecret: <secret-name>
-          existingSecretKey: <secret-key>
-    ```
 
 2. **Redis Configuration**
   - The `valkey` section has been renamed to `redis`. To keep the same name, you can set the `nameOverride` to `valkey`.
