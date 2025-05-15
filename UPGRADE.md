@@ -346,6 +346,15 @@ The following configurations have been removed or replaced:
   - Check that all required environment variables are properly migrated to the new structure
   - Any remaining custom environment variables can still be set in `langfuse.additionalEnv`
 
+## Troubleshooting
+
+### Migration Errors
+
+If you encounter a migration error like `no migration found for version 18: read down for version 18 .: file does not exist` during upgrade, this typically happens when a pre-release chart deployed a newer Langfuse version than the major release chart.
+This occurs because pre-release charts may use floating version tags (like `:3`) which can deploy newer application versions with migrations that are not included in specific versioned releases.
+
+**Solution:** Deploy a specific version of the chart that includes all required migrations or overwrite the appVersion configuration to use the latest Langfuse release.
+
 ## Additional Notes
 
 - The chart now supports better separation of concerns between web and worker deployments
