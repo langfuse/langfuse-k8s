@@ -392,9 +392,9 @@ Return ClickHouse protocol (http or https)
 - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
   value: {{ .Values.s3.eventUpload.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
+{{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint | quote }}
+  value: {{ .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "eventUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
@@ -449,9 +449,9 @@ Return ClickHouse protocol (http or https)
 - name: LANGFUSE_S3_BATCH_EXPORT_REGION
   value: {{ .Values.s3.batchExport.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.batchExport.endpoint .Values.s3.endpoint }}
+{{- if or .Values.s3.batchExport.endpoint .Values.s3.endpoint .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT
-  value: {{ .Values.s3.batchExport.endpoint | default .Values.s3.endpoint | quote }}
+  value: {{ .Values.s3.batchExport.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
@@ -504,9 +504,9 @@ Return ClickHouse protocol (http or https)
 - name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
   value: {{ .Values.s3.mediaUpload.region | default .Values.s3.region | quote }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.endpoint .Values.s3.endpoint }}
+{{- if or .Values.s3.mediaUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.mediaUpload.endpoint | default .Values.s3.endpoint | quote }}
+  value: {{ .Values.s3.mediaUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
 {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
