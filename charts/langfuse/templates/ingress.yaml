@@ -14,6 +14,7 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ include "langfuse.fullname" . }}
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
     {{- with .Values.langfuse.ingress.additionalLabels }}
