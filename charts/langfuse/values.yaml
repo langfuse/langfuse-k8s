@@ -152,6 +152,8 @@ langfuse:
       type: ClusterIP
       # -- The port to use for the langfuse web application
       port: 3000
+      # -- The external port that will be exposed by the service
+      externalPort: 80
       # -- The node port to use for the langfuse web application
       nodePort: null
       # -- Additional labels for the langfuse web application service
