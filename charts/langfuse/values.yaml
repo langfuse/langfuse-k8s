@@ -73,9 +73,8 @@ langfuse:
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
 
-  # -- Langfuse SMTP options. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
   smtp:
-    # -- SMTP connection URL
+    # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
     connectionUrl: ""
     # -- From address for emails. Required if connectionUrl is set.
     fromAddress: ""
