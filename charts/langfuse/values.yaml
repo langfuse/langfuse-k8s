@@ -29,6 +29,23 @@ langfuse:
       name: ""
       key: ""
 
+  # -- EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators)
+  allowedOrganizationCreators: []
+
+  # -- Authentication and SSO settings:
+  # -- If you want to disable username/password login, set auth.disableUsernamePassword to true.
+  # -- Refer to [documentation](https://langfuse.com/self-hosting/authentication-and-sso) for available keys for each provider.
+  # -- For each provider, add it to auth.providers, and add respective configuration options under it.
+  # -- For options, use the last part (after provider name) of the respective environment variable's name, in camelCase.
+  # -- For example, to use Azure AD as your SSO provider, use the following lines:
+  # auth:
+  #   disableUsernamePassword: true
+  #   providers:
+  #     azureAd:
+  #       clientId: "<YOUR CLIENT ID>"
+  #       clientSecret: "<YOUR CLIENT SECRET>"
+  #       tenantId: "<YOUR TENANT ID>"
+
   # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
   encryptionKey:
     value: ""
@@ -55,6 +72,12 @@ langfuse:
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
+
+  smtp:
+    # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
+    connectionUrl: ""
+    # -- From address for emails. Required if connectionUrl is set.
+    fromAddress: ""
 
   ingress:
     # -- Set to `true` to enable the ingress resource

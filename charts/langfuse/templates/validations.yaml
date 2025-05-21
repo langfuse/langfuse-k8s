@@ -6,6 +6,14 @@
     {{- fail "langfuse.logging.format must be one of: text, json" -}}
 {{- end -}}
 
+# Validate auth providers settings
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
+{{- range $providerName, $provider := .Values.langfuse.auth.providers -}}
+{{- if not (has ($providerName | snakecase | upper) (list "AUTH0" "COGNITO" "AZURE_AD" "GITHUB" "GITHUB_ENTERPRISE" "GITLAB" "GOOGLE" "KEYCLOAK" "OKTA" "WORKOS" "CUSTOM")) -}}
+  {{- fail (printf "langfuse.auth: invalid auth provider %s" $providerName)}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 # Validate ClickHouse settings
 {{- if ne ($.Values.clickhouse.shards | int) 1 -}}
@@ -162,6 +170,19 @@
 {{- end -}}
 {{- if and $.Values.langfuse.features.experimentalFeaturesEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENABLE_EXPERIMENTAL_FEATURES")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.experimentalFeaturesEnabled or langfuse.additionalEnv[name: ENABLE_EXPERIMENTAL_FEATURES] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for SMTP config
+{{- if and $.Values.langfuse.smtp.connectionUrl (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "SMTP_CONNECTION_URL")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.smtp.connectionUrl or langfuse.additionalEnv[name: SMTP_CONNECTION_URL] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.smtp.fromAddress (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "EMAIL_FROM_ADDRESS")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.smtp.fromAddress or langfuse.additionalEnv[name: EMAIL_FROM_ADDRESS] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for Allowed Organization Creators
+{{- if and $.Values.langfuse.allowedOrganizationCreators (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_ALLOWED_ORGANIZATION_CREATORS")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.allowedOrganizationCreators or langfuse.additionalEnv[name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS] to continue." -}}
 {{- end -}}
 
 # Validate that only one of additionalEnv or new structure is configured for Authentication and Security

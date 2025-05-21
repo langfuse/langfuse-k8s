@@ -235,6 +235,20 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.features.signUpDisabled | quote }}
 - name: ENABLE_EXPERIMENTAL_FEATURES
   value: {{ .Values.langfuse.features.experimentalFeaturesEnabled | quote }}
+{{- if hasKey .Values.langfuse "smtp" }}
+{{- if .Values.langfuse.smtp.connectionUrl }}
+- name: SMTP_CONNECTION_URL
+  value: {{ .Values.langfuse.smtp.connectionUrl | quote }}
+- name: EMAIL_FROM_ADDRESS
+  value: {{ required "langfuse.smtp.fromAddress has to be set if langfuse.smtp.connectionUrl is configured" .Values.langfuse.smtp.fromAddress | quote }}
+{{- end }}
+{{- end }}
+{{- if hasKey .Values.langfuse "allowedOrganizationCreators" }}
+{{- if .Values.langfuse.allowedOrganizationCreators }}
+- name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS
+  value: {{ join "," .Values.langfuse.allowedOrganizationCreators | quote }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*
@@ -246,6 +260,18 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
+- name: AUTH_DISABLE_USERNAME_PASSWORD
+  value: {{ .Values.langfuse.auth.disableUsernamePassword | quote }}
+{{- end }}
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
+{{- range $providerName, $provider := .Values.langfuse.auth.providers }}
+{{- range $optionKey, $optionVal := $provider }}
+- name: AUTH_{{ $providerName | snakecase | upper }}_{{ $optionKey | snakecase | upper }}
+  value: {{ $optionVal | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end -}}
 
 {{/*

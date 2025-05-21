@@ -50,6 +50,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
+| langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
@@ -88,6 +89,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
+| langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
+| langfuse.smtp.fromAddress | string | `""` | From address for emails. Required if connectionUrl is set. |
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
 | langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
 | langfuse.web.deployment.strategy | object | `{}` | Deployment strategy for the web deployment. Overrides the global deployment strategy |
