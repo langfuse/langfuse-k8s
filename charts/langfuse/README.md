@@ -130,6 +130,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.resources | object | `{}` | Resources for the langfuse web pods. Defaults to the global resources |
 | langfuse.web.service.additionalLabels | object | `{}` | Additional labels for the langfuse web application service |
 | langfuse.web.service.annotations | object | `{}` | Annotations for the langfuse web application service |
+| langfuse.web.service.externalPort | string | `nil` | The external port that will be exposed by the service. Falls back to `port` if not set. |
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
