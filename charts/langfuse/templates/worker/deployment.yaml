@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "langfuse.fullname" . }}-worker
+  namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
   {{- with (coalesce .Values.langfuse.worker.deployment.annotations .Values.langfuse.deployment.annotations) }}
