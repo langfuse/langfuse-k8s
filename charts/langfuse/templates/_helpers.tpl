@@ -80,8 +80,6 @@ Return Redis hostname
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
 {{- printf "%s-%s-primary" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
-{{- else }}
-{{- fail "redis.host must be set when redis.deploy is false" }}
 {{- end }}
 {{- end }}
 
@@ -99,8 +97,6 @@ Return ClickHouse hostname (without protocol)
 {{- end -}}
 {{- else if .Values.clickhouse.deploy }}
 {{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
-{{- else }}
-{{- fail "clickhouse.host must be set when clickhouse.deploy is false" }}
 {{- end }}
 {{- end }}
 
@@ -279,14 +275,12 @@ Get value of a specific environment variable from additionalEnv if it exists
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.redisEnv" -}}
-- name: REDIS_PASSWORD
 {{- if .Values.redis.auth.existingSecret }}
+- name: REDIS_PASSWORD
   valueFrom:
     secretKeyRef:
       name: {{ .Values.redis.auth.existingSecret }}
       key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
-{{- else }}
-  value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
@@ -329,6 +323,7 @@ Return ClickHouse protocol (http or https)
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.clickhouseEnv" -}}
+{{ if .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_URL
   {{- if .Values.clickhouse.migration.url }}
   value: {{ .Values.clickhouse.migration.url | quote }}
@@ -357,6 +352,7 @@ Return ClickHouse protocol (http or https)
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
   value: {{ not .Values.clickhouse.migration.autoMigrate | quote }}
 {{- end -}}
+{{- end }}
 
 {{/*
     Get a s3 related config by value or secret. Lookup the bucket value, if not found lookup the shared config.
