@@ -275,12 +275,16 @@ Get value of a specific environment variable from additionalEnv if it exists
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.redisEnv" -}}
-{{- if .Values.redis.auth.existingSecret }}
+{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
 - name: REDIS_PASSWORD
+{{- if .Values.redis.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.redis.auth.existingSecret }}
       key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
+{{- else }}
+  value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
+{{- end }}
 {{- end }}
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
