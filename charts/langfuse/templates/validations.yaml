@@ -20,7 +20,7 @@
     {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) -}}
+{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL"))) -}}
     {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
 {{- end -}}
 
@@ -29,10 +29,9 @@
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) -}}
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
     {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
 {{- end -}}
-
 
 # Validate S3 settings
 #   Event Upload
@@ -93,7 +92,7 @@
 {{- if and $.Values.clickhouse.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse configuration or langfuse.additionalEnv[name: CLICKHOUSE_URL] to continue." -}}
 {{- end -}}
-{{- if and $.Values.clickhouse.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_USER")) -}}
+{{- if and $.Values.clickhouse.deploy $.Values.clickhouse.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_USER")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse.auth.username or langfuse.additionalEnv[name: CLICKHOUSE_USER] to continue." -}}
 {{- end -}}
 {{- if and (or $.Values.clickhouse.auth.password $.Values.clickhouse.auth.existingSecret) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_PASSWORD")) -}}
