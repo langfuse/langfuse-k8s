@@ -380,9 +380,9 @@ Return ClickHouse protocol (http or https)
 {{- define "langfuse.s3Env" -}}
 - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
 {{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[eventUpload].bucket is required" (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+  value: {{ (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
 {{- else }}
-  value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
+  value: {{ (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
 {{- end }}
 {{- if .Values.s3.eventUpload.prefix }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
@@ -437,9 +437,9 @@ Return ClickHouse protocol (http or https)
 {{- if $.Values.s3.batchExport.enabled }}
 - name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
 {{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[batchExport].bucket is required" (coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+  value: {{ (coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
 {{- else }}
-  value: {{ required "s3.[batchExport].bucket is required" (.Values.s3.batchExport.bucket | default .Values.s3.bucket) | quote }}
+  value: {{ (.Values.s3.batchExport.bucket | default .Values.s3.bucket) | quote }}
 {{- end }}
 {{- if or .Values.s3.batchExport.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_BATCH_EXPORT_PREFIX
@@ -492,9 +492,9 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
 {{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[mediaUpload].bucket is required" (coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+  value: {{ (coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
 {{- else }}
-  value: {{ required "s3.[mediaUpload].bucket is required" (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
+  value: {{ (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
 {{- end }}
 {{- if or .Values.s3.mediaUpload.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX

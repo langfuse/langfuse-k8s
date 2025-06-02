@@ -39,9 +39,9 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.eventUpload.bucket)) -}}
-    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.eventUpload.bucket to continue." -}}
-{{- end -}}
+{{- if and (.Values.s3.deploy) (not (or .Values.s3.bucket .Values.s3.eventUpload.bucket)) }}
+    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.eventUpload.bucket to continue." }}
+{{- end }}
 
 #   Batch Export
 {{- if $.Values.s3.batchExport.enabled -}}
@@ -49,7 +49,7 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
+{{- if and $.Values.s3.deploy (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
     {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.batchExport.bucket to continue." -}}
 {{- end -}}
 {{- end -}}
@@ -59,8 +59,8 @@
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}
-    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.mediaUpload.bucket to continue." -}}
+{{- if and $.Values.s3.deploy (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
+    {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.batchExport.bucket to continue." -}}
 {{- end -}}
 
 # Validate that only one of additionalEnv or new structure is configured for PostgreSQL
