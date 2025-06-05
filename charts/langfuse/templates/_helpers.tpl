@@ -327,36 +327,58 @@ Return ClickHouse protocol (http or https)
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.clickhouseEnv" -}}
-{{ if .Values.clickhouse.deploy }}
+{{- with (include "langfuse.getEnvVar" (dict "env" .Values.langfuse.additionalEnv "name" "CLICKHOUSE_MIGRATION_URL")) -}}
+{{/*
+    If CLICKHOUSE_MIGRATION_URL is set in additionalEnv, we do nothing for ClickHouse env vars, because we assume everything is configured via additionalEnv.
+*/}}
+{{- else -}}
+{{- if or .Values.clickhouse.migration.url .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_URL
   {{- if .Values.clickhouse.migration.url }}
   value: {{ .Values.clickhouse.migration.url | quote }}
-  {{- else }}
+  {{- else if .Values.clickhouse.deploy }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- end }}
+{{- end }}
+{{- if or (hasKey .Values.clickhouse.migration "ssl") .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_SSL
   value: {{ .Values.clickhouse.migration.ssl | quote }}
+{{- end }}
+{{- if or .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_URL
   value: "{{ include "langfuse.clickhouse.protocol" . }}://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
+{{- end }}
+{{- if or .Values.clickhouse.auth.username .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_USER
+  {{- if .Values.clickhouse.deploy }}
   value: {{ required "clickhouse.auth.username is required" .Values.clickhouse.auth.username | quote }}
+  {{- else }}
+  value: {{ .Values.clickhouse.auth.username | quote }}
+  {{- end }}
+{{- end }}
+{{- if or .Values.clickhouse.auth.existingSecret .Values.clickhouse.auth.password .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_PASSWORD
 {{- if .Values.clickhouse.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.clickhouse.auth.existingSecret }}
       key: {{ required "clickhouse.auth.existingSecretKey is required when using an existing secret" .Values.clickhouse.auth.existingSecretKey }}
-{{- else }}
+{{- else if .Values.clickhouse.auth.password }}
+  value: {{ .Values.clickhouse.auth.password | quote }}
+{{- else if .Values.clickhouse.deploy }}
   value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
 {{- end }}
-{{- if $.Values.clickhouse.replicaCount | int | eq 1 }}
+{{- end }}
+{{- if and .Values.clickhouse.deploy ($.Values.clickhouse.replicaCount | int | eq 1) }}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
 {{- end }}
+{{- if or (hasKey .Values.clickhouse.migration "autoMigrate") .Values.clickhouse.deploy }}
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
   value: {{ not .Values.clickhouse.migration.autoMigrate | quote }}
-{{- end -}}
 {{- end }}
+{{- end }}
+{{- end -}}
 
 {{/*
     Get a s3 related config by value or secret. Lookup the bucket value, if not found lookup the shared config.
