@@ -329,7 +329,7 @@ Return ClickHouse protocol (http or https)
 {{- define "langfuse.clickhouseEnv" -}}
 {{- with (include "langfuse.getEnvVar" (dict "env" .Values.langfuse.additionalEnv "name" "CLICKHOUSE_MIGRATION_URL")) -}}
 {{/*
-    If CLICKHOUSE_MIGRATION_URL is set in additionalEnv, we skip setting it here but still set other ClickHouse env vars if needed.
+  If CLICKHOUSE_MIGRATION_URL is set in additionalEnv, we do nothing for ClickHouse env vars, because we assume everything is configured via additionalEnv.
 */}}
 {{- else -}}
 {{- if or .Values.clickhouse.migration.url .Values.clickhouse.host .Values.clickhouse.deploy }}
@@ -341,7 +341,6 @@ Return ClickHouse protocol (http or https)
   {{- else if .Values.clickhouse.deploy }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- end }}
-{{- end }}
 {{- end }}
 {{- if or (hasKey .Values.clickhouse.migration "ssl") .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_SSL
@@ -379,6 +378,7 @@ Return ClickHouse protocol (http or https)
 {{- if or (hasKey .Values.clickhouse.migration "autoMigrate") .Values.clickhouse.deploy }}
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
   value: {{ not .Values.clickhouse.migration.autoMigrate | quote }}
+{{- end }}
 {{- end }}
 {{- end -}}
 
