@@ -318,6 +318,46 @@ postgresql:
     username: null
 ```
 
+##### With SSO provider configuration using secrets and additionalEnv
+
+This example shows how to configure Okta SSO by setting the required environment variables from secrets using the `additionalEnv` pattern:
+
+```yaml
+langfuse:
+  additionalEnv:
+    - name: AUTH_OKTA_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_CLIENT_ID
+    - name: AUTH_OKTA_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_CLIENT_SECRET
+    - name: AUTH_OKTA_ISSUER
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_ISSUER
+```
+
+You would need to create the corresponding secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: okta-secrets
+type: Opaque
+stringData:
+  AUTH_OKTA_CLIENT_ID: "your-okta-client-id"
+  AUTH_OKTA_CLIENT_SECRET: "your-okta-client-secret"
+  AUTH_OKTA_ISSUER: "https://your-domain.okta.com"
+```
+
+This pattern works for any SSO provider supported by Langfuse. See the [Authentication and SSO documentation](https://langfuse.com/self-hosting/authentication-and-sso#sso) for other providers and their required environment variables.
+
 ##### With overrides for hostAliases
 
 This is going to add a record to the /etc/hosts file of all containers
