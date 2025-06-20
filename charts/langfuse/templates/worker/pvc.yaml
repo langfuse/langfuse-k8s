@@ -1,0 +1,26 @@
+{{- if .Values.langfuse.worker.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "langfuse.fullname" . }}-worker-pvc
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.langfuse.worker.persistence.annotations | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.langfuse.worker.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.langfuse.worker.persistence.size | quote }}
+  {{- if .Values.langfuse.worker.persistence.storageClassName }}
+  storageClassName: {{ .Values.langfuse.worker.persistence.storageClassName | quote }}
+  {{- end }}
+  {{- if .Values.langfuse.worker.persistence.volumeName }}
+  volumeName: {{ .Values.langfuse.worker.persistence.volumeName | quote }}
+  {{- end }}
+  {{- with .Values.langfuse.worker.persistence.selector }}
+  selector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

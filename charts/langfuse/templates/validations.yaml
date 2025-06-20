@@ -203,3 +203,47 @@
 {{- if and $.Values.langfuse.worker.keda.enabled (or $.Values.langfuse.worker.hpa.enabled $.Values.langfuse.worker.vpa.enabled) -}}
     {{- fail "If keda is enabled for worker component, you cannot enable hpa or vpa. Please disable either keda or both hpa and vpa." -}}
 {{- end -}}
+
+# Validate Web Component PVC
+{{- if .Values.langfuse.web.persistence.enabled }}
+  # Storage class validation
+  {{- if not .Values.langfuse.web.persistence.storageClassName }}
+    {{- if not (include "defaultStorageClassExists" .) }}
+      {{- fail "Web persistence: Storage class must be specified or default storage class must exist" -}}
+    {{- end }}
+  {{- end }}
+
+  # Access modes validation
+  {{- range .Values.langfuse.web.persistence.accessModes }}
+    {{- if not (has . (list "ReadWriteOnce" "ReadOnlyMany" "ReadWriteMany")) }}
+      {{- fail (printf "Web persistence: Invalid access mode '%s'. Valid values: ReadWriteOnce, ReadOnlyMany, ReadWriteMany" .) -}}
+    {{- end }}
+  {{- end }}
+
+  # Size format validation
+  {{- if not (regexMatch "^[1-9]\\d*[KMGTP]i$" .Values.langfuse.web.persistence.size) }}
+    {{- fail "Web persistence: Storage size must be in Kubernetes quantity format (e.g., 10Gi)" -}}
+  {{- end }}
+{{- end }}
+
+# Validate Worker Component PVC
+{{- if .Values.langfuse.worker.persistence.enabled }}
+  # Storage class validation
+  {{- if not .Values.langfuse.worker.persistence.storageClassName }}
+    {{- if not (include "defaultStorageClassExists" .) }}
+      {{- fail "Worker persistence: Storage class must be specified or default storage class must exist" -}}
+    {{- end }}
+  {{- end }}
+
+  # Access modes validation
+  {{- range .Values.langfuse.worker.persistence.accessModes }}
+    {{- if not (has . (list "ReadWriteOnce" "ReadOnlyMany" "ReadWriteMany")) }}
+      {{- fail (printf "Worker persistence: Invalid access mode '%s'. Valid values: ReadWriteOnce, ReadOnlyMany, ReadWriteMany" .) -}}
+    {{- end }}
+  {{- end }}
+
+  # Size format validation
+  {{- if not (regexMatch "^[1-9]\\d*[KMGTP]i$" .Values.langfuse.worker.persistence.size) }}
+    {{- fail "Worker persistence: Storage size must be in Kubernetes quantity format (e.g., 10Gi)" -}}
+  {{- end }}
+{{- end }}

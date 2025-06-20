@@ -266,6 +266,29 @@ langfuse:
       failureThreshold: 3
       # -- Success threshold for readinessProbe.
       successThreshold: 1
+    
+    # Persistence configuration for Langfuse components
+    persistence:
+      # -- If enabled, PersistentVolumeClaim will be created.
+      enabled: false
+      # -- Storage class name for persistent volume. Leave empty to use default storage class.
+      storageClassName: ""
+      # -- Size of the persistent volume
+      size: ""
+      # -- Access modes for the persistent volume
+      accessModes:
+        - ReadWriteOnce
+      # -- Annotations for the PersistentVolumeClaim
+      annotations: {}
+        # example: volume.beta.kubernetes.io/storage-class: "standard"
+      # -- Existing PersistentVolume name for static provisioning.
+      # If specified, dynamically provisioned volume will not be used.
+      volumeName: ""
+      # -- Selector for binding to specific PersistentVolumes.
+      selector: {}
+        # example:
+        #   matchLabels:
+        #     type: ssd
 
   # Worker deployment configuration
   worker:
@@ -354,6 +377,29 @@ langfuse:
       failureThreshold: 3
       # -- Success threshold for livenessProbe.
       successThreshold: 1
+    
+    # Persistence configuration for Langfuse components
+    persistence:
+      # -- If enabled, PersistentVolumeClaim will be created.
+      enabled: false
+      # -- Storage class name for persistent volume. Leave empty to use default storage class.
+      storageClassName: ""
+      # -- Size of the persistent volume
+      size: ""
+      # -- Access modes for the persistent volume
+      accessModes:
+        - ReadWriteOnce
+      # -- Annotations for the PersistentVolumeClaim
+      annotations: {}
+        # example: volume.beta.kubernetes.io/storage-class: "standard"
+      # -- Existing PersistentVolume name for static provisioning.
+      # If specified, dynamically provisioned volume will not be used.
+      volumeName: ""
+      # -- Selector for binding to specific PersistentVolumes.
+      selector: {}
+        # example:
+        #   matchLabels:
+        #     type: ssd
 
   # NextAuth configuration
   nextauth:

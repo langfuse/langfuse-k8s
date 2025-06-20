@@ -584,6 +584,17 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- end -}}
 
+{{- define "defaultStorageClassExists" -}}
+  {{- $storageClasses := (lookup "storage.k8s.io/v1" "StorageClass" "" "").items -}}
+  {{- range $storageClasses -}}
+    {{- if .metadata.annotations -}}
+      {{- if eq (get .metadata.annotations "storageclass.kubernetes.io/is-default-class") "true" -}}
+        {{- true -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
 {{/*
 Common environment variables for all deployments
 */}}
