@@ -592,7 +592,7 @@ Return ClickHouse protocol (http or https)
         {{- true -}}
       {{- end -}}
     {{- end -}}
-  {{- end -}}
+  {{- end }}{{- false -}}
 {{- end -}}
 
 {{/*
