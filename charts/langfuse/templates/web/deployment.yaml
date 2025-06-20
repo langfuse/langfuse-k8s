@@ -77,23 +77,11 @@ spec:
               containerPort: {{ .Values.langfuse.web.service.port }}
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}
-              port: http
-            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
-            periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
-            timeoutSeconds: {{ .Values.langfuse.web.livenessProbe.timeoutSeconds | default 5 }}
-            successThreshold: {{ .Values.langfuse.web.livenessProbe.successThreshold | default 1 }}
-            failureThreshold: {{ .Values.langfuse.web.livenessProbe.failureThreshold | default 5 }}
+            {{- toYaml .Values.langfuse.web.livenessProbe | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: {{ .Values.langfuse.web.readinessProbe.path | default "/api/public/ready" }}
-              port: http
-            initialDelaySeconds: {{ .Values.langfuse.web.readinessProbe.initialDelaySeconds | default 20 }}
-            periodSeconds: {{ .Values.langfuse.web.readinessProbe.periodSeconds | default 10 }}
-            timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
-            successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
-            failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
+            {{- toYaml .Values.langfuse.web.readinessProbe | nindent 12 }}
+          startupProbe:
+            {{- toYaml .Values.langfuse.web.startupProbe | nindent 12 }}
           resources:
             {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

@@ -241,31 +241,52 @@ langfuse:
 
     livenessProbe:
       # -- Path to check for liveness.
-      path: "/api/public/health"
-      # -- Initial delay seconds for livenessProbe.
+      httpGet:
+        path: "/api/public/health"
+        port: http
+      # -- Initial delay seconds for livenessProbe.   
       initialDelaySeconds: 20
       # -- Period seconds for livenessProbe.
       periodSeconds: 10
       # -- Timeout seconds for livenessProbe.
       timeoutSeconds: 5
-      # -- Failure threshold for livenessProbe.
-      failureThreshold: 3
       # -- Success threshold for livenessProbe.
       successThreshold: 1
+      # -- Failure threshold for livenessProbe.
+      failureThreshold: 5
 
     readinessProbe:
       # -- Path to check for readiness.
-      path: "/api/public/ready"
-      # -- Initial delay seconds for readinessProbe.
+      httpGet:
+        path: "/api/public/health"
+        port: http
+      # -- Initial delay seconds for readinessProbe.   
       initialDelaySeconds: 20
       # -- Period seconds for readinessProbe.
       periodSeconds: 10
       # -- Timeout seconds for readinessProbe.
       timeoutSeconds: 5
-      # -- Failure threshold for readinessProbe.
-      failureThreshold: 3
       # -- Success threshold for readinessProbe.
       successThreshold: 1
+      # -- Failure threshold for readinessProbe.
+      failureThreshold: 5
+
+    startupProbe:
+      # -- Path to check for startupProbe.
+      httpGet:
+        path: "/api/public/health"
+        port: http
+      # -- Initial delay seconds for startupProbe.   
+      initialDelaySeconds: 20
+      # -- Period seconds for startupProbe.
+      periodSeconds: 15
+      # -- Timeout seconds for startupProbe.
+      timeoutSeconds: 5
+      # -- Success threshold for startupProbe.
+      successThreshold: 1
+      # -- Failure threshold for startupProbe.
+      failureThreshold: 30
+
 
   # Worker deployment configuration
   worker:
