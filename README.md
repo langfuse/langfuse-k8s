@@ -174,7 +174,7 @@ s3:
     rootPasswordSecretKey: rootPassword
 ```
       
-See the [Helm README](./charts/langfuse/README.md) for a full list of all configuration options.
+See the [Helm README](https://github.com/langfuse/langfuse-k8s/blob/main/charts/langfuse/README.md) for a full list of all configuration options.
 
 #### Examples:
 
