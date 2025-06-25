@@ -147,6 +147,9 @@ langfuse:
   # -- Allows additional volume mounts to be added to all langfuse deployments
   extraVolumeMounts: []
 
+  # -- Allows additional lifecycle hooks to be added to all langfuse deployments
+  extraLifecycle: {}
+
   # Web deployment configuration
   web:
     image:
