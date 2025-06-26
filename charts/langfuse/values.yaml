@@ -273,7 +273,7 @@ langfuse:
       enabled: false
       # -- Path to check for startupProbe.
       httpGet:
-        path: "/api/public/health"
+        path: "/api/public/ready"
         port: http
       # -- Initial delay seconds for startupProbe.   
       initialDelaySeconds: 20
