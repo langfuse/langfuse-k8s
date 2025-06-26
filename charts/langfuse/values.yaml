@@ -159,6 +159,8 @@ langfuse:
       # -- The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
     deployment:
+      # -- Additional labels for the langfuse web deployment
+      additionalLabels: {}
       # -- Annotations for the web deployment
       annotations: {}
       # -- Deployment strategy for the web deployment. Overrides the global deployment strategy
@@ -279,6 +281,8 @@ langfuse:
       # -- The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
     deployment:
+      # -- Additional labels for the worker deployment
+      additionalLabels: {}
       # -- Annotations for the worker deployment
       annotations: {}
       # -- Deployment strategy for the worker deployment. Overrides the global deployment strategy

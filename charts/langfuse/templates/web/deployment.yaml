@@ -4,6 +4,9 @@ metadata:
   name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.web.deployment.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with (coalesce .Values.langfuse.web.deployment.annotations .Values.langfuse.deployment.annotations) }}
   annotations:
     {{- toYaml . | nindent 4 }}

@@ -92,6 +92,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
 | langfuse.smtp.fromAddress | string | `""` | From address for emails. Required if connectionUrl is set. |
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
+| langfuse.web.deployment.additionalLabels | object | `{}` | Additional labels for the langfuse web deployment |
 | langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
 | langfuse.web.deployment.strategy | object | `{}` | Deployment strategy for the web deployment. Overrides the global deployment strategy |
 | langfuse.web.hostAliases | list | `[]` | Adding records to /etc/hosts in the pod's network. |
@@ -139,6 +140,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse web pods |
+| langfuse.worker.deployment.additionalLabels | object | `{}` | Additional labels for the worker deployment |
 | langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
 | langfuse.worker.deployment.strategy | object | `{}` | Deployment strategy for the worker deployment. Overrides the global deployment strategy |
 | langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
