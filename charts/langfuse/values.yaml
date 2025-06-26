@@ -268,7 +268,7 @@ langfuse:
       failureThreshold: 3
       # -- Success threshold for readinessProbe.
       successThreshold: 1
-
+    # -- Startup probe configuration, if you db init is slow, you can enable this to wait for the db to be ready before liveness and readiness probes are run.
     startupProbe:
       enabled: false
       # -- Path to check for startupProbe.
