@@ -76,12 +76,39 @@ spec:
             - name: http
               containerPort: {{ .Values.langfuse.web.service.port }}
               protocol: TCP
+          {{- if .Values.langfuse.web.livenessProbe.enabled }}
           livenessProbe:
-            {{- toYaml .Values.langfuse.web.livenessProbe | nindent 12 }}
+            httpGet:
+              path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.livenessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.livenessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.livenessProbe.failureThreshold | default 5 }}
+          {{- end }}
+          {{- if .Values.langfuse.web.readinessProbe.enabled }}
           readinessProbe:
-            {{- toYaml .Values.langfuse.web.readinessProbe | nindent 12 }}
+            httpGet:
+              path: {{ .Values.langfuse.web.readinessProbe.path | default "/api/public/ready" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.readinessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
+          {{- end }}
+          {{- if .Values.langfuse.web.startupProbe.enabled }}
           startupProbe:
-            {{- toYaml .Values.langfuse.web.startupProbe | nindent 12 }}
+            httpGet:
+              path: {{ .Values.langfuse.web.startupProbe.path | default "/api/public/ready" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.startupProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.web.startupProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.startupProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.startupProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.startupProbe.failureThreshold | default 30 }}
+          {{- end }
           resources:
             {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

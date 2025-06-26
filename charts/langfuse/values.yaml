@@ -240,38 +240,37 @@ langfuse:
     hostAliases: []
 
     livenessProbe:
+      enabled: true
       # -- Path to check for liveness.
-      httpGet:
-        path: "/api/public/health"
-        port: http
-      # -- Initial delay seconds for livenessProbe.   
+      path: "/api/public/health"
+      # -- Initial delay seconds for livenessProbe.
       initialDelaySeconds: 20
       # -- Period seconds for livenessProbe.
       periodSeconds: 10
       # -- Timeout seconds for livenessProbe.
       timeoutSeconds: 5
+      # -- Failure threshold for livenessProbe.
+      failureThreshold: 3
       # -- Success threshold for livenessProbe.
       successThreshold: 1
-      # -- Failure threshold for livenessProbe.
-      failureThreshold: 5
 
     readinessProbe:
+      enabled: true
       # -- Path to check for readiness.
-      httpGet:
-        path: "/api/public/health"
-        port: http
-      # -- Initial delay seconds for readinessProbe.   
+      path: "/api/public/ready"
+      # -- Initial delay seconds for readinessProbe.
       initialDelaySeconds: 20
       # -- Period seconds for readinessProbe.
       periodSeconds: 10
       # -- Timeout seconds for readinessProbe.
       timeoutSeconds: 5
+      # -- Failure threshold for readinessProbe.
+      failureThreshold: 3
       # -- Success threshold for readinessProbe.
       successThreshold: 1
-      # -- Failure threshold for readinessProbe.
-      failureThreshold: 5
 
     startupProbe:
+      enabled: false
       # -- Path to check for startupProbe.
       httpGet:
         path: "/api/public/health"
