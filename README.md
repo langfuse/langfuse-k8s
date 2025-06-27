@@ -186,7 +186,7 @@ Langfuse supports multiple blob storage providers through the `s3.storageProvide
 
 By default, the system uses the S3-compatible method.
 When Azure or GCS is selected, the respective native storage integration is enabled with the appropriate environment variables.
-See our [self-hosting docs](https://langfuse.com/self-hosting/infrastructure/blobstorage) for more details on Blob Storage configuirations.
+See our [self-hosting docs](https://langfuse.com/self-hosting/infrastructure/blobstorage) for more details on Blob Storage configurations.
 
 #### Examples
 
