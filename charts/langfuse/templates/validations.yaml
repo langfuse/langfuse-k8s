@@ -34,6 +34,11 @@
 {{- end -}}
 
 # Validate S3 settings
+# Storage Provider
+{{- if not (has $.Values.s3.storageProvider (list "s3" "azure" "gcs")) -}}
+    {{- fail "s3.storageProvider must be one of: s3, azure, gcs" -}}
+{{- end -}}
+
 #   Event Upload
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}

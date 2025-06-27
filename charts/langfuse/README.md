@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.2.18](https://img.shields.io/badge/Version-1.2.18-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.66.1](https://img.shields.io/badge/AppVersion-3.66.1-informational?style=flat-square)
+![Version: 1.3.0](https://img.shields.io/badge/Version-1.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.75.4](https://img.shields.io/badge/AppVersion-3.75.4-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -56,6 +56,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
+| langfuse.extraLifecycle | object | `{}` | Allows additional lifecycle hooks to be added to all langfuse deployments |
 | langfuse.extraVolumeMounts | list | `[]` | Allows additional volume mounts to be added to all langfuse deployments |
 | langfuse.extraVolumes | list | `[]` | Allows additional volumes to be added to all langfuse deployments |
 | langfuse.features.experimentalFeaturesEnabled | bool | `false` | Enable experimental features |
@@ -92,6 +93,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
 | langfuse.smtp.fromAddress | string | `""` | From address for emails. Required if connectionUrl is set. |
 | langfuse.tolerations | list | `[]` | Tolerations for all langfuse deployments |
+| langfuse.web.deployment.additionalLabels | object | `{}` | Additional labels for the langfuse web deployment |
 | langfuse.web.deployment.annotations | object | `{}` | Annotations for the web deployment |
 | langfuse.web.deployment.strategy | object | `{}` | Deployment strategy for the web deployment. Overrides the global deployment strategy |
 | langfuse.web.hostAliases | list | `[]` | Adding records to /etc/hosts in the pod's network. |
@@ -139,6 +141,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse web pods |
 | langfuse.web.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse web pods |
+| langfuse.worker.deployment.additionalLabels | object | `{}` | Additional labels for the worker deployment |
 | langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
 | langfuse.worker.deployment.strategy | object | `{}` | Deployment strategy for the worker deployment. Overrides the global deployment strategy |
 | langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
@@ -230,6 +233,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.eventUpload.region | string | `""` | S3 region to use for event uploads. |
 | s3.eventUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for event uploads. |
 | s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. Can be overridden per upload type. |
+| s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Example: Set value to the JSON service account key content, or use secretKeyRef to reference a secret |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
 | s3.mediaUpload.bucket | string | `""` | S3 bucket to use for media uploads. |
 | s3.mediaUpload.downloadUrlExpirySeconds | int | `3600` | Expiry time for download URLs. Defaults to 1 hour. |
@@ -242,6 +246,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.mediaUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for media uploads. |
 | s3.region | string | `"auto"` | S3 region to use for all uploads. Can be overridden per upload type. |
 | s3.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for all uploads. Can be overridden per upload type. |
+| s3.storageProvider | string | `"s3"` | When set to 's3', uses S3-compatible interface (default behavior) |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

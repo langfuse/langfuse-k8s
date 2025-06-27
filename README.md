@@ -174,9 +174,21 @@ s3:
     rootPasswordSecretKey: rootPassword
 ```
       
-See the [Helm README](./charts/langfuse/README.md) for a full list of all configuration options.
+See the [Helm README](https://github.com/langfuse/langfuse-k8s/blob/main/charts/langfuse/README.md) for a full list of all configuration options.
 
-#### Examples:
+#### Storage Provider Options
+
+Langfuse supports multiple blob storage providers through the `s3.storageProvider` configuration:
+
+- **`s3`** (default): Uses S3-compatible interface. Works with AWS S3, MinIO, Cloudflare R2, and other S3-compatible services.
+- **`azure`**: Uses Azure Blob Storage native integration. Requires Azure Storage Account credentials.
+- **`gcs`**: Uses Google Cloud Storage native integration. Requires GCS service account credentials.
+
+By default, the system uses the S3-compatible method.
+When Azure or GCS is selected, the respective native storage integration is enabled with the appropriate environment variables.
+See our [self-hosting docs](https://langfuse.com/self-hosting/infrastructure/blobstorage) for more details on Blob Storage configurations.
+
+#### Examples
 
 ##### With an external Postgres server
 
@@ -193,7 +205,7 @@ postgresql:
   shadowDatabaseUrl: postgres://my-username:my-password@my-external-postgres-server.com
 ```
 
-#### With an external S3 bucket
+##### With an external S3 bucket
 
 ```yaml
 [...]
@@ -207,6 +219,79 @@ s3:
     value: "mykey"
   secretAccessKey:
     value: "mysecret"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+##### With Azure Blob Storage
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "azure"
+  bucket: "langfuse"  # Container name - If it does not exist, Langfuse will attempt to create it
+  accessKeyId:
+    value: "devstoreaccount1"  # Azure Storage Account name
+  secretAccessKey:
+    value: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="  # Azure Storage Account key
+  endpoint: "https://yourstorageaccount.blob.core.windows.net"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+##### With Google Cloud Storage
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "gcs"
+  bucket: "langfuse"  # GCS bucket name
+  gcs:
+    credentials:
+      value: |
+        {
+          "type": "service_account",
+          "project_id": "your-project-id",
+          "private_key_id": "your-private-key-id",
+          "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+          "client_email": "your-service-account@your-project-id.iam.gserviceaccount.com",
+          "client_id": "your-client-id",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project-id.iam.gserviceaccount.com"
+        }
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+Alternatively, you can reference the credentials from a secret:
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "gcs"
+  bucket: "langfuse"
+  gcs:
+    credentials:
+      secretKeyRef:
+        name: "gcs-credentials"
+        key: "credentials.json"
   eventUpload:
     prefix: "events/"
   batchExport:
