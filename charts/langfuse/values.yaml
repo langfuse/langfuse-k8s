@@ -147,6 +147,9 @@ langfuse:
   # -- Allows additional volume mounts to be added to all langfuse deployments
   extraVolumeMounts: []
 
+  # -- Allows additional lifecycle hooks to be added to all langfuse deployments
+  extraLifecycle: {}
+
   # Web deployment configuration
   web:
     image:
@@ -159,6 +162,8 @@ langfuse:
       # -- The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
     deployment:
+      # -- Additional labels for the langfuse web deployment
+      additionalLabels: {}
       # -- Annotations for the web deployment
       annotations: {}
       # -- Deployment strategy for the web deployment. Overrides the global deployment strategy
@@ -279,6 +284,8 @@ langfuse:
       # -- The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
     deployment:
+      # -- Additional labels for the worker deployment
+      additionalLabels: {}
       # -- Annotations for the worker deployment
       annotations: {}
       # -- Deployment strategy for the worker deployment. Overrides the global deployment strategy
@@ -500,6 +507,12 @@ s3:
   # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
   deploy: true
 
+  # -- Storage provider to use. Options: s3 (default), azure, gcs
+  # -- When set to 'azure', enables Azure Blob Storage native integration
+  # -- When set to 'gcs', enables Google Cloud Storage native integration
+  # -- When set to 's3', uses S3-compatible interface (default behavior)
+  storageProvider: "s3"
+
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
   bucket: ""
   # -- S3 region to use for all uploads. Can be overridden per upload type.
@@ -520,6 +533,18 @@ s3:
     secretKeyRef:
       name: ""
       key: ""
+
+  # Google Cloud Storage Configuration (only used when storageProvider is 'gcs')
+  gcs:
+    # -- Google Cloud Storage credentials JSON or path to credentials file
+    # -- Can be the JSON content directly or a path to the credentials file
+    # -- If not provided, will fallback to environment credentials (e.g., service account attached to pods)
+    # -- Example: Set value to the JSON service account key content, or use secretKeyRef to reference a secret
+    credentials:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
 
   # S3 Concurrency Configuration
   concurrency:

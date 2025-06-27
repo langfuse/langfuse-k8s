@@ -329,13 +329,15 @@ Return ClickHouse protocol (http or https)
 {{- define "langfuse.clickhouseEnv" -}}
 {{- with (include "langfuse.getEnvVar" (dict "env" .Values.langfuse.additionalEnv "name" "CLICKHOUSE_MIGRATION_URL")) -}}
 {{/*
-    If CLICKHOUSE_MIGRATION_URL is set in additionalEnv, we do nothing for ClickHouse env vars, because we assume everything is configured via additionalEnv.
+  If CLICKHOUSE_MIGRATION_URL is set in additionalEnv, we do nothing for ClickHouse env vars, because we assume everything is configured via additionalEnv.
 */}}
 {{- else -}}
-{{- if or .Values.clickhouse.migration.url .Values.clickhouse.deploy }}
+{{- if or .Values.clickhouse.migration.url .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_URL
   {{- if .Values.clickhouse.migration.url }}
   value: {{ .Values.clickhouse.migration.url | quote }}
+  {{- else if .Values.clickhouse.host }}
+  value: "clickhouse://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.nativePort }}"
   {{- else if .Values.clickhouse.deploy }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- end }}
@@ -400,6 +402,18 @@ Return ClickHouse protocol (http or https)
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.s3Env" -}}
+{{/* Storage provider specific environment variables */}}
+{{- if eq .Values.s3.storageProvider "azure" }}
+- name: LANGFUSE_USE_AZURE_BLOB
+  value: "true"
+{{- else if eq .Values.s3.storageProvider "gcs" }}
+- name: LANGFUSE_USE_GOOGLE_CLOUD_STORAGE
+  value: "true"
+{{- with (include "langfuse.getValueOrSecret" (dict "key" ".Values.s3.gcs.credentials" "value" .Values.s3.gcs.credentials)) }}
+- name: LANGFUSE_GOOGLE_CLOUD_STORAGE_CREDENTIALS
+  {{- . | nindent 2 }}
+{{- end }}
+{{- end }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
 {{- if $.Values.s3.deploy }}
   value: {{ required "s3.[eventUpload].bucket is required" (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}

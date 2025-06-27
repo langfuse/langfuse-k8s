@@ -4,6 +4,9 @@ metadata:
   name: {{ include "langfuse.fullname" . }}-web
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.web.deployment.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with (coalesce .Values.langfuse.web.deployment.annotations .Values.langfuse.deployment.annotations) }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -94,6 +97,12 @@ spec:
             timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
             successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
             failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
+          {{- if .Values.langfuse.extraLifecycle}}
+          lifecycle:
+            {{- with .Values.langfuse.extraLifecycle }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           resources:
             {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}
