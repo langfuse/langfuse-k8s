@@ -15,10 +15,6 @@ spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
   {{- end }}
-  {{- if .Values.langfuse.web.hostAliases }}
-  hostAliases:
-    {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
-  {{- end }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -42,6 +38,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.langfuse.web.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
+      {{- end }}
       {{- with (.Values.langfuse.web.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
