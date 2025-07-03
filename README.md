@@ -494,3 +494,20 @@ langfuse:
             matchLabels:
               app: worker
 ```
+
+## Testing
+
+This repository includes testing to ensure the Helm chart works correctly across different configurations.
+
+### Setup
+
+Install the helm unittest plugin using
+```shell
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+```
+
+### Running Tests Locally
+
+```bash
+helm unittest charts/langfuse --color
+```
