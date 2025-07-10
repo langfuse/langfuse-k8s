@@ -64,7 +64,7 @@ clickhouse:
       cpu: "2"
       memory: "8Gi"
       
-  keeper:
+  zookeeper:
     resources:
       limits:
         cpu: "2"
