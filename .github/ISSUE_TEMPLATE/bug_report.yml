@@ -1,0 +1,43 @@
+name: 🐞 Bug Report
+description: Create a bug report
+title: "bug: "
+labels: ["🐞❔ unconfirmed bug"]
+body:
+  - type: textarea
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of the bug, as well as what you expected to happen when encountering it.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: To reproduce
+      description: Describe how to reproduce your bug. Please provide detailed steps, code snippets, reproduction repos etc.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Chart version and values.yaml configuration
+      description: Share the chart version you are using, and the values.yaml you've used during installation.
+  - type: textarea
+    attributes:
+      label: Kubernetes Status
+      description: Share the output of `kubectl get pods -n <namespace>` and `kubectl describe pod <pod-name> -n <namespace>` for the affected pods.
+  - type: textarea
+    attributes:
+      label: Logs
+      description: Share the logs of the affected pods. You can use `kubectl logs <pod-name> -n <namespace>` to get the logs.
+  - type: textarea
+    attributes:
+      label: Additional information
+      description: Add any other information related to the bug here, screenshots if applicable.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Are you interested to contribute a fix for this bug?
+      description: If this is a confirmed bug, the maintainers are happy to support with guidance and review.
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
