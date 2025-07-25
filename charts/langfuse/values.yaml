@@ -378,10 +378,18 @@ postgresql:
   # -- Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false
   deploy: true
 
-  # -- PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name.
-  host: ""
-  # -- Port of the postgres server to use. Defaults to 5432.
-  port: null
+  # -- PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name. Can be configured by value or existing secret reference.
+  host:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+  # -- Port of the postgres server to use. Defaults to 5432. Can be configured by value or existing secret reference.
+  port:
+    value: null
+    secretKeyRef:
+      name: ""
+      key: ""
   # -- Additional database connection arguments
   args: ""
 
@@ -391,10 +399,33 @@ postgresql:
   # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
   shadowDatabaseUrl: ""
 
+  # -- Optional references to a secret to fetch database connection details
+  secretRefs:
+    # -- Reference to a secret for the database host
+    host:
+      name: ""
+      key: ""
+    # -- Reference to a secret for the database port
+    port:
+      name: ""
+      key: ""
+    # -- Reference to a secret for the database username
+    username:
+      name: ""
+      key: ""
+    # -- Reference to a secret for the database name
+    database:
+      name: ""
+      key: ""
+
   # Authentication configuration
   auth:
-    # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
-    username: postgres
+    # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. Can be configured by value or existing secret reference.
+    username:
+      value: "postgres"
+      secretKeyRef:
+        name: ""
+        key: ""
     # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
     password: ""
     # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.username` and `postgresql.auth.password` will be ignored and picked up from this secret).
@@ -402,8 +433,12 @@ postgresql:
     # -- The key in the existing secret that contains the password.
     secretKeys:
       userPasswordKey: password
-    # -- Database name to use for Langfuse.
-    database: postgres_langfuse
+    # -- Database name to use for Langfuse. Can be configured by value or existing secret reference.
+    database:
+      value: "postgres_langfuse"
+      secretKeyRef:
+        name: ""
+        key: ""
     # -- Additional database connection arguments
     args: ""
 
@@ -424,10 +459,18 @@ redis:
   # -- Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false.
   deploy: true
 
-  # -- Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name.
-  host: ""
-  # -- Redis port to connect to.
-  port: 6379
+  # -- Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. Can be configured by value or existing secret reference.
+  host:
+    value: ""
+    secretKeyRef:
+      name: ""
+      key: ""
+  # -- Redis port to connect to. Can be configured by value or existing secret reference.
+  port:
+    value: 6379
+    secretKeyRef:
+      name: ""
+      key: ""
 
   # Redis TLS configuration
   tls:
@@ -442,8 +485,12 @@ redis:
 
   # Authentication configuration
   auth:
-    # -- Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string.
-    username: "default"
+    # -- Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. Can be configured by value or existing secret reference.
+    username:
+      value: "default"
+      secretKeyRef:
+        name: ""
+        key: ""
     # -- Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password.
     password: ""
     # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).

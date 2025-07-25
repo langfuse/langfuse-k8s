@@ -162,15 +162,20 @@ Get value of a specific environment variable from additionalEnv if it exists
     If DATABASE_URL is set, we do nothing in databaseEnv.
 */}}
 {{- else -}}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.host" "value" .Values.postgresql.host) ) }}
+- name: DATABASE_HOST
+  {{- . | nindent 2 }}
+{{- else }}
 - name: DATABASE_HOST
   value: {{ include "langfuse.postgresql.hostname" . | quote }}
-{{- if .Values.postgresql.port }}
-- name: DATABASE_PORT
-  value: {{ .Values.postgresql.port | quote }}
 {{- end }}
-{{- if .Values.postgresql.auth.username }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.port" "value" .Values.postgresql.port) ) }}
+- name: DATABASE_PORT
+  {{- . | nindent 2 }}
+{{- end }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.auth.username" "value" .Values.postgresql.auth.username) ) }}
 - name: DATABASE_USERNAME
-  value: {{ .Values.postgresql.auth.username | quote }}
+  {{- . | nindent 2 }}
 {{- end }}
 - name: DATABASE_PASSWORD
 {{- if .Values.postgresql.auth.existingSecret }}
@@ -182,9 +187,9 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
 {{- end }}
 {{- end }}
-{{- if .Values.postgresql.auth.database }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.auth.database" "value" .Values.postgresql.auth.database) ) }}
 - name: DATABASE_NAME
-  value: {{ .Values.postgresql.auth.database | quote }}
+  {{- . | nindent 2 }}
 {{- end }}
 {{- if .Values.postgresql.args }}
 - name: DATABASE_ARGS
@@ -289,7 +294,20 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
+  value: >-
+    {{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ if .Values.redis.auth.username.value }}{{ .Values.redis.auth.username.value }}{{ else if .Values.redis.auth.username.secretKeyRef.name }}$(REDIS_USERNAME){{ end }}:$(REDIS_PASSWORD)@{{ if .Values.redis.host.value }}{{ .Values.redis.host.value }}{{ else if .Values.redis.host.secretKeyRef.name }}$(REDIS_HOST){{ else }}{{ include "langfuse.redis.hostname" . }}{{ end }}:{{ if .Values.redis.port.value }}{{ .Values.redis.port.value }}{{ else if .Values.redis.port.secretKeyRef.name }}$(REDIS_PORT){{ end }}/{{ .Values.redis.auth.database }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.host" "value" .Values.redis.host) ) }}
+- name: REDIS_HOST
+  {{- . | nindent 2 }}
+{{- end }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.port" "value" .Values.redis.port) ) }}
+- name: REDIS_PORT
+  {{- . | nindent 2 }}
+{{- end }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.auth.username" "value" .Values.redis.auth.username) ) }}
+- name: REDIS_USERNAME
+  {{- . | nindent 2 }}
+{{- end }}
 {{- if .Values.redis.tls.enabled }}
 {{- if .Values.redis.tls.caPath }}
 - name: REDIS_TLS_CA_PATH
