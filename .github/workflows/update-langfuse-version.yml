@@ -1,6 +1,5 @@
 name: Update Langfuse Version
 on:
-  pull_request: # TODO: Remove
   schedule:
     - cron: '0 9 * * 1'  # Run every Monday at 9 AM UTC
   workflow_dispatch:  # Allow manual triggering
