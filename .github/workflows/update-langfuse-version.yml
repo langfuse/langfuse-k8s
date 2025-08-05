@@ -1,0 +1,116 @@
+name: Update Langfuse Version
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Run every Monday at 9 AM UTC
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current Langfuse version
+        id: current-version
+        run: |
+          CURRENT_VERSION=$(grep 'appVersion:' charts/langfuse/Chart.yaml | cut -d '"' -f 2)
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current Langfuse version: $CURRENT_VERSION"
+
+      - name: Get latest Langfuse release
+        id: latest-version
+        run: |
+          LATEST_VERSION=$(curl -s https://api.github.com/repos/langfuse/langfuse/releases/latest | jq -r '.tag_name | ltrimstr("v")')
+          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "Latest Langfuse version: $LATEST_VERSION"
+
+      - name: Compare versions
+        id: version-check
+        run: |
+          if [ "${{ steps.current-version.outputs.current }}" != "${{ steps.latest-version.outputs.latest }}" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "New version available: ${{ steps.latest-version.outputs.latest }}"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "Already up to date"
+          fi
+
+      - name: Setup Node.js
+        if: steps.version-check.outputs.needs_update == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install semver
+        if: steps.version-check.outputs.needs_update == 'true'
+        run: npm install -g semver
+
+      - name: Update Chart.yaml
+        if: steps.version-check.outputs.needs_update == 'true'
+        id: update-chart
+        run: |
+          # Get current chart version
+          CURRENT_CHART_VERSION=$(grep '^version:' charts/langfuse/Chart.yaml | cut -d ' ' -f 2)
+          echo "Current chart version: $CURRENT_CHART_VERSION"
+          
+          # Increment patch version
+          NEW_CHART_VERSION=$(semver -i patch $CURRENT_CHART_VERSION)
+          echo "New chart version: $NEW_CHART_VERSION"
+          
+          # Update Chart.yaml
+          sed -i "s/^version: .*/version: $NEW_CHART_VERSION/" charts/langfuse/Chart.yaml
+          sed -i "s/^appVersion: .*/appVersion: \"${{ steps.latest-version.outputs.latest }}\"/" charts/langfuse/Chart.yaml
+          
+          echo "chart_version=$NEW_CHART_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install helm-docs
+        if: steps.version-check.outputs.needs_update == 'true'
+        run: |
+          curl -L https://github.com/norwoodj/helm-docs/releases/download/v1.14.2/helm-docs_1.14.2_Linux_x86_64.tar.gz | tar xz
+          sudo mv helm-docs /usr/local/bin/
+
+      - name: Update README.md
+        if: steps.version-check.outputs.needs_update == 'true'
+        run: |
+          cd charts/langfuse
+          helm-docs
+
+      - name: Create Pull Request
+        if: steps.version-check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            chore: bump langfuse to ${{ steps.latest-version.outputs.latest }}
+            
+            - Update appVersion to ${{ steps.latest-version.outputs.latest }}
+            - Bump chart version to ${{ steps.update-chart.outputs.chart_version }}
+            - Update generated documentation
+          title: "chore: bump langfuse to ${{ steps.latest-version.outputs.latest }}"
+          body: |
+            ## Summary
+            This PR updates Langfuse to version ${{ steps.latest-version.outputs.latest }}.
+            
+            ## Changes
+            - ⬆️ Update appVersion from ${{ steps.current-version.outputs.current }} to ${{ steps.latest-version.outputs.latest }}
+            - 📦 Bump chart version to ${{ steps.update-chart.outputs.chart_version }}
+            - 📝 Update generated documentation
+            
+            ## Automated Changes
+            This PR was automatically created by the weekly version check workflow.
+            
+            ---
+            **Release Notes**: https://github.com/langfuse/langfuse/releases/tag/v${{ steps.latest-version.outputs.latest }}
+          branch: update-langfuse-${{ steps.latest-version.outputs.latest }}
+          delete-branch: true
+          labels: |
+            automated
+            dependencies
+            langfuse-update
