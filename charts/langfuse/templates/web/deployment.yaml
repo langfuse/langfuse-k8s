@@ -15,7 +15,7 @@ spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
   {{- end }}
-  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
