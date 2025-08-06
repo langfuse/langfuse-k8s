@@ -198,7 +198,7 @@ langfuse:
     replicas: null
 
     # -- Number of old ReplicaSets to retain to allow rollback.
-    revisionHistoryLimit: 10
+    revisionHistoryLimit: null
 
     # KEDA ScaledObject configuration
     keda:
@@ -310,7 +310,7 @@ langfuse:
     replicas: null
 
     # -- Number of old ReplicaSets to retain to allow rollback.
-    revisionHistoryLimit: 10
+    revisionHistoryLimit: null
 
     # KEDA ScaledObject configuration
     keda:
