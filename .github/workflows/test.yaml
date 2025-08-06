@@ -22,7 +22,7 @@ jobs:
 
       - name: Install helm-unittest plugin
         run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v0.6.2
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version v1.0.0
 
       - name: Update dependencies
         run: helm dependency update charts/langfuse/

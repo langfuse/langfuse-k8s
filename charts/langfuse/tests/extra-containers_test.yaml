@@ -1,0 +1,64 @@
+suite: test rendering of extra containers
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - web/service.yaml
+  - serviceaccount.yaml
+tests:
+  - it: should render all for web containers
+    values:
+      - ../../../examples/minimal-installation/values.yaml
+      - ./values/extra-web-containers.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 3
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+        template: worker/deployment.yaml
+  - it: should render all for worker containers
+    values:
+      - ../../../examples/minimal-installation/values.yaml
+      - ./values/extra-worker-containers.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 3
+        template: worker/deployment.yaml
+  - it: should render all containers
+    values:
+      - ../../../examples/minimal-installation/values.yaml
+      - ./values/extra-all-containers.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 4
+        template: web/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 3
+        template: worker/deployment.yaml

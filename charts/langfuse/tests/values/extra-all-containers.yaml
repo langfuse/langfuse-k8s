@@ -1,0 +1,20 @@
+langfuse:
+  extraContainers:
+    - name: extra-all-container-1
+      image: busybox:latest
+      command: [ "sh", "-c", "echo Hello from extra container 1" ]
+  worker:
+    pod:
+      extraContainers:
+        - name: extra-worker-container-1
+          image: busybox:latest
+          command: ["sh", "-c", "echo Hello from extra container 1"]
+  web:
+    pod:
+      extraContainers:
+        - name: extra-web-container-1
+          image: busybox:latest
+          command: [ "sh", "-c", "echo Hello from extra container 1" ]
+        - name: extra-web-container-2
+          image: busybox:latest
+          command: [ "sh", "-c", "echo Hello from extra container 2" ]

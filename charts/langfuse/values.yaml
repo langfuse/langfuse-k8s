@@ -175,6 +175,8 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Allows additional containers to be added to all langfuse web pods
+      extraContainers: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -297,6 +299,8 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Allows additional containers to be added to all langfuse worker pods
+      extraContainers: []
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
