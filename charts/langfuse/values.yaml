@@ -195,6 +195,9 @@ langfuse:
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
 
+    # -- Number of old ReplicaSets to retain to allow rollback.
+    revisionHistoryLimit: 10
+
     # KEDA ScaledObject configuration
     keda:
       # -- Set to `true` to enable KEDA for the langfuse web pods
@@ -303,6 +306,9 @@ langfuse:
 
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
+
+    # -- Number of old ReplicaSets to retain to allow rollback.
+    revisionHistoryLimit: 10
 
     # KEDA ScaledObject configuration
     keda:
