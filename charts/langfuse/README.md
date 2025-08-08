@@ -132,7 +132,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.readinessProbe.timeoutSeconds | int | `5` | Timeout seconds for readinessProbe. |
 | langfuse.web.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.web.resources | object | `{}` | Resources for the langfuse web pods. Defaults to the global resources |
-| langfuse.web.revisionHistoryLimit | int | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.web.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
 | langfuse.web.service.additionalLabels | object | `{}` | Additional labels for the langfuse web application service |
 | langfuse.web.service.annotations | object | `{}` | Annotations for the langfuse web application service |
 | langfuse.web.service.externalPort | string | `nil` | The external port that will be exposed by the service. Falls back to `port` if not set. |
@@ -174,7 +174,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
-| langfuse.worker.revisionHistoryLimit | int | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |
