@@ -15,6 +15,7 @@ spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
   {{- end }}
+  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -58,8 +59,9 @@ spec:
         {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
       {{- end }}
       containers:
-        {{- if .Values.langfuse.extraContainers }}
-        {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
+        {{- $additionalContainers := concat (.Values.langfuse.extraContainers | default list ) (.Values.langfuse.web.pod.extraContainers | default list )}}
+        {{- with $additionalContainers }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
         - name: {{ .Chart.Name }}-web
           securityContext:
