@@ -126,7 +126,7 @@ langfuse:
     strategy: {}
   # -- Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments
   replicas: 1
-  # -- Number of old ReplicaSets to retain to allow rollback. . Can be overridden by the individual deployments
+  # -- Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments
   revisionHistoryLimit: 10
   # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
   resources: {}
