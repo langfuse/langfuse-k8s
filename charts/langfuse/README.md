@@ -85,6 +85,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.podSecurityContext | object | `{}` | Pod security context for all langfuse deployments |
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
+| langfuse.revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments |
 | langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
@@ -131,6 +132,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.readinessProbe.timeoutSeconds | int | `5` | Timeout seconds for readinessProbe. |
 | langfuse.web.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.web.resources | object | `{}` | Resources for the langfuse web pods. Defaults to the global resources |
+| langfuse.web.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
 | langfuse.web.service.additionalLabels | object | `{}` | Additional labels for the langfuse web application service |
 | langfuse.web.service.annotations | object | `{}` | Annotations for the langfuse web application service |
 | langfuse.web.service.externalPort | string | `nil` | The external port that will be exposed by the service. Falls back to `port` if not set. |
@@ -172,6 +174,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
+| langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |

@@ -15,6 +15,7 @@ spec:
   {{- if not (or .Values.langfuse.worker.hpa.enabled .Values.langfuse.worker.keda.enabled) }}
   replicas: {{ .Values.langfuse.worker.replicas | default .Values.langfuse.replicas }}
   {{- end }}
+  revisionHistoryLimit: {{ .Values.langfuse.worker.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
   {{- with (coalesce .Values.langfuse.worker.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
