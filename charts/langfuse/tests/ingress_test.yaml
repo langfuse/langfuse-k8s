@@ -1,0 +1,189 @@
+suite: test ingress functionality
+templates:
+  - ingress.yaml
+tests:
+  - it: should render ingress with default backend
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.ingress.enabled: true
+      langfuse.ingress.hosts:
+        - host: langfuse.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      # Test that ingress is created
+      - hasDocuments:
+          count: 1
+        template: ingress.yaml
+      - isKind:
+          of: Ingress
+        template: ingress.yaml
+      
+      # Test default backend configuration (Kubernetes 1.19+)
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-langfuse-web
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: http
+        template: ingress.yaml
+      
+      # Test host configuration
+      - equal:
+          path: spec.rules[0].host
+          value: langfuse.example.com
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+        template: ingress.yaml
+
+  - it: should render ingress with custom backend
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.ingress.enabled: true
+      langfuse.ingress.annotations:
+        alb.ingress.kubernetes.io/actions.redirect-to-langfuse: |
+          {
+            "type": "redirect",
+            "redirectConfig": {
+              "protocol": "HTTPS",
+              "port": "443",
+              "host": "langfuse.example.com",
+              "statusCode": "HTTP_301"
+            }
+          }
+      langfuse.ingress.hosts:
+        - host: langfuse.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+        - host: langfuse-v3.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+              backend:
+                service:
+                  name: redirect-to-langfuse
+                  port:
+                    name: use-annotation
+    asserts:
+      # Test that ingress is created
+      - hasDocuments:
+          count: 1
+        template: ingress.yaml
+      - isKind:
+          of: Ingress
+        template: ingress.yaml
+      
+      # Test that annotation is present
+      - equal:
+          path: metadata.annotations["alb.ingress.kubernetes.io/actions.redirect-to-langfuse"]
+          value: |
+            {
+              "type": "redirect",
+              "redirectConfig": {
+                "protocol": "HTTPS",
+                "port": "443",
+                "host": "langfuse.example.com",
+                "statusCode": "HTTP_301"
+              }
+            }
+        template: ingress.yaml
+      
+      # Test first host uses default backend
+      - equal:
+          path: spec.rules[0].host
+          value: langfuse.example.com
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-langfuse-web
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: http
+        template: ingress.yaml
+      
+      # Test second host uses custom backend
+      - equal:
+          path: spec.rules[1].host
+          value: langfuse-v3.example.com
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[1].http.paths[0].backend.service.name
+          value: redirect-to-langfuse
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[1].http.paths[0].backend.service.port.name
+          value: use-annotation
+        template: ingress.yaml
+
+  - it: should render ingress with mixed backends in same host
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.ingress.enabled: true
+      langfuse.ingress.hosts:
+        - host: langfuse.example.com
+          paths:
+            - path: /api
+              pathType: Prefix
+            - path: /redirect
+              pathType: Prefix
+              backend:
+                service:
+                  name: custom-redirect-service
+                  port:
+                    number: 8080
+    asserts:
+      # Test that ingress is created
+      - hasDocuments:
+          count: 1
+        template: ingress.yaml
+      
+      # Test first path uses default backend
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /api
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-langfuse-web
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: http
+        template: ingress.yaml
+      
+      # Test second path uses custom backend
+      - equal:
+          path: spec.rules[0].http.paths[1].path
+          value: /redirect
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[1].backend.service.name
+          value: custom-redirect-service
+        template: ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[1].backend.service.port.number
+          value: 8080
+        template: ingress.yaml
+
+  - it: should not render ingress when disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.ingress.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: ingress.yaml
