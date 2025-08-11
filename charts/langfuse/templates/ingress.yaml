@@ -48,6 +48,18 @@ spec:
             pathType: {{ .pathType }}
             {{- end }}
             backend:
+              {{- if .backend }}
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              {{- toYaml .backend | nindent 14 }}
+              {{- else }}
+              {{- if .backend.service }}
+              serviceName: {{ .backend.service.name }}
+              servicePort: {{ .backend.service.port.name | default .backend.service.port.number }}
+              {{- else }}
+              {{- toYaml .backend | nindent 14 }}
+              {{- end }}
+              {{- end }}
+              {{- else }}
               {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
               service:
                 name: {{ include "langfuse.fullname" $ }}-web
@@ -56,6 +68,7 @@ spec:
               {{- else }}
               serviceName: {{ include "langfuse.fullname" $ }}-web
               servicePort: http
+              {{- end }}
               {{- end }}
           {{- end }}
     {{- end }}
