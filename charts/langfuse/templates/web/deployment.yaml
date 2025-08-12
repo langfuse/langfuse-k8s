@@ -74,8 +74,9 @@ spec:
               value: {{ .Values.langfuse.web.service.port | quote }}
             - name: HOSTNAME
               value: "0.0.0.0"
-            {{- if .Values.langfuse.additionalEnv }}
-              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
+            {{- with $additionalEnv }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           ports:
             - name: http

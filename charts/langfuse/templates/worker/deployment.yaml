@@ -66,8 +66,9 @@ spec:
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
-            {{- if .Values.langfuse.additionalEnv }}
-              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
+            {{- with $additionalEnv }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           ports:
             - name: http

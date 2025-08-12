@@ -1,0 +1,14 @@
+langfuse:
+  additionalEnv:
+    - name: SAMPLE_ENV_VAR
+      value: sample-value
+  worker:
+    pod:
+      additionalEnv:
+        - name: OTEL_SERVICE_NAME
+          value: langfuse-worker
+  web:
+    pod:
+      additionalEnv:
+        - name: OTEL_SERVICE_NAME
+          value: langfuse-web
