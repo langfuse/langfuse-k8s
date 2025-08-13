@@ -179,6 +179,8 @@ langfuse:
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse web pods
       extraContainers: []
+      # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnv: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -306,6 +308,8 @@ langfuse:
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse worker pods
       extraContainers: []
+      # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnv: []
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
