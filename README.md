@@ -328,6 +328,73 @@ langfuse:
     annotations: []
 ```
 
+##### Ingress with custom backend (AWS Load Balancer Controller redirect)
+
+Use custom backends to configure AWS Load Balancer Controller redirects or other advanced routing:
+
+```yaml
+[...]
+langfuse:
+  ingress:
+    enabled: true
+    className: "alb"
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      # Redirect action annotation
+      alb.ingress.kubernetes.io/actions.redirect-to-langfuse: |
+        {
+          "type": "redirect",
+          "redirectConfig": {
+            "protocol": "HTTPS",
+            "port": "443",
+            "host": "langfuse.example.com",
+            "statusCode": "HTTP_301"
+          }
+        }
+    hosts:
+      # Main service host - uses default backend
+      - host: langfuse.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+      # Redirect host - uses custom backend for redirect
+      - host: langfuse-v3.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: redirect-to-langfuse
+              port:
+                name: use-annotation
+```
+
+##### Ingress with mixed backends
+
+Configure different backends for different paths within the same host:
+
+```yaml
+[...]
+langfuse:
+  ingress:
+    enabled: true
+    hosts:
+    - host: langfuse.example.com
+      paths:
+      # Default backend for main application
+      - path: /
+        pathType: Prefix
+      # Custom backend for specific path
+      - path: /api/webhook
+        pathType: Prefix
+        backend:
+          service:
+            name: webhook-service
+            port:
+              number: 8080
+```
+
 #### Custom Storage Class Definition
 
 The Langfuse chart supports configuring storage classes for all persistent volumes in the deployment. You can configure storage classes in two ways:

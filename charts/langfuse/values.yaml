@@ -126,6 +126,8 @@ langfuse:
     strategy: {}
   # -- Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments
   replicas: 1
+  # -- Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments
+  revisionHistoryLimit: 10
   # -- Resources for all langfuse deployments. Can be overridden by the individual deployments
   resources: {}
   image:
@@ -175,6 +177,10 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Allows additional containers to be added to all langfuse web pods
+      extraContainers: []
+      # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnv: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -194,6 +200,9 @@ langfuse:
 
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
+
+    # -- Number of old ReplicaSets to retain to allow rollback.
+    revisionHistoryLimit: null
 
     # KEDA ScaledObject configuration
     keda:
@@ -297,12 +306,19 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Allows additional containers to be added to all langfuse worker pods
+      extraContainers: []
+      # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnv: []
 
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
 
     # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
+
+    # -- Number of old ReplicaSets to retain to allow rollback.
+    revisionHistoryLimit: null
 
     # KEDA ScaledObject configuration
     keda:

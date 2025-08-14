@@ -291,22 +291,11 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
 {{- end }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) }}
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-  value: >-
-    {{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ if .Values.redis.auth.username.value }}{{ .Values.redis.auth.username.value }}{{ else if .Values.redis.auth.username.secretKeyRef.name }}$(REDIS_USERNAME){{ end }}:$(REDIS_PASSWORD)@{{ if .Values.redis.host.value }}{{ .Values.redis.host.value }}{{ else if .Values.redis.host.secretKeyRef.name }}$(REDIS_HOST){{ else }}{{ include "langfuse.redis.hostname" . }}{{ end }}:{{ if .Values.redis.port.value }}{{ .Values.redis.port.value }}{{ else if .Values.redis.port.secretKeyRef.name }}$(REDIS_PORT){{ end }}/{{ .Values.redis.auth.database }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.host" "value" .Values.redis.host) ) }}
-- name: REDIS_HOST
-  {{- . | nindent 2 }}
-{{- end }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.port" "value" .Values.redis.port) ) }}
-- name: REDIS_PORT
-  {{- . | nindent 2 }}
-{{- end }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "redis.auth.username" "value" .Values.redis.auth.username) ) }}
-- name: REDIS_USERNAME
-  {{- . | nindent 2 }}
+  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- end }}
 {{- if .Values.redis.tls.enabled }}
 {{- if .Values.redis.tls.caPath }}
