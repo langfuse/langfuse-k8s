@@ -184,7 +184,13 @@ Get value of a specific environment variable from additionalEnv if it exists
       name: {{ .Values.postgresql.auth.existingSecret }}
       key: {{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
 {{- else }}
-  value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
+  {{- $pgPassword := .Values.postgresql.auth.password -}}
+  {{- if kindIs "map" $pgPassword -}}
+    {{- /* Support password as { value, secretKeyRef } */ -}}
+    {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "postgresql.auth.password" "value" $pgPassword) | nindent 2 }}
+  {{- else -}}
+  value: {{ required "Using an existing secret or postgresql.auth.password is required" $pgPassword | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.auth.database" "value" .Values.postgresql.auth.database) ) }}
@@ -195,13 +201,13 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: DATABASE_ARGS
   value: {{ .Values.postgresql.args | quote }}
 {{- end }}
-{{- if .Values.postgresql.directUrl }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.directUrl" "value" .Values.postgresql.directUrl) ) }}
 - name: DIRECT_URL
-  value: {{ .Values.postgresql.directUrl | quote }}
+  {{- . | nindent 2 }}
 {{- end }}
-{{- if .Values.postgresql.shadowDatabaseUrl }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "postgresql.shadowDatabaseUrl" "value" .Values.postgresql.shadowDatabaseUrl) ) }}
 - name: SHADOW_DATABASE_URL
-  value: {{ .Values.postgresql.shadowDatabaseUrl | quote }}
+  {{- . | nindent 2 }}
 {{- end }}
 - name: LANGFUSE_AUTO_POSTGRES_MIGRATION_DISABLED
   value: {{ not .Values.postgresql.migration.autoMigrate | quote }}
@@ -280,6 +286,12 @@ Get value of a specific environment variable from additionalEnv if it exists
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.redisEnv" -}}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) }}
+{{- /* Prefer explicit connectionString if provided (supports value or secretKeyRef) */}}
+{{- if or (.Values.redis.connectionString.value) (and .Values.redis.connectionString.secretKeyRef.name .Values.redis.connectionString.secretKeyRef.key) }}
+- name: REDIS_CONNECTION_STRING
+  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "redis.connectionString" "value" .Values.redis.connectionString) | nindent 2 }}
+{{- else }}
 {{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
 - name: REDIS_PASSWORD
 {{- if .Values.redis.auth.existingSecret }}
@@ -288,14 +300,20 @@ Get value of a specific environment variable from additionalEnv if it exists
       name: {{ .Values.redis.auth.existingSecret }}
       key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
 {{- else }}
-  value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
+  {{- $redisPassword := .Values.redis.auth.password -}}
+  {{- if kindIs "map" $redisPassword -}}
+    {{- /* Support password as { value, secretKeyRef } */ -}}
+    {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "redis.auth.password" "value" $redisPassword) | nindent 2 }}
+  {{- else -}}
+  value: {{ required "Using an existing secret or redis.auth.password is required" $redisPassword | quote }}
+  {{- end }}
 {{- end }}
 {{- end }}
-{{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) }}
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
   value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
+{{- end }}
 {{- end }}
 {{- if .Values.redis.tls.enabled }}
 {{- if .Values.redis.tls.caPath }}
@@ -421,24 +439,45 @@ Return ClickHouse protocol (http or https)
   {{- . | nindent 2 }}
 {{- end }}
 {{- end }}
-- name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
-{{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[eventUpload].bucket is required" (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
-{{- else }}
-  value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
-{{- end }}
+ {{- /* Event Upload Bucket: prefer map or fallback to strings */}}
+ - name: LANGFUSE_S3_EVENT_UPLOAD_BUCKET
+ {{- if kindIs "map" .Values.s3.eventUpload.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.eventUpload.bucket" "value" .Values.s3.eventUpload.bucket) | nindent 2 }}
+ {{- else if kindIs "map" .Values.s3.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.bucket" "value" .Values.s3.bucket) | nindent 2 }}
+ {{- else }}
+   {{- if $.Values.s3.deploy }}
+   value: {{ required "s3.[eventUpload].bucket is required" (coalesce .Values.s3.eventUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+   {{- else }}
+   value: {{ required "s3.[eventUpload].bucket is required" (.Values.s3.eventUpload.bucket | default .Values.s3.bucket) | quote }}
+   {{- end }}
+ {{- end }}
 {{- if .Values.s3.eventUpload.prefix }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_PREFIX
   value: {{ .Values.s3.eventUpload.prefix | quote }}
 {{- end }}
-{{- if or .Values.s3.eventUpload.region .Values.s3.region }}
-- name: LANGFUSE_S3_EVENT_UPLOAD_REGION
-  value: {{ .Values.s3.eventUpload.region | default .Values.s3.region | quote }}
-{{- end }}
-{{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
-- name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
-{{- end }}
+ {{- /* Event Upload Region: map support */}}
+ {{- if or (kindIs "map" .Values.s3.eventUpload.region) (kindIs "map" .Values.s3.region) (or .Values.s3.eventUpload.region .Values.s3.region) }}
+ - name: LANGFUSE_S3_EVENT_UPLOAD_REGION
+   {{- if kindIs "map" .Values.s3.eventUpload.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.eventUpload.region" "value" .Values.s3.eventUpload.region) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.region" "value" .Values.s3.region) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.eventUpload.region | default .Values.s3.region | quote }}
+   {{- end }}
+ {{- end }}
+ {{- /* Event Upload Endpoint: map support */}}
+ {{- if or (kindIs "map" .Values.s3.eventUpload.endpoint) (kindIs "map" .Values.s3.endpoint) .Values.s3.eventUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
+ - name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+   {{- if kindIs "map" .Values.s3.eventUpload.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.eventUpload.endpoint" "value" .Values.s3.eventUpload.endpoint) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.endpoint" "value" .Values.s3.endpoint) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
+   {{- end }}
+ {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "eventUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
   {{- . | nindent 2 }}
@@ -478,24 +517,42 @@ Return ClickHouse protocol (http or https)
 - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
   value: {{ .Values.s3.batchExport.enabled | quote }}
 {{- if $.Values.s3.batchExport.enabled }}
-- name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
-{{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[batchExport].bucket is required" (coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
-{{- else }}
-  value: {{ required "s3.[batchExport].bucket is required" (.Values.s3.batchExport.bucket | default .Values.s3.bucket) | quote }}
-{{- end }}
+ - name: LANGFUSE_S3_BATCH_EXPORT_BUCKET
+ {{- if kindIs "map" .Values.s3.batchExport.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.batchExport.bucket" "value" .Values.s3.batchExport.bucket) | nindent 2 }}
+ {{- else if kindIs "map" .Values.s3.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.bucket" "value" .Values.s3.bucket) | nindent 2 }}
+ {{- else }}
+   {{- if $.Values.s3.deploy }}
+   value: {{ required "s3.[batchExport].bucket is required" (coalesce .Values.s3.batchExport.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+   {{- else }}
+   value: {{ required "s3.[batchExport].bucket is required" (.Values.s3.batchExport.bucket | default .Values.s3.bucket) | quote }}
+   {{- end }}
+ {{- end }}
 {{- if or .Values.s3.batchExport.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_BATCH_EXPORT_PREFIX
   value: {{ .Values.s3.batchExport.prefix | default .Values.s3.prefix | quote }}
 {{- end }}
-{{- if or .Values.s3.batchExport.region .Values.s3.region }}
-- name: LANGFUSE_S3_BATCH_EXPORT_REGION
-  value: {{ .Values.s3.batchExport.region | default .Values.s3.region | quote }}
-{{- end }}
-{{- if or .Values.s3.batchExport.endpoint .Values.s3.endpoint .Values.s3.deploy }}
-- name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT
-  value: {{ .Values.s3.batchExport.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
-{{- end }}
+ {{- if or (kindIs "map" .Values.s3.batchExport.region) (kindIs "map" .Values.s3.region) (or .Values.s3.batchExport.region .Values.s3.region) }}
+ - name: LANGFUSE_S3_BATCH_EXPORT_REGION
+   {{- if kindIs "map" .Values.s3.batchExport.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.batchExport.region" "value" .Values.s3.batchExport.region) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.region" "value" .Values.s3.region) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.batchExport.region | default .Values.s3.region | quote }}
+   {{- end }}
+ {{- end }}
+ {{- if or (kindIs "map" .Values.s3.batchExport.endpoint) (kindIs "map" .Values.s3.endpoint) .Values.s3.batchExport.endpoint .Values.s3.endpoint .Values.s3.deploy }}
+ - name: LANGFUSE_S3_BATCH_EXPORT_ENDPOINT
+   {{- if kindIs "map" .Values.s3.batchExport.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.batchExport.endpoint" "value" .Values.s3.batchExport.endpoint) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.endpoint" "value" .Values.s3.endpoint) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.batchExport.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
+   {{- end }}
+ {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "batchExport" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
   {{- . | nindent 2 }}
@@ -533,24 +590,42 @@ Return ClickHouse protocol (http or https)
   value: {{ .Values.s3.batchExport.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
 {{- end }}
 {{- end }}
-- name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
-{{- if $.Values.s3.deploy }}
-  value: {{ required "s3.[mediaUpload].bucket is required" (coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
-{{- else }}
-  value: {{ required "s3.[mediaUpload].bucket is required" (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
-{{- end }}
+ - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
+ {{- if kindIs "map" .Values.s3.mediaUpload.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.mediaUpload.bucket" "value" .Values.s3.mediaUpload.bucket) | nindent 2 }}
+ {{- else if kindIs "map" .Values.s3.bucket }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.bucket" "value" .Values.s3.bucket) | nindent 2 }}
+ {{- else }}
+   {{- if $.Values.s3.deploy }}
+   value: {{ required "s3.[mediaUpload].bucket is required" (coalesce .Values.s3.mediaUpload.bucket .Values.s3.bucket .Values.s3.defaultBuckets) | quote }}
+   {{- else }}
+   value: {{ required "s3.[mediaUpload].bucket is required" (.Values.s3.mediaUpload.bucket | default .Values.s3.bucket) | quote }}
+   {{- end }}
+ {{- end }}
 {{- if or .Values.s3.mediaUpload.prefix .Values.s3.prefix }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_PREFIX
   value: {{ .Values.s3.mediaUpload.prefix | default .Values.s3.prefix | quote }}
 {{- end }}
-{{- if or .Values.s3.mediaUpload.region .Values.s3.region }}
-- name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
-  value: {{ .Values.s3.mediaUpload.region | default .Values.s3.region | quote }}
-{{- end }}
-{{- if or .Values.s3.mediaUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
-- name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
-  value: {{ .Values.s3.mediaUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
-{{- end }}
+ {{- if or (kindIs "map" .Values.s3.mediaUpload.region) (kindIs "map" .Values.s3.region) (or .Values.s3.mediaUpload.region .Values.s3.region) }}
+ - name: LANGFUSE_S3_MEDIA_UPLOAD_REGION
+   {{- if kindIs "map" .Values.s3.mediaUpload.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.mediaUpload.region" "value" .Values.s3.mediaUpload.region) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.region }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.region" "value" .Values.s3.region) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.mediaUpload.region | default .Values.s3.region | quote }}
+   {{- end }}
+ {{- end }}
+ {{- if or (kindIs "map" .Values.s3.mediaUpload.endpoint) (kindIs "map" .Values.s3.endpoint) .Values.s3.mediaUpload.endpoint .Values.s3.endpoint .Values.s3.deploy }}
+ - name: LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT
+   {{- if kindIs "map" .Values.s3.mediaUpload.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.mediaUpload.endpoint" "value" .Values.s3.mediaUpload.endpoint) | nindent 2 }}
+   {{- else if kindIs "map" .Values.s3.endpoint }}
+   {{- include "langfuse.getRequiredValueOrSecret" (dict "key" ".Values.s3.endpoint" "value" .Values.s3.endpoint) | nindent 2 }}
+   {{- else }}
+   value: {{ .Values.s3.mediaUpload.endpoint | default .Values.s3.endpoint | default (include "langfuse.s3.endpoint" .) | quote }}
+   {{- end }}
+ {{- end }}
 {{- with (include "langfuse.getS3ValueOrSecret" (dict "key" "accessKeyId" "bucket" "mediaUpload" "values" .Values.s3) ) }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
   {{- . | nindent 2 }}
