@@ -1,5 +1,10 @@
 # Langfuse Helm Chart Configuration
 
+global:
+  security:
+    # -- Allow insecure images to use bitnami legacy repository. Can be set to false if secure images are being used (Paid).
+    allowInsecureImages: true
+
 # -- Override the name for the selector labels, defaults to the chart name
 nameOverride: ""
 
@@ -407,6 +412,11 @@ postgresql:
   # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
   shadowDatabaseUrl: ""
 
+  image:
+    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
+    repository: bitnamilegacy/postgresql
+    # image: docker.io/bitnami/postgresql:17.3.0-debian-12-r1
+
   # Authentication configuration
   auth:
     # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
@@ -444,6 +454,11 @@ redis:
   host: ""
   # -- Redis port to connect to.
   port: 6379
+
+  image:
+    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
+    repository: bitnamilegacy/valkey
+    # image: docker.io/bitnami/valkey:8.0.2-debian-12-r2
 
   # Redis TLS configuration
   tls:
@@ -488,6 +503,17 @@ clickhouse:
   # -- ClickHouse native port to connect to.
   nativePort: 9000
 
+  image:
+    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
+    repository: bitnamilegacy/clickhouse
+    #  image: docker.io/bitnami/clickhouse:25.2.1-debian-12-r0
+
+  keeper:
+    image:
+      # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
+      repository: bitnamilegacy/zookeeper
+      # image: docker.io/bitnami/zookeeper:3.9.3-debian-12-r8
+
   # Authentication configuration
   auth:
     # -- Username for the ClickHouse user.
@@ -528,6 +554,11 @@ s3:
   # -- When set to 'gcs', enables Google Cloud Storage native integration
   # -- When set to 's3', uses S3-compatible interface (default behavior)
   storageProvider: "s3"
+
+  image:
+    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
+    repository: bitnamilegacy/minio
+    # image: docker.io/bitnami/minio:2024.12.18-debian-12-r1
 
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
   bucket: ""

@@ -14,6 +14,22 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 - `examples` directory contains example `yaml` configurations
 - `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
+## ⚠️ Important: Bitnami Registry Changes
+
+**Effective August 28, 2025**, Bitnami will restructure its container registry. This chart now uses `bitnamilegacy/*` images by default to prevent deployment failures.
+
+**What changed:**
+- Bitnami moved most container images to a paid "Secure Images" tier
+- Free images are now limited to a small community subset
+- Older/versioned images moved to the "Bitnami Legacy" repository
+
+**Next steps:**
+- For existing deployments: Ensure that you update your mirrors to clone from bitnamilegacy if applicable.
+- We will investigate alternative image sources that are compliant with the Helm chart and roll them out over time.
+- You _may_ upgrade to Bitnami Secure Images if desired in the meantime. In this case, set `global.security.allowInsecureImages: false` and configure image repositories to use `bitnami/*` instead of `bitnamilegacy/*`
+
+See [Bitnami's announcement](https://github.com/bitnami/charts/issues/35164) for more details.
+
 ## Helm Chart
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.

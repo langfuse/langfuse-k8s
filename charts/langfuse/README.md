@@ -39,6 +39,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.deploy | bool | `true` | Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false |
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
+| clickhouse.image.repository | string | `"bitnamilegacy/clickhouse"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| clickhouse.keeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | clickhouse.migration.autoMigrate | bool | `true` | Whether to run automatic ClickHouse migrations on startup |
 | clickhouse.migration.ssl | bool | `false` | Set to true to establish SSL connection for migration |
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
@@ -48,6 +50,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.shards | int | `1` | Subchart specific settings |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
+| global.security.allowInsecureImages | bool | `true` | Allow insecure images to use bitnami legacy repository. Can be set to false if secure images are being used (Paid). |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
@@ -194,6 +197,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.deploy | bool | `true` | Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false |
 | postgresql.directUrl | string | `""` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. |
 | postgresql.host | string | `""` | PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name. |
+| postgresql.image.repository | string | `"bitnamilegacy/postgresql"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | postgresql.migration.autoMigrate | bool | `true` | Whether to run automatic migrations on startup |
 | postgresql.port | string | `nil` | Port of the postgres server to use. Defaults to 5432. |
 | postgresql.primary.service.ports.postgresql | int | `5432` |  |
@@ -206,6 +210,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
+| redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | redis.port | int | `6379` | Redis port to connect to. |
 | redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
 | redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
@@ -241,6 +246,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.eventUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for event uploads. |
 | s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. Can be overridden per upload type. |
 | s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Example: Set value to the JSON service account key content, or use secretKeyRef to reference a secret |
+| s3.image.repository | string | `"bitnamilegacy/minio"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
 | s3.mediaUpload.bucket | string | `""` | S3 bucket to use for media uploads. |
 | s3.mediaUpload.downloadUrlExpirySeconds | int | `3600` | Expiry time for download URLs. Defaults to 1 hour. |
