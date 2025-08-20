@@ -508,7 +508,7 @@ clickhouse:
     repository: bitnamilegacy/clickhouse
     #  image: docker.io/bitnami/clickhouse:25.2.1-debian-12-r0
 
-  keeper:
+  zookeeper:
     image:
       # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
       repository: bitnamilegacy/zookeeper

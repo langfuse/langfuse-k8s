@@ -40,7 +40,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
 | clickhouse.image.repository | string | `"bitnamilegacy/clickhouse"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
-| clickhouse.keeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| clickhouse.zookeeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | clickhouse.migration.autoMigrate | bool | `true` | Whether to run automatic ClickHouse migrations on startup |
 | clickhouse.migration.ssl | bool | `false` | Set to true to establish SSL connection for migration |
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
