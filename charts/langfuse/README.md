@@ -40,7 +40,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
 | clickhouse.image.repository | string | `"bitnamilegacy/clickhouse"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
-| clickhouse.zookeeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | clickhouse.migration.autoMigrate | bool | `true` | Whether to run automatic ClickHouse migrations on startup |
 | clickhouse.migration.ssl | bool | `false` | Set to true to establish SSL connection for migration |
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
@@ -48,6 +47,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.replicaCount | int | `3` | Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment. |
 | clickhouse.resourcesPreset | string | `"2xlarge"` | The resources preset to use for the ClickHouse cluster. |
 | clickhouse.shards | int | `1` | Subchart specific settings |
+| clickhouse.zookeeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
 | global.security.allowInsecureImages | bool | `true` | Allow insecure images to use bitnami legacy repository. Can be set to false if secure images are being used (Paid). |
