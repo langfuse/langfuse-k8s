@@ -117,13 +117,36 @@ Get a value from either a direct value or a secret reference, or nothing if neit
 */}}
 {{- define "langfuse.getValueOrSecret" -}}
 {{- if (and .value.secretKeyRef.name .value.secretKeyRef.key) -}}
-{{- if .value.value -}}
-{{- fail (printf ".value and .secretKeyRef are mutually exclusive for %s" .key) -}}
+{{- if or .value.value (and .value.fieldRef .value.fieldRef.fieldPath) (and .value.resourceFieldRef .value.resourceFieldRef.resource) -}}
+{{- fail (printf ".value, .secretKeyRef, .fieldRef, and .resourceFieldRef are mutually exclusive for %s" .key) -}}
 {{- end -}}
 valueFrom:
   secretKeyRef:
     name: {{ .value.secretKeyRef.name }}
     key: {{ .value.secretKeyRef.key }}
+{{- else if and .value.fieldRef .value.fieldRef.fieldPath -}}
+{{- if or .value.value (and .value.secretKeyRef.name .value.secretKeyRef.key) (and .value.resourceFieldRef .value.resourceFieldRef.resource) -}}
+{{- fail (printf ".value, .secretKeyRef, .fieldRef, and .resourceFieldRef are mutually exclusive for %s" .key) -}}
+{{- end -}}
+valueFrom:
+  fieldRef:
+    fieldPath: {{ .value.fieldRef.fieldPath }}
+{{- if .value.fieldRef.apiVersion }}
+    apiVersion: {{ .value.fieldRef.apiVersion }}
+{{- end }}
+{{- else if and .value.resourceFieldRef .value.resourceFieldRef.resource -}}
+{{- if or .value.value (and .value.secretKeyRef.name .value.secretKeyRef.key) (and .value.fieldRef .value.fieldRef.fieldPath) -}}
+{{- fail (printf ".value, .secretKeyRef, .fieldRef, and .resourceFieldRef are mutually exclusive for %s" .key) -}}
+{{- end -}}
+valueFrom:
+  resourceFieldRef:
+    resource: {{ .value.resourceFieldRef.resource }}
+{{- if .value.resourceFieldRef.containerName }}
+    containerName: {{ .value.resourceFieldRef.containerName }}
+{{- end }}
+{{- if .value.resourceFieldRef.divisor }}
+    divisor: {{ .value.resourceFieldRef.divisor }}
+{{- end }}
 {{- else if .value.value -}}
 value: {{ .value.value | quote }}
 {{- end -}}
@@ -136,7 +159,7 @@ value: {{ .value.value | quote }}
 {{- with (include "langfuse.getValueOrSecret" .) -}}
 {{ . }}
 {{- else -}}
-{{ fail (printf "no valid value or secretKeyRef provided for %s" .key) }}
+{{ fail (printf "no valid value, secretKeyRef, fieldRef, or resourceFieldRef provided for %s" .key) }}
 {{- end -}}
 {{- end -}}
 

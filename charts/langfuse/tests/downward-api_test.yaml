@@ -1,0 +1,167 @@
+suite: test downward api environment variables
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should render fieldRef for additionalEnv variables
+    values:
+      - ./values/downward-api-base.yaml
+    set:
+      langfuse.additionalEnv:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.name"
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+              apiVersion: "v1"
+        - name: HOST_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.hostIP"
+    asserts:
+      # Test web deployment
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "POD_NAME")].valueFrom.fieldRef.fieldPath
+          value: "metadata.name"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "POD_NAMESPACE")].valueFrom.fieldRef.fieldPath
+          value: "metadata.namespace"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "POD_NAMESPACE")].valueFrom.fieldRef.apiVersion
+          value: "v1"
+        template: web/deployment.yaml
+      # Test worker deployment
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "HOST_IP")].valueFrom.fieldRef.fieldPath
+          value: "status.hostIP"
+        template: worker/deployment.yaml
+
+  - it: should render resourceFieldRef for additionalEnv variables
+    values:
+      - ./values/downward-api-base.yaml
+    set:
+      langfuse.additionalEnv:
+        - name: MEMORY_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: "limits.memory"
+              divisor: "1Mi"
+        - name: CPU_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: "requests.cpu"
+              containerName: "langfuse"
+              divisor: "1m"
+    asserts:
+      # Test web deployment
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "MEMORY_LIMIT")].valueFrom.resourceFieldRef.resource
+          value: "limits.memory"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "MEMORY_LIMIT")].valueFrom.resourceFieldRef.divisor
+          value: "1Mi"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "CPU_LIMIT")].valueFrom.resourceFieldRef.resource
+          value: "requests.cpu"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "CPU_LIMIT")].valueFrom.resourceFieldRef.containerName
+          value: "langfuse"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "CPU_LIMIT")].valueFrom.resourceFieldRef.divisor
+          value: "1m"
+        template: web/deployment.yaml
+      # Test worker deployment
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "MEMORY_LIMIT")].valueFrom.resourceFieldRef.resource
+          value: "limits.memory"
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "CPU_LIMIT")].valueFrom.resourceFieldRef.resource
+          value: "requests.cpu"
+        template: worker/deployment.yaml
+
+  - it: should demonstrate core langfuse field functionality still works with secrets
+    values:
+      - ./values/downward-api-base.yaml
+    asserts:
+      # Test that core langfuse fields still use secretKeyRef from base values
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "SALT")].valueFrom.secretKeyRef.name
+          value: "langfuse"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "SALT")].valueFrom.secretKeyRef.key
+          value: "salt"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "NEXTAUTH_SECRET")].valueFrom.secretKeyRef.name
+          value: "langfuse"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "NEXTAUTH_SECRET")].valueFrom.secretKeyRef.key
+          value: "nextauth-secret"
+        template: web/deployment.yaml
+
+  - it: should test getValueOrSecret template functionality with different sources
+    values:
+      - ./values/downward-api-base.yaml
+    set:
+      # Test fieldRef functionality through S3 configuration (more realistic)
+      s3.eventUpload.accessKeyId.fieldRef.fieldPath: "metadata.namespace"
+      s3.eventUpload.secretAccessKey.resourceFieldRef.resource: "limits.memory"
+      s3.eventUpload.secretAccessKey.resourceFieldRef.divisor: "1Mi"
+    asserts:
+      # Test that S3 configuration can use Downward API
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID")].valueFrom.fieldRef.fieldPath
+          value: "metadata.namespace"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY")].valueFrom.resourceFieldRef.resource
+          value: "limits.memory"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY")].valueFrom.resourceFieldRef.divisor
+          value: "1Mi"
+        template: web/deployment.yaml
+
+  - it: should render fieldRef without optional apiVersion
+    values:
+      - ./values/downward-api-base.yaml
+    set:
+      langfuse.additionalEnv:
+        - name: SIMPLE_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: "status.podIP"
+    asserts:
+      # Test that apiVersion is not included when not specified
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "SIMPLE_POD_IP")].valueFrom.fieldRef.fieldPath
+          value: "status.podIP"
+        template: web/deployment.yaml
+
+  - it: should render resourceFieldRef without optional fields
+    values:
+      - ./values/downward-api-base.yaml
+    set:
+      langfuse.additionalEnv:
+        - name: SIMPLE_CPU_LIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: "limits.cpu"
+    asserts:
+      # Test that containerName and divisor are not included when not specified
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name == "SIMPLE_CPU_LIMIT")].valueFrom.resourceFieldRef.resource
+          value: "limits.cpu"
+        template: web/deployment.yaml

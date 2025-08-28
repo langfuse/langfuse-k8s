@@ -1,0 +1,99 @@
+# Example values demonstrating realistic Kubernetes Downward API usage with langfuse chart
+# This file shows practical use cases for fieldRef (pod metadata) and resourceFieldRef (container resources)
+
+langfuse:
+  # Secure configuration using secrets (recommended for production)
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+    url: "http://localhost:3000"
+
+  # Example: Adding observability/monitoring environment variables using Downward API
+  additionalEnv:
+    # Get the host IP for OpenTelemetry collector endpoint
+    - name: OTEL_HOST_IP
+      valueFrom:
+        fieldRef:
+          apiVersion: v1
+          fieldPath: status.hostIP
+    
+    # Use host IP in OTLP endpoint configuration
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://$(OTEL_HOST_IP):4318"
+    
+    # Get pod name for service identification
+    - name: POD_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.name
+    
+    # Get namespace for multi-tenant environments
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+    
+    # Get pod IP for logging/metrics
+    - name: POD_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.podIP
+    
+    # Get node name for infrastructure correlation
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    
+    # Get service account for RBAC/audit logs
+    - name: SERVICE_ACCOUNT
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.serviceAccountName
+    
+    # Get memory limit for JVM heap sizing or resource monitoring
+    - name: MEMORY_LIMIT
+      valueFrom:
+        resourceFieldRef:
+          resource: limits.memory
+          divisor: "1Mi"  # Convert to megabytes
+    
+    # Get CPU limit for thread pool sizing
+    - name: CPU_LIMIT
+      valueFrom:
+        resourceFieldRef:
+          resource: limits.cpu
+          divisor: "1m"   # Convert to millicores
+    
+    # Example with custom labels for environment identification
+    - name: ENVIRONMENT
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['environment']
+    
+    # Example with custom annotations for deployment tracking
+    - name: DEPLOYMENT_VERSION
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.annotations['deployment.version']
+
+postgresql:
+  auth:
+    password: "testpassword"
+    database: "langfuse"
+
+clickhouse:
+  deploy: false
+  host: "localhost"
+  auth:
+    password: "testpassword"
