@@ -18,7 +18,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+      {{- if eq .Values.langfuse.web.service.type "NodePort" }}
       nodePort: {{ .Values.langfuse.web.service.nodePort }}
+      {{- end }}
   selector:
     {{- include "langfuse.selectorLabels" . | nindent 4 }}
     app: web
