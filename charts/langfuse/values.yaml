@@ -423,7 +423,7 @@ postgresql:
     username: postgres
     # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
     password: ""
-    # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.username` and `postgresql.auth.password` will be ignored and picked up from this secret).
+    # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
     # -- The key in the existing secret that contains the password.
     secretKeys:
@@ -520,7 +520,7 @@ clickhouse:
     username: default
     # -- Password for the ClickHouse user.
     password: ""
-    # -- If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.username` and `clickhouse.auth.password` will be ignored and picked up from this secret).
+    # -- If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
     # -- The key in the existing secret that contains the password.
     existingSecretKey: ""
@@ -690,7 +690,7 @@ s3:
     rootUser: minio
     # -- Password for MinIO root user
     rootPassword: ""
-    # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret).
+    # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootPassword` will be ignored and picked up from this secret).
     existingSecret: ""
     # -- Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret`
     rootUserSecretKey: ""
