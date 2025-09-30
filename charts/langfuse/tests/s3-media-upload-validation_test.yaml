@@ -1,0 +1,95 @@
+suite: test s3 media upload validation
+templates:
+  - validations.yaml
+tests:
+  # Test that validation is skipped when media upload is disabled
+  - it: should skip validation when s3.mediaUpload.enabled is false
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: false
+      s3.deploy: true
+      s3.forcePathStyle: true  # Set to true to pass event upload validation
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # Test that validation fails when MinIO is deployed without forcePathStyle
+  - it: should fail when MinIO deployed without forcePathStyle and media upload enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.batchExport.enabled: false
+      s3.deploy: true
+      s3.forcePathStyle: false
+      s3.mediaUpload.forcePathStyle: false
+      s3.eventUpload.forcePathStyle: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue."
+
+  # Test that validation passes when MinIO is deployed with global forcePathStyle
+  - it: should pass when MinIO deployed with global forcePathStyle and media upload enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.deploy: true
+      s3.forcePathStyle: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # Test that validation passes when MinIO is deployed with specific forcePathStyle
+  - it: should pass when MinIO deployed with specific mediaUpload.forcePathStyle
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.deploy: true
+      s3.forcePathStyle: true  # Set to true to pass event upload validation
+      s3.mediaUpload.forcePathStyle: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # Test that validation fails when external S3 is used without bucket configuration
+  - it: should fail when external S3 used without bucket and media upload enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.batchExport.enabled: false
+      s3.deploy: false
+      s3.bucket: ""
+      s3.mediaUpload.bucket: ""
+      s3.eventUpload.bucket: "event-bucket"
+    asserts:
+      - failedTemplate:
+          errorMessage: "S3 bucket must be configured for external provider. Set s3.bucket or s3.mediaUpload.bucket to continue."
+
+  # Test that validation passes when external S3 is used with global bucket
+  - it: should pass when external S3 used with global bucket and media upload enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.deploy: false
+      s3.bucket: "langfuse-bucket"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # Test that validation passes when external S3 is used with specific bucket
+  - it: should pass when external S3 used with specific mediaUpload.bucket
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.mediaUpload.enabled: true
+      s3.deploy: false
+      s3.bucket: "langfuse-bucket"  # Global bucket for event upload
+      s3.mediaUpload.bucket: "media-bucket"
+    asserts:
+      - hasDocuments:
+          count: 0
