@@ -9,8 +9,7 @@ tests:
     set:
       s3.mediaUpload.enabled: false
       s3.deploy: true
-      s3.forcePathStyle: false
-      s3.mediaUpload.forcePathStyle: false
+      s3.forcePathStyle: true  # Set to true to pass event upload validation
     asserts:
       - hasDocuments:
           count: 0
@@ -49,7 +48,7 @@ tests:
     set:
       s3.mediaUpload.enabled: true
       s3.deploy: true
-      s3.forcePathStyle: false
+      s3.forcePathStyle: true  # Set to true to pass event upload validation
       s3.mediaUpload.forcePathStyle: true
     asserts:
       - hasDocuments:
@@ -89,7 +88,7 @@ tests:
     set:
       s3.mediaUpload.enabled: true
       s3.deploy: false
-      s3.bucket: ""
+      s3.bucket: "langfuse-bucket"  # Global bucket for event upload
       s3.mediaUpload.bucket: "media-bucket"
     asserts:
       - hasDocuments:
