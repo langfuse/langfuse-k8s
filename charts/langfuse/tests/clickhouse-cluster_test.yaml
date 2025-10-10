@@ -1,0 +1,70 @@
+suite: test clickhouse cluster configuration
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should set CLICKHOUSE_CLUSTER_ENABLED to false when using external ClickHouse (clickhouse.deploy=false)
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: false
+      clickhouse.host: "my-clickhouse-cloud.clickhouse.com"
+      clickhouse.auth.username: "default"
+      clickhouse.auth.password: "secretPassword"
+    asserts:
+      # Web deployment should have CLICKHOUSE_CLUSTER_ENABLED=false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+        template: web/deployment.yaml
+      # Worker deployment should have CLICKHOUSE_CLUSTER_ENABLED=false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+        template: worker/deployment.yaml
+
+  - it: should set CLICKHOUSE_CLUSTER_ENABLED to false when deploying single replica ClickHouse
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: true
+      clickhouse.replicaCount: 1
+    asserts:
+      # Web deployment should have CLICKHOUSE_CLUSTER_ENABLED=false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+        template: web/deployment.yaml
+      # Worker deployment should have CLICKHOUSE_CLUSTER_ENABLED=false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+            value: "false"
+        template: worker/deployment.yaml
+
+  - it: should NOT set CLICKHOUSE_CLUSTER_ENABLED when deploying multi-replica ClickHouse cluster
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: true
+      clickhouse.replicaCount: 3
+    asserts:
+      # Web deployment should NOT have CLICKHOUSE_CLUSTER_ENABLED env var
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+        template: web/deployment.yaml
+      # Worker deployment should NOT have CLICKHOUSE_CLUSTER_ENABLED env var
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_CLUSTER_ENABLED
+        template: worker/deployment.yaml
