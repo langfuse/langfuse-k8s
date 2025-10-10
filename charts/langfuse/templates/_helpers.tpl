@@ -396,7 +396,7 @@ Return ClickHouse protocol (http or https)
   value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
 {{- end }}
 {{- end }}
-{{- if and .Values.clickhouse.deploy ($.Values.clickhouse.replicaCount | int | eq 1) }}
+{{- if not (and .Values.clickhouse.deploy ($.Values.clickhouse.replicaCount | int | gt 1)) }}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
 {{- end }}
