@@ -362,7 +362,7 @@ Return ClickHouse protocol (http or https)
   {{- if .Values.clickhouse.migration.url }}
   value: {{ .Values.clickhouse.migration.url | quote }}
   {{- else if .Values.clickhouse.host }}
-  value: "clickhouse://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.nativePort }}"
+  value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- else if .Values.clickhouse.deploy }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- end }}

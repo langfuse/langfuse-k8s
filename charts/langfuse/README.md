@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.4](https://img.shields.io/badge/Version-1.5.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.112.0](https://img.shields.io/badge/AppVersion-3.112.0-informational?style=flat-square)
+![Version: 1.5.6](https://img.shields.io/badge/Version-1.5.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.117.2](https://img.shields.io/badge/AppVersion-3.117.2-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -31,7 +31,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clickhouse.auth.existingSecret | string | `""` | If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.username` and `clickhouse.auth.password` will be ignored and picked up from this secret). |
+| clickhouse.auth.existingSecret | string | `""` | If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret). |
 | clickhouse.auth.existingSecretKey | string | `""` | The key in the existing secret that contains the password. |
 | clickhouse.auth.password | string | `""` | Password for the ClickHouse user. |
 | clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
@@ -190,7 +190,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.database | string | `"postgres_langfuse"` | Database name to use for Langfuse. |
-| postgresql.auth.existingSecret | string | `""` | If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.username` and `postgresql.auth.password` will be ignored and picked up from this secret). |
+| postgresql.auth.existingSecret | string | `""` | If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret). |
 | postgresql.auth.password | string | `""` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. |
 | postgresql.auth.secretKeys | object | `{"userPasswordKey":"password"}` | The key in the existing secret that contains the password. |
 | postgresql.auth.username | string | `"postgres"` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. |
@@ -218,7 +218,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
 | redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication |
 | s3.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for all uploads. Can be overridden per upload type. |
-| s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootUser` and `s3.auth.rootPassword` will be ignored and picked up from this secret). |
+| s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootPassword` will be ignored and picked up from this secret). |
 | s3.auth.rootPassword | string | `""` | Password for MinIO root user |
 | s3.auth.rootPasswordSecretKey | string | `""` | Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret` |
 | s3.auth.rootUser | string | `"minio"` | root username |
