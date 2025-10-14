@@ -534,7 +534,7 @@ clickhouse:
     # -- Whether to run automatic ClickHouse migrations on startup
     autoMigrate: true
 
-  # -- Whether to run ClickHouse commands ON CLUSTER
+  # -- Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting.
   clusterEnabled: true
 
   # -- Subchart specific settings
