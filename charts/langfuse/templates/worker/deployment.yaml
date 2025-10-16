@@ -66,6 +66,10 @@ spec:
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
+            - name: PORT
+              value: "{{ .Values.langfuse.worker.port | default 3030 }}"
+            - name: HOSTNAME
+              value: "0.0.0.0"
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
