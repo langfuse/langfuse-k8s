@@ -6,13 +6,21 @@
     {{- fail "langfuse.logging.format must be one of: text, json" -}}
 {{- end -}}
 
+# Validate auth providers settings
+{{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
+{{- range $providerName, $provider := .Values.langfuse.auth.providers -}}
+{{- if not (has ($providerName | snakecase | upper) (list "AUTH0" "COGNITO" "AZURE_AD" "GITHUB" "GITHUB_ENTERPRISE" "GITLAB" "GOOGLE" "KEYCLOAK" "OKTA" "WORKOS" "CUSTOM")) -}}
+  {{- fail (printf "langfuse.auth: invalid auth provider %s" $providerName)}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 # Validate ClickHouse settings
 {{- if ne ($.Values.clickhouse.shards | int) 1 -}}
     {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) -}}
+{{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL"))) -}}
     {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
 {{- end -}}
 
@@ -21,12 +29,16 @@
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) -}}
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
     {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
 {{- end -}}
 
-
 # Validate S3 settings
+# Storage Provider
+{{- if not (has $.Values.s3.storageProvider (list "s3" "azure" "gcs")) -}}
+    {{- fail "s3.storageProvider must be one of: s3, azure, gcs" -}}
+{{- end -}}
+
 #   Event Upload
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
@@ -48,12 +60,14 @@
 {{- end -}}
 
 #   Media Upload
+{{- if $.Values.s3.mediaUpload.enabled -}}
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.mediaUpload.forcePathStyle)) -}}
     {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}
     {{- fail "S3 bucket must be configured for external provider. Set s3.bucket or s3.mediaUpload.bucket to continue." -}}
+{{- end -}}
 {{- end -}}
 
 # Validate that only one of additionalEnv or new structure is configured for PostgreSQL
@@ -85,7 +99,7 @@
 {{- if and $.Values.clickhouse.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse configuration or langfuse.additionalEnv[name: CLICKHOUSE_URL] to continue." -}}
 {{- end -}}
-{{- if and $.Values.clickhouse.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_USER")) -}}
+{{- if and $.Values.clickhouse.deploy $.Values.clickhouse.auth.username (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_USER")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either clickhouse.auth.username or langfuse.additionalEnv[name: CLICKHOUSE_USER] to continue." -}}
 {{- end -}}
 {{- if and (or $.Values.clickhouse.auth.password $.Values.clickhouse.auth.existingSecret) (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_PASSWORD")) -}}
@@ -157,11 +171,24 @@
 {{- if and $.Values.langfuse.features.telemetryEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "TELEMETRY_ENABLED")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.telemetryEnabled or langfuse.additionalEnv[name: TELEMETRY_ENABLED] to continue." -}}
 {{- end -}}
-{{- if and $.Values.langfuse.features.signUpDisabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "NEXT_PUBLIC_SIGN_UP_DISABLED")) -}}
-    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.signUpDisabled or langfuse.additionalEnv[name: NEXT_PUBLIC_SIGN_UP_DISABLED] to continue." -}}
+{{- if and $.Values.langfuse.features.signUpDisabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "AUTH_DISABLE_SIGNUP")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.signUpDisabled or langfuse.additionalEnv[name: AUTH_DISABLE_SIGNUP] to continue." -}}
 {{- end -}}
 {{- if and $.Values.langfuse.features.experimentalFeaturesEnabled (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "ENABLE_EXPERIMENTAL_FEATURES")) -}}
     {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.features.experimentalFeaturesEnabled or langfuse.additionalEnv[name: ENABLE_EXPERIMENTAL_FEATURES] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for SMTP config
+{{- if and $.Values.langfuse.smtp.connectionUrl (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "SMTP_CONNECTION_URL")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.smtp.connectionUrl or langfuse.additionalEnv[name: SMTP_CONNECTION_URL] to continue." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.smtp.fromAddress (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "EMAIL_FROM_ADDRESS")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.smtp.fromAddress or langfuse.additionalEnv[name: EMAIL_FROM_ADDRESS] to continue." -}}
+{{- end -}}
+
+# Validate that only one of additionalEnv or new structure is configured for Allowed Organization Creators
+{{- if and $.Values.langfuse.allowedOrganizationCreators (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "LANGFUSE_ALLOWED_ORGANIZATION_CREATORS")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either langfuse.allowedOrganizationCreators or langfuse.additionalEnv[name: LANGFUSE_ALLOWED_ORGANIZATION_CREATORS] to continue." -}}
 {{- end -}}
 
 # Validate that only one of additionalEnv or new structure is configured for Authentication and Security

@@ -1,21 +1,20 @@
-# This values.yaml file demonstrates how to use the basic chart with a single, pre-created secret.
-# Secrets must be set manually or via External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
+# Base values for testing Downward API functionality
+# Uses secure configurations for production-like testing
 langfuse:
-  encryptionKey:
-    secretKeyRef:
-      name: langfuse
-      key: encryption-key
-
   salt:
     secretKeyRef:
       name: langfuse
       key: salt
-
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
   nextauth:
     secret:
       secretKeyRef:
         name: langfuse
         key: nextauth-secret
+    url: "http://localhost:3000"
 
 postgresql:
   auth:

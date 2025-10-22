@@ -5,17 +5,34 @@
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/langfuse-k8s)](https://artifacthub.io/packages/search?repo=langfuse-k8s)
 
 This is a community-maintained repository that contains resources for deploying Langfuse on Kubernetes.
+Please feel free to contribute any improvements or suggestions.
+
+Langfuse self-hosting documentation: https://langfuse.com/self-hosting
+
+## Repository Structure
+
+- `examples` directory contains example `yaml` configurations
+- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
+
+## ⚠️ Important: Bitnami Registry Changes
+
+**Effective August 28, 2025**, Bitnami will restructure its container registry. This chart now uses `bitnamilegacy/*` images by default to prevent deployment failures.
+
+**What changed:**
+- Bitnami moved most container images to a paid "Secure Images" tier
+- Free images are now limited to a small community subset
+- Older/versioned images moved to the "Bitnami Legacy" repository
+
+**Next steps:**
+- For existing deployments: Ensure that you update your mirrors to clone from bitnamilegacy if applicable.
+- We will investigate alternative image sources that are compliant with the Helm chart and roll them out over time.
+- You _may_ upgrade to Bitnami Secure Images if desired in the meantime. In this case, set `global.security.allowInsecureImages: false` and configure image repositories to use `bitnami/*` instead of `bitnamilegacy/*`
+
+See [Bitnami's announcement](https://github.com/bitnami/charts/issues/35164) for more details.
 
 ## Helm Chart
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
-
-### 1.0.0 Release Candidate
-
-This Chart is a release candidate for the 1.0.0 version of the Langfuse Helm Chart.
-Please provide all thoughts and feedbacks on the interface and the upgrade path via our [GitHub Discussion](https://github.com/orgs/langfuse/discussions/5734).
-
-For details on how to migrate from 0.13.x to 1.0.0, refer to our [migration guide](./UPGRADE.md).
 
 ### Installation
 
@@ -37,6 +54,60 @@ helm upgrade langfuse langfuse/langfuse
 
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
+
+### Sizing
+
+By default, the chart will run with the minimum resources to provide a stable experience.
+For production environments, we recommend to adjust the following parameters in the values.yaml.
+See [Langfuse documentation](https://langfuse.com/self-hosting/scaling) for our full sizing guide.
+
+```yaml
+langfuse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+
+clickhouse:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "8Gi"
+    requests:
+      cpu: "2"
+      memory: "8Gi"
+      
+  zookeeper:
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "2"
+        memory: "4Gi"
+
+redis:
+  primary:
+    resources:
+      limits:
+        cpu: "1"
+        memory: "1.5Gi"
+      requests:
+        cpu: "1"
+        memory: "1.5Gi"
+
+s3:
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "2"
+      memory: "4Gi"
+```
 
 ### Configuration
 
@@ -104,14 +175,12 @@ postgresql:
 clickhouse:
   auth:
     existingSecret: langfuse-clickhouse-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretKey: password
 
 redis:
   auth:
     existingSecret: langfuse-redis-auth
-    secretKeys:
-      userPasswordKey: password
+    existingSecretPasswordKey: password
 
 s3:
   auth:
@@ -121,9 +190,21 @@ s3:
     rootPasswordSecretKey: rootPassword
 ```
       
-See the [Helm README](./charts/langfuse/README.md) for a full list of all configuration options.
+See the [Helm README](https://github.com/langfuse/langfuse-k8s/blob/main/charts/langfuse/README.md) for a full list of all configuration options.
 
-#### Examples:
+#### Storage Provider Options
+
+Langfuse supports multiple blob storage providers through the `s3.storageProvider` configuration:
+
+- **`s3`** (default): Uses S3-compatible interface. Works with AWS S3, MinIO, Cloudflare R2, and other S3-compatible services.
+- **`azure`**: Uses Azure Blob Storage native integration. Requires Azure Storage Account credentials.
+- **`gcs`**: Uses Google Cloud Storage native integration. Requires GCS service account credentials.
+
+By default, the system uses the S3-compatible method.
+When Azure or GCS is selected, the respective native storage integration is enabled with the appropriate environment variables.
+See our [self-hosting docs](https://langfuse.com/self-hosting/infrastructure/blobstorage) for more details on Blob Storage configurations.
+
+#### Examples
 
 ##### With an external Postgres server
 
@@ -140,7 +221,7 @@ postgresql:
   shadowDatabaseUrl: postgres://my-username:my-password@my-external-postgres-server.com
 ```
 
-#### With an external S3 bucket
+##### With an external S3 bucket
 
 ```yaml
 [...]
@@ -154,6 +235,79 @@ s3:
     value: "mykey"
   secretAccessKey:
     value: "mysecret"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+##### With Azure Blob Storage
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "azure"
+  bucket: "langfuse"  # Container name - If it does not exist, Langfuse will attempt to create it
+  accessKeyId:
+    value: "devstoreaccount1"  # Azure Storage Account name
+  secretAccessKey:
+    value: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="  # Azure Storage Account key
+  endpoint: "https://yourstorageaccount.blob.core.windows.net"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+##### With Google Cloud Storage
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "gcs"
+  bucket: "langfuse"  # GCS bucket name
+  gcs:
+    credentials:
+      value: |
+        {
+          "type": "service_account",
+          "project_id": "your-project-id",
+          "private_key_id": "your-private-key-id",
+          "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n",
+          "client_email": "your-service-account@your-project-id.iam.gserviceaccount.com",
+          "client_id": "your-client-id",
+          "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+          "token_uri": "https://oauth2.googleapis.com/token",
+          "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+          "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-service-account%40your-project-id.iam.gserviceaccount.com"
+        }
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"
+```
+
+Alternatively, you can reference the credentials from a secret:
+
+```yaml
+[...]
+s3:
+  deploy: false
+  storageProvider: "gcs"
+  bucket: "langfuse"
+  gcs:
+    credentials:
+      secretKeyRef:
+        name: "gcs-credentials"
+        key: "credentials.json"
   eventUpload:
     prefix: "events/"
   batchExport:
@@ -188,6 +342,73 @@ langfuse:
       - path: /
         pathType: Prefix
     annotations: []
+```
+
+##### Ingress with custom backend (AWS Load Balancer Controller redirect)
+
+Use custom backends to configure AWS Load Balancer Controller redirects or other advanced routing:
+
+```yaml
+[...]
+langfuse:
+  ingress:
+    enabled: true
+    className: "alb"
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      # Redirect action annotation
+      alb.ingress.kubernetes.io/actions.redirect-to-langfuse: |
+        {
+          "type": "redirect",
+          "redirectConfig": {
+            "protocol": "HTTPS",
+            "port": "443",
+            "host": "langfuse.example.com",
+            "statusCode": "HTTP_301"
+          }
+        }
+    hosts:
+      # Main service host - uses default backend
+      - host: langfuse.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+      # Redirect host - uses custom backend for redirect
+      - host: langfuse-v3.example.com
+        paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: redirect-to-langfuse
+              port:
+                name: use-annotation
+```
+
+##### Ingress with mixed backends
+
+Configure different backends for different paths within the same host:
+
+```yaml
+[...]
+langfuse:
+  ingress:
+    enabled: true
+    hosts:
+    - host: langfuse.example.com
+      paths:
+      # Default backend for main application
+      - path: /
+        pathType: Prefix
+      # Custom backend for specific path
+      - path: /api/webhook
+        pathType: Prefix
+        backend:
+          service:
+            name: webhook-service
+            port:
+              number: 8080
 ```
 
 #### Custom Storage Class Definition
@@ -265,6 +486,46 @@ postgresql:
     username: null
 ```
 
+##### With SSO provider configuration using secrets and additionalEnv
+
+This example shows how to configure Okta SSO by setting the required environment variables from secrets using the `additionalEnv` pattern:
+
+```yaml
+langfuse:
+  additionalEnv:
+    - name: AUTH_OKTA_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_CLIENT_ID
+    - name: AUTH_OKTA_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_CLIENT_SECRET
+    - name: AUTH_OKTA_ISSUER
+      valueFrom:
+        secretKeyRef:
+          name: okta-secrets
+          key: AUTH_OKTA_ISSUER
+```
+
+You would need to create the corresponding secret:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: okta-secrets
+type: Opaque
+stringData:
+  AUTH_OKTA_CLIENT_ID: "your-okta-client-id"
+  AUTH_OKTA_CLIENT_SECRET: "your-okta-client-secret"
+  AUTH_OKTA_ISSUER: "https://your-domain.okta.com"
+```
+
+This pattern works for any SSO provider supported by Langfuse. See the [Authentication and SSO documentation](https://langfuse.com/self-hosting/authentication-and-sso#sso) for other providers and their required environment variables.
+
 ##### With overrides for hostAliases
 
 This is going to add a record to the /etc/hosts file of all containers
@@ -317,11 +578,19 @@ langfuse:
               app: worker
 ```
 
-## Repository Structure
+## Testing
 
-- `examples` directory contains example `yaml` configurations
-- `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
+This repository includes testing to ensure the Helm chart works correctly across different configurations.
 
-Please feel free to contribute any improvements or suggestions.
+### Setup
 
-Langfuse deployment docs: https://langfuse.com/docs/deployment/self-host
+Install the helm unittest plugin using
+```shell
+helm plugin install https://github.com/helm-unittest/helm-unittest.git
+```
+
+### Running Tests Locally
+
+```bash
+helm unittest charts/langfuse --color
+```

@@ -5,6 +5,9 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.web.deployment.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with (coalesce .Values.langfuse.web.deployment.annotations .Values.langfuse.deployment.annotations) }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -13,10 +16,7 @@ spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
   replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
   {{- end }}
-  {{- if .Values.langfuse.web.hostAliases }}
-  hostAliases:
-    {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
-  {{- end }}
+  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -40,6 +40,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.langfuse.web.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
+      {{- end }}
       {{- with (.Values.langfuse.web.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -56,8 +60,9 @@ spec:
         {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
       {{- end }}
       containers:
-        {{- if .Values.langfuse.extraContainers }}
-        {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
+        {{- $additionalContainers := concat (.Values.langfuse.extraContainers | default list ) (.Values.langfuse.web.pod.extraContainers | default list )}}
+        {{- with $additionalContainers }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
         - name: {{ .Chart.Name }}-web
           securityContext:
@@ -70,8 +75,9 @@ spec:
               value: {{ .Values.langfuse.web.service.port | quote }}
             - name: HOSTNAME
               value: "0.0.0.0"
-            {{- if .Values.langfuse.additionalEnv }}
-              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
+            {{- with $additionalEnv }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           ports:
             - name: http
@@ -95,6 +101,12 @@ spec:
             timeoutSeconds: {{ .Values.langfuse.web.readinessProbe.timeoutSeconds | default 5 }}
             successThreshold: {{ .Values.langfuse.web.readinessProbe.successThreshold | default 1 }}
             failureThreshold: {{ .Values.langfuse.web.readinessProbe.failureThreshold | default 5 }}
+          {{- if .Values.langfuse.extraLifecycle}}
+          lifecycle:
+            {{- with .Values.langfuse.extraLifecycle }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           resources:
             {{- toYaml (.Values.langfuse.web.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

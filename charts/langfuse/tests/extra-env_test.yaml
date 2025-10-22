@@ -1,0 +1,34 @@
+suite: test rendering of extra environment variables
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - web/service.yaml
+  - serviceaccount.yaml
+tests:
+  - it: should render all variables
+    values:
+      - ../../../examples/minimal-installation/values.yaml
+      - ./values/extra-all-env.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[-1].value
+          value: "langfuse-web"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[-1].value
+          value: "langfuse-worker"
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[-2].value
+          value: "sample-value"
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[-2].value
+          value: "sample-value"
+        template: web/deployment.yaml

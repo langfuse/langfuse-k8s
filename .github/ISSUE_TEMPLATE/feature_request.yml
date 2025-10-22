@@ -1,0 +1,31 @@
+name: 💡 Feature Request
+description: Create a feature request
+title: "feat: "
+labels: ["feature"]
+body:
+  - type: textarea
+    attributes:
+      label: Describe the feature
+      description: A clear and concise description of the feature you want to request.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Use cases
+      description: Describe the use cases for this feature. How would it be used in practice?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional information
+      description: Add any other information related to the feature request here, screenshots if applicable.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Are you interested to contribute this feature?
+      description: If this is a confirmed feature request, the maintainers are happy to support with guidance and review.
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true

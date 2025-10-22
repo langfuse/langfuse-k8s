@@ -5,6 +5,9 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.worker.deployment.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- with (coalesce .Values.langfuse.worker.deployment.annotations .Values.langfuse.deployment.annotations) }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -13,6 +16,7 @@ spec:
   {{- if not (or .Values.langfuse.worker.hpa.enabled .Values.langfuse.worker.keda.enabled) }}
   replicas: {{ .Values.langfuse.worker.replicas | default .Values.langfuse.replicas }}
   {{- end }}
+  revisionHistoryLimit: {{ .Values.langfuse.worker.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
   {{- with (coalesce .Values.langfuse.worker.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -52,8 +56,9 @@ spec:
         {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
       {{- end }}
       containers:
-        {{- if .Values.langfuse.extraContainers }}
-        {{- toYaml .Values.langfuse.extraContainers | nindent 8 }}
+        {{- $additionalContainers := concat (.Values.langfuse.extraContainers | default list) (.Values.langfuse.worker.pod.extraContainers | default list)}}
+        {{- with $additionalContainers }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
         - name: {{ .Chart.Name }}-worker
           securityContext:
@@ -62,8 +67,9 @@ spec:
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
-            {{- if .Values.langfuse.additionalEnv }}
-              {{- toYaml .Values.langfuse.additionalEnv | nindent 12 }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
+            {{- with $additionalEnv }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           ports:
             - name: http
@@ -78,6 +84,12 @@ spec:
             timeoutSeconds: {{ .Values.langfuse.worker.livenessProbe.timeoutSeconds | default 5 }}
             successThreshold: {{ .Values.langfuse.worker.livenessProbe.successThreshold | default 1 }}
             failureThreshold: {{ .Values.langfuse.worker.livenessProbe.failureThreshold | default 5 }}
+          {{- if .Values.langfuse.extraLifecycle }}
+          lifecycle:
+            {{- with .Values.langfuse.extraLifecycle }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
           resources:
             {{- toYaml (.Values.langfuse.worker.resources | default .Values.langfuse.resources) | nindent 12 }}
           {{- if .Values.langfuse.extraVolumeMounts }}

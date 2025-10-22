@@ -16,11 +16,11 @@ spec:
         {{- end }}
         {{- with .Values.langfuse.web.vpa.maxAllowed }}
         maxAllowed:
-          {{- toYaml . | nindent 8 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- with .Values.langfuse.web.vpa.minAllowed }}
         minAllowed:
-          {{- toYaml . | nindent 8 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
   targetRef:
     apiVersion: apps/v1

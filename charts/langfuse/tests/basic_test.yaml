@@ -1,0 +1,70 @@
+suite: test basic chart functionality
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - web/service.yaml
+  - serviceaccount.yaml
+tests:
+  - it: should render with default values
+    values:
+      - ../values.lint.yaml
+    asserts:
+      # Test that web deployment is created
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+
+      # Test that worker deployment is created  
+      - hasDocuments:
+          count: 1
+        template: worker/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: worker/deployment.yaml
+
+      # Test that web service is created
+      - hasDocuments:
+          count: 1
+        template: web/service.yaml
+      - isKind:
+          of: Service
+        template: web/service.yaml
+
+      # Test that serviceaccount is created
+      - hasDocuments:
+          count: 1
+        template: serviceaccount.yaml
+      - isKind:
+          of: ServiceAccount
+        template: serviceaccount.yaml
+
+  - it: should set correct app labels
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: langfuse
+        template: web/deployment.yaml
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.metadata.labels["app"]
+          value: web
+        template: web/deployment.yaml
+
+  - it: should use correct image when specified
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.image.tag: "v1.2.3"
+    asserts:
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "langfuse/langfuse:v1.2.3$"
+        template: web/deployment.yaml

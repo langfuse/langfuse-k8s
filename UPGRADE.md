@@ -92,29 +92,6 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
           existingSecret: <secret-name>
           existingSecretKey: <secret-key>
     ```
-  
-  - `langfuse.nextauth.url` and `langfuse.nextauth.secret` are now handled moved into a dedicated `nextauth` section:
-    ```yaml
-      # Old
-      langfuse:
-        nextauth:
-          url: "<url>"
-          secret: "<secret>"
-
-      # New
-      nextauth:
-        url: "<url>"
-        secret:
-          value: "<secret>"
-    ```
-
-    Alternatively, you can use an existing secret for the secret:
-    ```yaml
-      nextauth:
-        secret:
-          existingSecret: <secret-name>
-          existingSecretKey: <secret-key>
-    ```
 
 2. **Redis Configuration**
   - The `valkey` section has been renamed to `redis`. To keep the same name, you can set the `nameOverride` to `valkey`.
@@ -181,6 +158,9 @@ This guide outlines the changes needed when upgrading from Langfuse Helm Chart v
           existingSecret: <secret-name>
           existingSecretPasswordKey: <password-key>
     ```
+    
+    **⚠️ Important:** The new `clickhouse` configuration structure and `langfuse.additionalEnv` with ClickHouse environment variables are mutually exclusive.
+    You cannot use both approaches simultaneously. If you have ClickHouse configuration in `langfuse.additionalEnv` (e.g., `CLICKHOUSE_URL`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_MIGRATION_URL`), you must remove these entries when migrating to the new `clickhouse` configuration structure, or continue using only `langfuse.additionalEnv` for all ClickHouse settings.
 
 4. **S3/MinIO Configuration**
   - The `minio` section has been renamed to `s3`. To keep the same name, you can set the `nameOverride` to `minio`.
@@ -345,6 +325,15 @@ The following configurations have been removed or replaced:
   - Review the configuration of dependent services (Redis, PostgreSQL, Clickhouse, MinIO)
   - Check that all required environment variables are properly migrated to the new structure
   - Any remaining custom environment variables can still be set in `langfuse.additionalEnv`
+
+## Troubleshooting
+
+### Migration Errors
+
+If you encounter a migration error like `no migration found for version 18: read down for version 18 .: file does not exist` during upgrade, this typically happens when a pre-release chart deployed a newer Langfuse version than the major release chart.
+This occurs because pre-release charts may use floating version tags (like `:3`) which can deploy newer application versions with migrations that are not included in specific versioned releases.
+
+**Solution:** Deploy a specific version of the chart that includes all required migrations or overwrite the appVersion configuration to use the latest Langfuse release.
 
 ## Additional Notes
 
