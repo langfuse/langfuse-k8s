@@ -1,0 +1,12 @@
+{
+    "secrets": [
+        {
+            "nameInKeyvault": "langfuse-salt",
+            "nameInTargetEnvironment": "LANGFUSE_SALT"
+        },
+        {
+            "nameInKeyvault": "langfuse-postgres-password",
+            "nameInTargetEnvironment": "POSTGRES_PASSWORD"
+        }
+    ]
+}
