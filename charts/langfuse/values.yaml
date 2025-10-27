@@ -86,15 +86,19 @@ langfuse:
 
   ingress:
     # -- Set to `true` to enable the ingress resource
-    enabled: false
+    enabled: true
     # -- Additional labels for the ingress resource
     additionalLabels: {}
     # -- Annotations for the ingress resource
     annotations: {}
     # -- The class name for the ingress resource
-    className: ""
+    className: "nginx"
     # -- The hosts for the ingress resource
-    hosts: []
+    hosts:
+      - host: ""
+        paths:
+          - path: /
+            pathType: Prefix
     # Example:
     # - host: "langfuse.example.com"
     #   paths:
@@ -386,7 +390,7 @@ langfuse:
   # NextAuth configuration
   nextauth:
     # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
-    url: http://localhost:3000
+    url: "https://langfuse.isskar-hub.com"
     # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
     secret:
       value: ""
@@ -424,10 +428,11 @@ postgresql:
     # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
     password: ""
     # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret).
-    existingSecret: ""
+    existingSecret: "my-secretenv"
     # -- The key in the existing secret that contains the password.
     secretKeys:
-      userPasswordKey: password
+      userPasswordKey: langfuse-postgres-password
+      adminPasswordKey: langfuse-postgres-password
     # -- Database name to use for Langfuse.
     database: postgres_langfuse
     # -- Additional database connection arguments
@@ -478,9 +483,9 @@ redis:
     # -- Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password.
     password: ""
     # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
-    existingSecret: ""
+    existingSecret: "my-secretenv"
     # -- The key in the existing secret that contains the password.
-    existingSecretPasswordKey: ""
+    existingSecretPasswordKey: "langfuse-redis-password"
 
     database: 0
 
@@ -513,6 +518,15 @@ clickhouse:
       # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
       repository: bitnamilegacy/zookeeper
       # image: docker.io/bitnami/zookeeper:3.9.3-debian-12-r8
+    replicaCount: 1
+    resourcesPreset: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
 
   # Authentication configuration
   auth:
@@ -521,9 +535,9 @@ clickhouse:
     # -- Password for the ClickHouse user.
     password: ""
     # -- If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret).
-    existingSecret: ""
+    existingSecret: "my-secretenv"
     # -- The key in the existing secret that contains the password.
-    existingSecretKey: ""
+    existingSecretKey: "langfuse-clickhouse-password"
 
   # Migration configuration
   migration:
@@ -540,14 +554,22 @@ clickhouse:
   # -- Subchart specific settings
   shards: 1 # Fixed - Langfuse does not support sharding
   # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
-  replicaCount: 3
+  replicaCount: 1
   # -- The resources preset to use for the ClickHouse cluster.
-  resourcesPreset: 2xlarge
+  resourcesPreset: ""
+  # -- Resources for ClickHouse
+  resources:
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+    requests:
+      memory: 512Mi
+      cpu: 200m
 
 # S3/MinIO Configuration
 s3:
   # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
-  deploy: true
+  deploy: false
 
   # -- Storage provider to use. Options: s3 (default), azure, gcs
   # -- When set to 'azure', enables Azure Blob Storage native integration
@@ -561,7 +583,7 @@ s3:
     # image: docker.io/bitnami/minio:2024.12.18-debian-12-r1
 
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
-  bucket: ""
+  bucket: "disabled"
   # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
   # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
@@ -603,7 +625,7 @@ s3:
   # Event Upload Configuration
   eventUpload:
     # -- S3 bucket to use for event uploads.
-    bucket: ""
+    bucket: "disabled"
     # -- Prefix to use for event uploads within the bucket.
     prefix: ""
     # -- S3 region to use for event uploads.

@@ -68,7 +68,7 @@ Return PostgreSQL hostname
 {{- if .Values.postgresql.host }}
 {{- .Values.postgresql.host }}
 {{- else if .Values.postgresql.deploy }}
-{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- printf "%s-postgresql" .Release.Name -}}
 {{- end }}
 {{- end }}
 
@@ -79,7 +79,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-%s-primary" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
+{{- printf "%s-%s-primary" .Release.Name (default "redis" .Values.redis.nameOverride) -}}
 {{- end }}
 {{- end }}
 
@@ -96,7 +96,7 @@ Return ClickHouse hostname (without protocol)
 {{- .Values.clickhouse.host -}}
 {{- end -}}
 {{- else if .Values.clickhouse.deploy }}
-{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- printf "%s-clickhouse" .Release.Name -}}
 {{- end }}
 {{- end }}
 
@@ -236,14 +236,16 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.logging.level | quote }}
 - name: LANGFUSE_LOG_FORMAT
   value: {{ .Values.langfuse.logging.format | quote }}
-{{- with (include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.salt" "value" .Values.langfuse.salt) ) }}
 - name: SALT
-  {{- . | nindent 2 }}
-{{- end }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey) ) }}
+  valueFrom:
+    secretKeyRef:
+      name: my-secretenv
+      key: langfuse-salt
 - name: ENCRYPTION_KEY
-  {{- . | nindent 2 }}
-{{- end }}
+  valueFrom:
+    secretKeyRef:
+      name: my-secretenv
+      key: langfuse-encryption-key
 {{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.licenseKey" "value" .Values.langfuse.licenseKey)) }}
 - name: LANGFUSE_EE_LICENSE_KEY
   {{- . | nindent 2 }}
@@ -278,7 +280,10 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: NEXTAUTH_URL
   value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
-  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
+  valueFrom:
+    secretKeyRef:
+      name: my-secretenv
+      key: langfuse-salt
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
 - name: AUTH_DISABLE_USERNAME_PASSWORD
   value: {{ .Values.langfuse.auth.disableUsernamePassword | quote }}

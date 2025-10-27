@@ -1,0 +1,25 @@
+langfuse:
+  salt:
+    secretKeyRef:
+      name: my-secretenv
+      key: langfuse-salt
+  encryptionKey:
+    secretKeyRef:
+      name: my-secretenv
+      key: langfuse-encryption-key
+
+postgresql:
+  auth:
+    existingSecret: my-secretenv
+    secretKeys:
+      adminPasswordKey: langfuse-postgres-password
+      userPasswordKey: langfuse-postgres-password
+
+clickhouse:
+  enabled: false
+
+valkey:
+  enabled: false
+
+minio:
+  enabled: false

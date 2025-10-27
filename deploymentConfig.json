@@ -7,6 +7,18 @@
         {
             "nameInKeyvault": "langfuse-postgres-password",
             "nameInTargetEnvironment": "POSTGRES_PASSWORD"
+        },
+        {
+            "nameInKeyvault": "langfuse-encryption-key",
+            "nameInTargetEnvironment": "LANGFUSE_ENCRYPTION_KEY"
+        },
+        {
+            "nameInKeyvault": "langfuse-redis-password",
+            "nameInTargetEnvironment": "REDIS_PASSWORD"
+        },
+        {
+            "nameInKeyvault": "langfuse-clickhouse-password",
+            "nameInTargetEnvironment": "CLICKHOUSE_PASSWORD"
         }
     ]
 }
