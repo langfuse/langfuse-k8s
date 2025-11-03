@@ -8,12 +8,29 @@ langfuse:
       name: my-secretenv
       key: langfuse-encryption-key
   env:
-    NEXTAUTH_URL: "https://langfuse.isskar-hub.com"
-    # AUTH_AUTH0_CLIENT_ID: "<CLIENT_ID>"
-    # AUTH_AUTH0_CLIENT_SECRET: "<CLIENT_SECRET>"
-    # AUTH_AUTH0_ISSUER: "https://<TENANT>.eu.auth0.com"
-    AUTH_AUTH0_ALLOW_ACCOUNT_LINKING: "true"
-    AUTH_DOMAINS_WITH_SSO_ENFORCEMENT: "isskar-hub.com"
+    - name: NEXTAUTH_URL
+      value: "https://langfuse.isskar-hub.com"
+    - name: AUTH_AUTH0_CLIENT_ID
+      valueFrom:
+        secretKeyRef:
+          name: my-secretenv
+          key: auth0-client-id
+    - name: AUTH_AUTH0_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: my-secretenv
+          key: auth0-client-secret
+    - name: AUTH0_TENANT
+      valueFrom:
+        secretKeyRef:
+          name: my-secretenv
+          key: auth0-tenant
+    - name: AUTH_AUTH0_ISSUER
+      value: "https://$(AUTH0_TENANT).eu.auth0.com"
+    - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
+      value: "true"
+    - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
+      value: "langfuse.isskar-hub.com"
 
 postgresql:
   auth:
