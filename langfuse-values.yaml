@@ -7,9 +7,13 @@ langfuse:
     secretKeyRef:
       name: my-secretenv
       key: langfuse-encryption-key
-  env:
-    - name: NEXTAUTH_URL
-      value: "https://langfuse.isskar-hub.com"
+  nextauth:
+      url: "https://langfuse.isskar-hub.com"
+      secret:
+        secretKeyRef:
+          name: my-secretenv
+          key: nextauth-secret
+  additionalEnv:
     - name: AUTH_AUTH0_CLIENT_ID
       valueFrom:
         secretKeyRef:
@@ -26,11 +30,13 @@ langfuse:
           name: my-secretenv
           key: auth0-tenant
     - name: AUTH_AUTH0_ISSUER
-      value: "https://$(AUTH0_TENANT).eu.auth0.com"
+      value: "https://$(AUTH0_TENANT).us.auth0.com"
     - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
       value: "true"
     - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
       value: "langfuse.isskar-hub.com"
+    - name: AUTH_DISABLE_USERNAME_PASSWORD
+      value: "true"
 
 postgresql:
   auth:
