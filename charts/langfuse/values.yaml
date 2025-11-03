@@ -189,7 +189,30 @@ langfuse:
       # -- Allows additional containers to be added to all langfuse web pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
-      additionalEnv: []
+      additionalEnv:
+      - name: AUTH_AUTH0_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: my-secretenv
+            key: auth0-client-id
+      - name: AUTH_AUTH0_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: my-secretenv
+            key: auth0-client-secret
+      - name: AUTH0_TENANT
+        valueFrom:
+          secretKeyRef:
+            name: my-secretenv
+            key: auth0-tenant
+      - name: AUTH_AUTH0_ISSUER
+        value: "https://$(AUTH0_TENANT).us.auth0.com/"
+      - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
+        value: "true"
+      - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
+        value: "langfuse.isskar-hub.com"
+      - name: AUTH_DISABLE_USERNAME_PASSWORD
+        value: "true"
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -393,10 +416,9 @@ langfuse:
     url: "https://langfuse.isskar-hub.com"
     # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
     secret:
-      value: ""
       secretKeyRef:
-        name: ""
-        key: ""
+        name: my-secretenv
+        key: nextauth-secret
 
 # PostgreSQL Configuration
 postgresql:

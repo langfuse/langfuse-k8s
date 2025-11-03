@@ -19,6 +19,18 @@
         {
             "nameInKeyvault": "langfuse-clickhouse-password",
             "nameInTargetEnvironment": "CLICKHOUSE_PASSWORD"
+        },
+        {
+            "nameInKeyvault": "auth0-tenant",
+            "nameInTargetEnvironment": "AUTH0_TENANT"
+        },
+        {
+            "nameInKeyvault": "auth0-client-id",
+            "nameInTargetEnvironment": "AUTH_AUTH0_CLIENT_ID"
+        },
+        {
+            "nameInKeyvault": "auth0-client-secret",
+            "nameInTargetEnvironment": "AUTH_AUTH0_CLIENT_SECRET"
         }
     ]
 }
