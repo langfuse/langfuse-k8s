@@ -1,0 +1,440 @@
+suite: test redis cluster configuration
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - validations.yaml
+tests:
+  # =====================================================
+  # STANDALONE MODE TESTS
+  # =====================================================
+
+  - it: should use REDIS_CONNECTION_STRING for default standalone deployed Redis
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: true
+      redis.auth.password: "testPassword123"
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING
+      - matchRegex:
+          path: spec.template.spec.containers[0].env[?(@.name == "REDIS_CONNECTION_STRING")].value
+          pattern: "^redis://.*"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_CLUSTER_ENABLED
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_CONNECTION_STRING
+      - matchRegex:
+          path: spec.template.spec.containers[0].env[?(@.name == "REDIS_CONNECTION_STRING")].value
+          pattern: "^redis://.*"
+        template: worker/deployment.yaml
+      # Worker deployment should NOT have REDIS_CLUSTER_ENABLED
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+        template: worker/deployment.yaml
+
+  - it: should use REDIS_CONNECTION_STRING for external standalone Redis
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: false
+      redis.host: "my-redis.example.com"
+      redis.port: 6379
+      redis.auth.password: "testPassword123"
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING
+      - matchRegex:
+          path: spec.template.spec.containers[0].env[?(@.name == "REDIS_CONNECTION_STRING")].value
+          pattern: "^redis://.*"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_CLUSTER_ENABLED
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_CONNECTION_STRING
+      - matchRegex:
+          path: spec.template.spec.containers[0].env[?(@.name == "REDIS_CONNECTION_STRING")].value
+          pattern: "^redis://.*"
+        template: worker/deployment.yaml
+
+  - it: should enable TLS for standalone Redis when TLS is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.host: "my-redis.example.com"
+      redis.auth.password: "testPassword123"
+      redis.tls.enabled: true
+      redis.tls.caPath: "/certs/ca.crt"
+    asserts:
+      # Web deployment should have REDIS_TLS_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_TLS_CA_PATH
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_CA_PATH
+            value: "/certs/ca.crt"
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_TLS_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+        template: worker/deployment.yaml
+
+  # =====================================================
+  # CLUSTER MODE TESTS
+  # =====================================================
+
+  - it: should set cluster environment variables when cluster mode is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+        - "redis-2:6379"
+        - "redis-3:6379"
+      redis.auth.password: "testPassword123"
+    asserts:
+      # Web deployment should have REDIS_CLUSTER_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_CLUSTER_NODES
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_NODES
+            value: "redis-1:6379,redis-2:6379,redis-3:6379"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_CONNECTION_STRING in cluster mode
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_CLUSTER_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+            value: "true"
+        template: worker/deployment.yaml
+      # Worker deployment should have REDIS_CLUSTER_NODES
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_NODES
+            value: "redis-1:6379,redis-2:6379,redis-3:6379"
+        template: worker/deployment.yaml
+
+  - it: should set REDIS_AUTH in cluster mode when password is configured
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+        - "redis-2:6379"
+      redis.auth.password: "clusterPassword"
+    asserts:
+      # Web deployment should have REDIS_AUTH
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_AUTH
+            value: "$(REDIS_PASSWORD)"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_PASSWORD
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            value: "clusterPassword"
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_AUTH
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_AUTH
+            value: "$(REDIS_PASSWORD)"
+        template: worker/deployment.yaml
+
+  - it: should enable TLS for cluster mode when TLS is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+        - "redis-2:6379"
+      redis.auth.password: "testPassword123"
+      redis.tls.enabled: true
+      redis.tls.caPath: "/certs/ca.crt"
+      redis.tls.certPath: "/certs/client.crt"
+      redis.tls.keyPath: "/certs/client.key"
+    asserts:
+      # Web deployment should have REDIS_TLS_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      # Web deployment should have all TLS paths
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_CA_PATH
+            value: "/certs/ca.crt"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_CERT_PATH
+            value: "/certs/client.crt"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_KEY_PATH
+            value: "/certs/client.key"
+        template: web/deployment.yaml
+      # Worker deployment should have REDIS_TLS_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+        template: worker/deployment.yaml
+
+  - it: should work with single cluster node (for testing scenarios)
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-single:6379"
+      redis.auth.password: "testPassword123"
+    asserts:
+      # Web deployment should have REDIS_CLUSTER_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_CLUSTER_NODES with single node
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_NODES
+            value: "redis-single:6379"
+        template: web/deployment.yaml
+
+  # =====================================================
+  # OVERRIDE TESTS (additionalEnv)
+  # =====================================================
+
+  - it: should skip Redis env generation when REDIS_CONNECTION_STRING is in additionalEnv
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      langfuse.additionalEnv:
+        - name: REDIS_CONNECTION_STRING
+          value: "redis://custom:password@custom-host:6380/1"
+    asserts:
+      # Web deployment should have the custom REDIS_CONNECTION_STRING from additionalEnv
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://custom:password@custom-host:6380/1"
+        template: web/deployment.yaml
+      # Web deployment should NOT have auto-generated REDIS_TLS_ENABLED
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "false"
+        template: web/deployment.yaml
+
+  - it: should skip cluster nodes generation when REDIS_CLUSTER_NODES is in additionalEnv
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.auth.password: "testPassword123"
+      langfuse.additionalEnv:
+        - name: REDIS_CLUSTER_NODES
+          value: "custom-1:6379,custom-2:6379"
+    asserts:
+      # Web deployment should have the custom REDIS_CLUSTER_NODES from additionalEnv
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_NODES
+            value: "custom-1:6379,custom-2:6379"
+        template: web/deployment.yaml
+
+  # =====================================================
+  # VALIDATION TESTS (These should fail)
+  # =====================================================
+
+  - it: should fail validation when cluster is enabled without nodes
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes: []
+      redis.auth.password: "testPassword123"
+    asserts:
+      - failedTemplate:
+          errorMessage: "Redis cluster nodes must be configured when cluster mode is enabled. Set redis.cluster.nodes or langfuse.additionalEnv[name: REDIS_CLUSTER_NODES] to continue."
+        template: validations.yaml
+
+  - it: should fail validation when cluster is enabled with deploy true
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: true
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+      redis.auth.password: "testPassword123"
+    asserts:
+      - failedTemplate:
+          errorMessage: "Redis cluster mode cannot be used with deployed Redis (redis.deploy: true). The deployed Redis is standalone/sentinel architecture. Set redis.deploy to false and configure external Redis cluster nodes to continue."
+        template: validations.yaml
+
+  - it: should fail validation when both values.yaml nodes and additionalEnv REDIS_CLUSTER_NODES are configured
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+      redis.auth.password: "testPassword123"
+      langfuse.additionalEnv:
+        - name: REDIS_CLUSTER_NODES
+          value: "custom-1:6379"
+    asserts:
+      - failedTemplate:
+          errorMessage: "Only one of additionalEnv or the new structure can be configured. Set either redis.cluster.nodes or langfuse.additionalEnv[name: REDIS_CLUSTER_NODES] to continue."
+        template: validations.yaml
+
+  # =====================================================
+  # EDGE CASES
+  # =====================================================
+
+  - it: should handle cluster mode without authentication
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+        - "redis-2:6379"
+      redis.auth.password: ""
+    asserts:
+      # Web deployment should have REDIS_CLUSTER_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CLUSTER_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_AUTH when password is empty
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_AUTH
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_PASSWORD when password is empty
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+        template: web/deployment.yaml
+
+  - it: should use existing secret for Redis password in cluster mode
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+      redis.auth.existingSecret: "my-redis-secret"
+      redis.auth.existingSecretPasswordKey: "redis-password"
+    asserts:
+      # Web deployment should have REDIS_PASSWORD from secret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "my-redis-secret"
+                key: "redis-password"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_AUTH referencing REDIS_PASSWORD
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_AUTH
+            value: "$(REDIS_PASSWORD)"
+        template: web/deployment.yaml
+
+  - it: should handle TLS disabled explicitly in cluster mode
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.cluster.enabled: true
+      redis.cluster.nodes:
+        - "redis-1:6379"
+      redis.auth.password: "testPassword123"
+      redis.tls.enabled: false
+    asserts:
+      # Web deployment should have REDIS_TLS_ENABLED=false
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "false"
+        template: web/deployment.yaml
+      # Web deployment should NOT have TLS path variables
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_CA_PATH
+        template: web/deployment.yaml

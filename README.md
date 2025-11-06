@@ -316,6 +316,76 @@ s3:
     prefix: "media/"
 ```
 
+##### With Redis Cluster
+
+Langfuse supports Redis Cluster mode for high-availability and scalability. Configure Redis in one of two ways:
+
+**Standalone Mode (Default):**
+
+```yaml
+redis:
+  deploy: false  # Set to false for external Redis
+  host: "my-redis.example.com"
+  port: 6379
+  auth:
+    password: "your-password"
+```
+
+**Cluster Mode:**
+
+```yaml
+redis:
+  deploy: false  # Must be false - deployed Redis doesn't support cluster mode
+  cluster:
+    enabled: true
+    nodes:
+      - "redis-node-1:6379"
+      - "redis-node-2:6379"
+      - "redis-node-3:6379"
+      - "redis-node-4:6379"
+      - "redis-node-5:6379"
+      - "redis-node-6:6379"
+  auth:
+    password: "your-cluster-password"
+```
+
+**Redis Cluster with TLS:**
+
+```yaml
+redis:
+  deploy: false
+  cluster:
+    enabled: true
+    nodes:
+      - "redis-node-1:6379"
+      - "redis-node-2:6379"
+      - "redis-node-3:6379"
+  auth:
+    password: "your-cluster-password"
+  tls:
+    enabled: true
+    caPath: "/certs/ca.crt"
+    certPath: "/certs/client.crt"
+    keyPath: "/certs/client.key"
+```
+
+**AWS ElastiCache Example:**
+
+For AWS ElastiCache Redis Cluster, use the configuration endpoint that automatically discovers all cluster nodes:
+
+```yaml
+redis:
+  deploy: false
+  cluster:
+    enabled: true
+    nodes:
+      - "clustercfg.my-redis-cluster.abc123.cache.amazonaws.com:6379"
+  auth:
+    password: "your-auth-token"
+  tls:
+    enabled: true
+```
+
 #### Use custom deployment strategy
 
 ```yaml
