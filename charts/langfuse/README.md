@@ -208,6 +208,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
 | redis.auth.password | string | `""` | Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password. |
 | redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
+| redis.cluster.enabled | bool | `false` | Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes. |
+| redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |

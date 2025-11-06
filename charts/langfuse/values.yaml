@@ -484,6 +484,13 @@ redis:
 
     database: 0
 
+  # Redis Cluster configuration
+  cluster:
+    # -- Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes.
+    enabled: false
+    # -- List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"]
+    nodes: []
+
   # Subchart specific settings
   architecture: standalone
   primary:
