@@ -57,8 +57,8 @@ spec:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
           image: "{{ .Values.langfuse.web.image.repository }}:{{ coalesce .Values.langfuse.web.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.langfuse.web.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
-          # Run the full entrypoint script for initialization (DB setup, migrations, etc.) then exit
-          command: ["echo", "Init completed successfully"]
+          # Run the entrypoint script with a command that exits after initialization
+          args: ["echo", "Init completed successfully"]
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}

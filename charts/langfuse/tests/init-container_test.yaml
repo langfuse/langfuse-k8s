@@ -36,9 +36,9 @@ tests:
           value: "langfuse/langfuse:3.129.0"
         template: web/deployment.yaml
       
-      # Test init container has command that runs initialization and exits
+      # Test init container has args that runs initialization and exits
       - equal:
-          path: spec.template.spec.initContainers[0].command
+          path: spec.template.spec.initContainers[0].args
           value: ["echo", "Init completed successfully"]
         template: web/deployment.yaml
       
