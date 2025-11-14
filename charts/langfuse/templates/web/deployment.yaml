@@ -104,7 +104,7 @@ spec:
             httpGet:
               path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}
               port: http
-            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 20 }}
+            initialDelaySeconds: {{ .Values.langfuse.web.livenessProbe.initialDelaySeconds | default 60 }}
             periodSeconds: {{ .Values.langfuse.web.livenessProbe.periodSeconds | default 10 }}
             timeoutSeconds: {{ .Values.langfuse.web.livenessProbe.timeoutSeconds | default 5 }}
             successThreshold: {{ .Values.langfuse.web.livenessProbe.successThreshold | default 1 }}

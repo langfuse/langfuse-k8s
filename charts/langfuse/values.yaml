@@ -262,7 +262,7 @@ langfuse:
       # -- Path to check for liveness.
       path: "/api/public/health"
       # -- Initial delay seconds for livenessProbe.
-      initialDelaySeconds: 20
+      initialDelaySeconds: 60
       # -- Period seconds for livenessProbe.
       periodSeconds: 10
       # -- Timeout seconds for livenessProbe.
