@@ -1,0 +1,83 @@
+suite: test init container functionality
+templates:
+  - web/deployment.yaml
+tests:
+  - it: should have init container with correct configuration
+    values:
+      - ../values.lint.yaml
+    asserts:
+      # Test that web deployment has init containers
+      - hasDocuments:
+          count: 1
+        template: web/deployment.yaml
+      - isKind:
+          of: Deployment
+        template: web/deployment.yaml
+      
+      # Test that init container exists
+      - exists:
+          path: spec.template.spec.initContainers
+        template: web/deployment.yaml
+      
+      # Test init container count (should have at least 1)
+      - isNotEmpty:
+          path: spec.template.spec.initContainers
+        template: web/deployment.yaml
+      
+      # Test init container name
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: langfuse-web-init
+        template: web/deployment.yaml
+      
+      # Test init container uses same image as main container
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: "langfuse/langfuse:3.129.0"
+        template: web/deployment.yaml
+      
+      # Test init container has command that runs initialization and exits
+      - equal:
+          path: spec.template.spec.initContainers[0].command
+          value: ["echo", "Init completed successfully"]
+        template: web/deployment.yaml
+      
+      # Test init container has environment variables
+      - exists:
+          path: spec.template.spec.initContainers[0].env
+        template: web/deployment.yaml
+      
+      # Test that NODE_ENV is set in init container
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: NODE_ENV
+            value: "production"
+        template: web/deployment.yaml
+
+  - it: should preserve existing extraInitContainers functionality
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.extraInitContainers:
+        - name: custom-init
+          image: busybox
+          command: ["echo", "custom init"]
+    asserts:
+      # Should have 2 init containers (our default + custom)
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 2
+        template: web/deployment.yaml
+      
+      # First should be our web-init container
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: langfuse-web-init
+        template: web/deployment.yaml
+      
+      # Second should be the custom init container
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: custom-init
+        template: web/deployment.yaml

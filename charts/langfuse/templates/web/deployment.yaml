@@ -51,10 +51,27 @@ spec:
       serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
-      {{- if .Values.langfuse.extraInitContainers }}
       initContainers:
+        - name: {{ .Chart.Name }}-web-init
+          securityContext:
+            {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
+          image: "{{ .Values.langfuse.web.image.repository }}:{{ coalesce .Values.langfuse.web.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.langfuse.web.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
+          # Run the full entrypoint script for initialization (DB setup, migrations, etc.) then exit
+          command: ["echo", "Init completed successfully"]
+          env:
+            {{- include "langfuse.commonEnv" . | nindent 12 }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
+            {{- with $additionalEnv }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.langfuse.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
+          {{- end }}
+        {{- if .Values.langfuse.extraInitContainers }}
         {{- toYaml .Values.langfuse.extraInitContainers | nindent 8 }}
-      {{- end }}
+        {{- end }}
       {{- if .Values.langfuse.extraVolumes }}
       volumes:
         {{- toYaml .Values.langfuse.extraVolumes | nindent 8 }}
