@@ -71,6 +71,11 @@ spec:
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- $additionalEnvFrom := concat (.Values.langfuse.additionalEnvFrom | default list ) (.Values.langfuse.worker.pod.additionalEnvFrom | default list )}}
+          {{- with $additionalEnvFrom }}
+          envFrom:
+            {{ toYaml . | nindent 10 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.langfuse.worker.port | default 3030 }}
