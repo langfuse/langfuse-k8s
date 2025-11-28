@@ -404,6 +404,10 @@ Return ClickHouse protocol (http or https)
 - name: CLICKHOUSE_URL
   value: "{{ include "langfuse.clickhouse.protocol" . }}://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
 {{- end }}
+{{- if or (hasKey .Values.clickhouse "database") .Values.clickhouse.deploy }}
+- name: CLICKHOUSE_DB
+  value: {{ .Values.clickhouse.database | quote }}
+{{- end }}
 {{- if or .Values.clickhouse.auth.username .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_USER
   {{- if .Values.clickhouse.deploy }}

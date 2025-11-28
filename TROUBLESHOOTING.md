@@ -15,9 +15,14 @@ or
 ```
 2025.06.27 09:30:06.335559 [ 47 ] {} <Error> DynamicQueryHandler: Code: 194. DB::Exception: default: Authentication failed: password is incorrect, or there is no user with such name.
 ```
+or
+```
+error: failed to open database: driver: bad connection
+Applying clickhouse migrations failed. This is mostly caused by the database being unavailable.
+```
 it is often due to a ClickHouse password that contains special characters.
 
-Known bad characters include (but are not limited to): `%, @, :`
+Known bad characters include (but are not limited to): `%, @, :, &, #, ?, $`
 
 ## Data randomly disappears within the Langfuse UI
 
