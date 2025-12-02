@@ -29,8 +29,25 @@
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
-    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host to continue." -}}
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
+    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host or enable redis.cluster.enabled to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either redis configuration or langfuse.additionalEnv[name: REDIS_CONNECTION_STRING] to continue." -}}
+{{- end -}}
+
+# Validate Redis Cluster settings
+{{- if and $.Values.redis.cluster.enabled (eq (len $.Values.redis.cluster.nodes) 0) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CLUSTER_NODES"))) -}}
+    {{- fail "Redis cluster nodes must be configured when cluster mode is enabled. Set redis.cluster.nodes or langfuse.additionalEnv[name: REDIS_CLUSTER_NODES] to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.cluster.nodes (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CLUSTER_NODES")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either redis.cluster.nodes or langfuse.additionalEnv[name: REDIS_CLUSTER_NODES] to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.deploy $.Values.redis.cluster.enabled -}}
+    {{- fail "Redis cluster mode cannot be used with deployed Redis (redis.deploy: true). The deployed Redis is standalone/sentinel architecture. Set redis.deploy to false and configure external Redis cluster nodes to continue." -}}
 {{- end -}}
 
 # Validate S3 settings

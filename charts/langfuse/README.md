@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.8](https://img.shields.io/badge/Version-1.5.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.120.0](https://img.shields.io/badge/AppVersion-3.120.0-informational?style=flat-square)
+![Version: 1.5.13](https://img.shields.io/badge/Version-1.5.13-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.135.1](https://img.shields.io/badge/AppVersion-3.135.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -36,6 +36,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.auth.password | string | `""` | Password for the ClickHouse user. |
 | clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
 | clickhouse.clusterEnabled | bool | `true` | Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting. |
+| clickhouse.database | string | `"default"` | ClickHouse database to use. |
 | clickhouse.deploy | bool | `true` | Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false |
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
@@ -56,6 +57,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
+| langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
@@ -208,6 +210,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
 | redis.auth.password | string | `""` | Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password. |
 | redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
+| redis.cluster.enabled | bool | `false` | Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes. |
+| redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |

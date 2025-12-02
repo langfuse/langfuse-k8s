@@ -314,6 +314,34 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
 {{- end }}
+{{- if .Values.redis.cluster.enabled }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CLUSTER_NODES")) }}
+- name: REDIS_CLUSTER_ENABLED
+  value: "true"
+- name: REDIS_CLUSTER_NODES
+  value: {{ join "," .Values.redis.cluster.nodes | quote }}
+{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+- name: REDIS_AUTH
+  value: "$(REDIS_PASSWORD)"
+{{- end }}
+- name: REDIS_TLS_ENABLED
+  value: {{ .Values.redis.tls.enabled | quote }}
+{{- if .Values.redis.tls.enabled }}
+{{- if .Values.redis.tls.caPath }}
+- name: REDIS_TLS_CA_PATH
+  value: {{ .Values.redis.tls.caPath | quote }}
+{{- end }}
+{{- if .Values.redis.tls.certPath }}
+- name: REDIS_TLS_CERT_PATH
+  value: {{ .Values.redis.tls.certPath | quote }}
+{{- end }}
+{{- if .Values.redis.tls.keyPath }}
+- name: REDIS_TLS_KEY_PATH
+  value: {{ .Values.redis.tls.keyPath | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- else }}
 {{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) }}
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
@@ -332,6 +360,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- if .Values.redis.tls.keyPath }}
 - name: REDIS_TLS_KEY_PATH
   value: {{ .Values.redis.tls.keyPath | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}
@@ -379,6 +408,10 @@ Return ClickHouse protocol (http or https)
 {{- if or .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_URL
   value: "{{ include "langfuse.clickhouse.protocol" . }}://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
+{{- end }}
+{{- if or (hasKey .Values.clickhouse "database") .Values.clickhouse.deploy }}
+- name: CLICKHOUSE_DB
+  value: {{ .Values.clickhouse.database | quote }}
 {{- end }}
 {{- if or .Values.clickhouse.auth.username .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_USER
