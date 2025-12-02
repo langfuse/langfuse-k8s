@@ -57,7 +57,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
- langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
+| langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
