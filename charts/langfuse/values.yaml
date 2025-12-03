@@ -593,10 +593,10 @@ clickhouse:
   # -- Resources for ClickHouse
   resources:
     limits:
-      memory: 1Gi
+      memory: 8Gi
       cpu: 1000m
     requests:
-      memory: 512Mi
+      memory: 8Gi
       cpu: 200m
 
 # S3/MinIO Configuration
