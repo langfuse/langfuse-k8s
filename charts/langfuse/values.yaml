@@ -117,6 +117,8 @@ langfuse:
   tolerations: []
   # -- Affinity for all langfuse deployments
   affinity: {}
+  # -- DNS configuration for all langfuse deployments
+  dnsConfig: {}
   pod:
     # -- Annotations for all langfuse pods
     annotations: {}
@@ -514,6 +516,8 @@ clickhouse:
   httpPort: 8123
   # -- ClickHouse native port to connect to.
   nativePort: 9000
+  # -- ClickHouse database to use.
+  database: default
 
   image:
     # -- Overwrite default repository of helm chart to point to non-paid bitnami images.

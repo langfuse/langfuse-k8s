@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.12](https://img.shields.io/badge/Version-1.5.12-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.133.0](https://img.shields.io/badge/AppVersion-3.133.0-informational?style=flat-square)
+![Version: 1.5.13](https://img.shields.io/badge/Version-1.5.13-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.135.1](https://img.shields.io/badge/AppVersion-3.135.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -36,6 +36,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.auth.password | string | `""` | Password for the ClickHouse user. |
 | clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
 | clickhouse.clusterEnabled | bool | `true` | Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting. |
+| clickhouse.database | string | `"default"` | ClickHouse database to use. |
 | clickhouse.deploy | bool | `true` | Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false |
 | clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
@@ -56,6 +57,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
+| langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
 | langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
