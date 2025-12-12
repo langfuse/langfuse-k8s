@@ -475,9 +475,11 @@ redis:
 
   # Authentication configuration
   auth:
-    # -- Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string.
+    # -- Username for Redis authentication. Set to null to omit username from connection string entirely.
+    # In case `redis.deploy` is set to `true`, the user will be created automatically.
     username: "default"
-    # -- Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password.
+    # -- Password for Redis authentication. Set to null to disable authentication (for passwordless Redis like AWS ElastiCache without auth).
+    # Use URL-encoded passwords or avoid special characters in the password.
     password: ""
     # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
