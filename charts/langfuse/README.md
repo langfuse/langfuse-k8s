@@ -208,8 +208,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.database | int | `0` |  |
 | redis.auth.existingSecret | string | `""` | If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret). |
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
-| redis.auth.password | string | `""` | Configure the password by value or existing secret reference. Use URL-encoded passwords or avoid special characters in the password. |
-| redis.auth.username | string | `"default"` | Username to use to connect to the redis database deployed with Langfuse. In case `redis.deploy` is set to `true`, the user will be created automatically. Set to null for an empty username in the connection string. |
+| redis.auth.password | string | `""` | Password for Redis authentication. Set to null to disable authentication (for passwordless Redis like AWS ElastiCache without auth). Use URL-encoded passwords or avoid special characters in the password. |
+| redis.auth.username | string | `"default"` | Username for Redis authentication. Set to null to omit username from connection string entirely. In case `redis.deploy` is set to `true`, the user will be created automatically. |
 | redis.cluster.enabled | bool | `false` | Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes. |
 | redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
 | redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
