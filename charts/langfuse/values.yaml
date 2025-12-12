@@ -602,7 +602,7 @@ clickhouse:
 # S3/MinIO Configuration
 s3:
   # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
-  deploy: false
+  deploy: true
 
   # -- Storage provider to use. Options: s3 (default), azure, gcs
   # -- When set to 'azure', enables Azure Blob Storage native integration
@@ -616,25 +616,25 @@ s3:
     # image: docker.io/bitnami/minio:2024.12.18-debian-12-r1
 
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
-  bucket: "disabled"
+  bucket: "langfuse"
   # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
   # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
-  endpoint: ""
+  endpoint: "http://app-chart-langfuse-minio:9000"
   # -- Whether to force path style on requests. Required for MinIO. Can be overridden per upload type.
   forcePathStyle: true
   # -- S3 accessKeyId to use for all uploads. Can be overridden per upload type.
   accessKeyId:
-    value: ""
+    value: "minioadmin"
     secretKeyRef:
-      name: ""
-      key: ""
+      name: my-secretenv
+      key: langfuse-s3-access-key
   # -- S3 secretAccessKey to use for all uploads. Can be overridden per upload type.
   secretAccessKey:
-    value: ""
+    value: "minioadmin"
     secretKeyRef:
-      name: ""
-      key: ""
+      name: my-secretenv
+      key: langfuse-s3-secret-key
 
   # Google Cloud Storage Configuration (only used when storageProvider is 'gcs')
   gcs:

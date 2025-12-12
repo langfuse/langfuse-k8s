@@ -31,6 +31,14 @@
         {
             "nameInKeyvault": "auth0-client-secret",
             "nameInTargetEnvironment": "AUTH_AUTH0_CLIENT_SECRET"
+        },
+        {
+            "nameInKeyvault": "langfuse-s3-access-key",
+            "nameInTargetEnvironment": "LANGFUSE_S3_ACCESS_KEY"
+        },
+        {
+            "nameInKeyvault": "langfuse-s3-secret-key",
+            "nameInTargetEnvironment": "LANGFUSE_S3_SECRET_KEY"
         }
     ]
 }

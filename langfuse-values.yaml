@@ -52,4 +52,4 @@ valkey:
   enabled: false
 
 minio:
-  enabled: false
+  enabled: true
