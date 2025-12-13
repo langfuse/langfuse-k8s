@@ -45,6 +45,15 @@ helm repo update
 helm install langfuse langfuse/langfuse -f values.yaml
 ```
 
+#### Install from OCI (Helm 3.8+)
+
+Charts are also published to GHCR as an OCI registry. You can install directly without adding a Helm repo:
+
+```bash
+helm install langfuse oci://ghcr.io/langfuse/charts/langfuse \
+  -f values.yaml
+```
+
 ### Upgrading
 
 ```bash
