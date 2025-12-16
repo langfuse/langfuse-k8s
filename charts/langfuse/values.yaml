@@ -620,7 +620,7 @@ s3:
   # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
   # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
-  endpoint: "http://app-chart-langfuse-minio:9000"
+  endpoint: "http://app-chart-s3:9000"
   # -- Whether to force path style on requests. Required for MinIO. Can be overridden per upload type.
   forcePathStyle: true
   # -- S3 accessKeyId to use for all uploads. Can be overridden per upload type.
@@ -656,27 +656,25 @@ s3:
   # Event Upload Configuration
   eventUpload:
     # -- S3 bucket to use for event uploads.
-    bucket: "disabled"
+    bucket: langfuse
     # -- Prefix to use for event uploads within the bucket.
     prefix: ""
     # -- S3 region to use for event uploads.
-    region: ""
+    region: auto
     # -- S3 endpoint to use for event uploads.
-    endpoint: ""
+    endpoint: "http://app-chart-s3:9000"
     # -- Whether to force path style on requests. Required for MinIO.
-    forcePathStyle: Null
+    forcePathStyle: true
     # -- S3 accessKeyId to use for event uploads.
     accessKeyId:
-      value: ""
       secretKeyRef:
-        name: ""
-        key: ""
+        name: my-secretenv
+        key: langfuse-s3-access-key
     # -- S3 secretAccessKey to use for event uploads.
     secretAccessKey:
-      value: ""
       secretKeyRef:
-        name: ""
-        key: ""
+        name: my-secretenv
+        key: langfuse-s3-secret-key
 
   # Batch Export Configuration
   batchExport:
