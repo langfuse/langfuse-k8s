@@ -625,13 +625,11 @@ s3:
   forcePathStyle: true
   # -- S3 accessKeyId to use for all uploads. Can be overridden per upload type.
   accessKeyId:
-    value: "minioadmin"
     secretKeyRef:
       name: my-secretenv
       key: langfuse-s3-access-key
   # -- S3 secretAccessKey to use for all uploads. Can be overridden per upload type.
   secretAccessKey:
-    value: "minioadmin"
     secretKeyRef:
       name: my-secretenv
       key: langfuse-s3-secret-key
