@@ -42,14 +42,19 @@ langfuse:
   # -- Refer to [documentation](https://langfuse.com/self-hosting/authentication-and-sso) for available keys for each provider.
   # -- For each provider, add it to auth.providers, and add respective configuration options under it.
   # -- For options, use the last part (after provider name) of the respective environment variable's name, in camelCase.
+  # -- Values can be specified directly as strings, or as secret references using secretKeyRef.
   # -- For example, to use Azure AD as your SSO provider, use the following lines:
   # auth:
   #   disableUsernamePassword: true
   #   providers:
   #     azureAd:
   #       clientId: "<YOUR CLIENT ID>"
-  #       clientSecret: "<YOUR CLIENT SECRET>"
+  #       clientSecret:
+  #         secretKeyRef:
+  #           name: "my-sso-secret"
+  #           key: "azure-client-secret"
   #       tenantId: "<YOUR TENANT ID>"
+  # -- For sensitive fields, it is recommended to use secretKeyRef to avoid storing secrets in values.yaml
 
   # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
   encryptionKey:
