@@ -188,6 +188,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse worker pods |
 | langfuse.worker.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse worker pods |
 | nameOverride | string | `""` | Override the name for the selector labels, defaults to the chart name |
+| namespaceOverride | string | `""` | Override the namespace for all deployed resources, defaults to the release namespace |
 | postgresql.architecture | string | `"standalone"` |  |
 | postgresql.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.args | string | `""` | Additional database connection arguments |
