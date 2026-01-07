@@ -8,35 +8,37 @@ langfuse:
       name: my-secretenv
       key: langfuse-encryption-key
   nextauth:
-      url: "https://langfuse.isskar-hub.com"
-      secret:
-        secretKeyRef:
-          name: my-secretenv
-          key: nextauth-secret
-  additionalEnv:
-    - name: AUTH_AUTH0_CLIENT_ID
-      valueFrom:
-        secretKeyRef:
-          name: my-secretenv
-          key: auth0-client-id
-    - name: AUTH_AUTH0_CLIENT_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: my-secretenv
-          key: auth0-client-secret
-    - name: AUTH0_TENANT
-      valueFrom:
-        secretKeyRef:
-          name: my-secretenv
-          key: auth0-tenant
-    - name: AUTH_AUTH0_ISSUER
-      value: "https://$(AUTH0_TENANT).us.auth0.com"
-    - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
-      value: "true"
-    - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
-      value: "langfuse.isskar-hub.com"
-    - name: AUTH_DISABLE_USERNAME_PASSWORD
-      value: "true"
+    url: "https://langfuse.isskar-hub.com"
+    secret:
+      secretKeyRef:
+        name: my-secretenv
+        key: nextauth-secret
+  web:
+    pod:
+      additionalEnv:
+        - name: AUTH_AUTH0_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: my-secretenv
+              key: auth0-client-id
+        - name: AUTH_AUTH0_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: my-secretenv
+              key: auth0-client-secret
+        - name: AUTH0_TENANT
+          valueFrom:
+            secretKeyRef:
+              name: my-secretenv
+              key: auth0-tenant
+        - name: AUTH_AUTH0_ISSUER
+          value: "https://$(AUTH0_TENANT).us.auth0.com"
+        - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
+          value: "true"
+        - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
+          value: "langfuse.isskar-hub.com"
+        - name: AUTH_DISABLE_USERNAME_PASSWORD
+          value: "true"
 
 postgresql:
   auth:
