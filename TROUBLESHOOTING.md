@@ -44,3 +44,19 @@ If you have ClickHouse environment variables in `langfuse.additionalEnv` (such a
 2. Continue using only `langfuse.additionalEnv` for all ClickHouse settings and avoid setting any values in the `clickhouse` section
 
 Using both approaches simultaneously will cause the chart deployment to fail with validation errors or produce inconsistent results when connecting.
+
+## PostgreSQL Deployment Error - Existing Secret
+
+If you encounter an error in the PostgreSQL deployment when using an `existingSecret`, ensure that you are providing both `userPasswordKey` and `adminPasswordKey` in the `postgresql.auth.secretKeys` configuration.
+
+When using the default `postgres` user, both keys are required by the underlying Bitnami PostgreSQL chart to correctly map the password from the secret.
+
+```yaml
+postgresql:
+  deploy: true
+  auth:
+    existingSecret: my-secret
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: postgres-password
+```
