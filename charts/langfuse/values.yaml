@@ -208,7 +208,7 @@ langfuse:
             name: my-secretenv
             key: auth0-tenant
       - name: AUTH_AUTH0_ISSUER
-        value: "https://$(AUTH0_TENANT).us.auth0.com/"
+        value: "https://$(AUTH0_TENANT).us.auth0.com"
       - name: AUTH_AUTH0_ALLOW_ACCOUNT_LINKING
         value: "true"
       - name: AUTH_DOMAINS_WITH_SSO_ENFORCEMENT
