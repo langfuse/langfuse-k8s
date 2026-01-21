@@ -77,6 +77,8 @@ langfuse:
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
+    # -- Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token.
+    automountServiceAccountToken: true
 
   smtp:
     # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
