@@ -120,7 +120,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.keda.triggerType | string | `"cpu"` | The trigger type for scaling (cpu or memory) |
 | langfuse.web.keda.value | string | `"50"` | The target utilization percentage for the langfuse web pods |
 | langfuse.web.livenessProbe.failureThreshold | int | `3` | Failure threshold for livenessProbe. |
-| langfuse.web.livenessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for livenessProbe. |
+| langfuse.web.livenessProbe.initialDelaySeconds | int | `60` | Initial delay seconds for livenessProbe. |
 | langfuse.web.livenessProbe.path | string | `"/api/public/health"` | Path to check for liveness. |
 | langfuse.web.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
