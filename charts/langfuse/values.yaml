@@ -147,6 +147,8 @@ langfuse:
 
   # -- List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
   additionalEnv: []
+  # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+  additionalEnvFrom: []
   # -- Allows additional containers to be added to all langfuse deployments
   extraContainers: []
   # -- Allows additional volumes to be added to all langfuse deployments
@@ -188,6 +190,8 @@ langfuse:
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnv: []
+      # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnvFrom: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -317,7 +321,8 @@ langfuse:
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnv: []
-
+      # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnvFrom: []
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
 
