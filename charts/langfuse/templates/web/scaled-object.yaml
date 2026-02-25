@@ -3,7 +3,7 @@ apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
   name: {{ include "langfuse.fullname" . }}-web
-  namespace: {{ $.Release.Namespace }}
+  namespace: {{ include "langfuse.namespace" . }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:

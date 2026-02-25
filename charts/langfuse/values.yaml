@@ -11,6 +11,9 @@ nameOverride: ""
 # -- Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels
 fullnameOverride: ""
 
+# -- Override the namespace for all deployed resources, defaults to the release namespace
+namespaceOverride: ""
+
 # Core Langfuse Configuration
 langfuse:
   # Logging configuration
