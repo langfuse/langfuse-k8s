@@ -427,9 +427,10 @@ postgresql:
     password: ""
     # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
-    # -- The key in the existing secret that contains the password.
+    # -- The keys in the existing secret that contain the passwords. If using the default `postgres` user, both `userPasswordKey` and `adminPasswordKey` must be provided.
     secretKeys:
       userPasswordKey: password
+      adminPasswordKey: password
     # -- Database name to use for Langfuse.
     database: postgres_langfuse
     # -- Additional database connection arguments
