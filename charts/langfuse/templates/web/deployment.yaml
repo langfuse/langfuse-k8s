@@ -73,9 +73,11 @@ spec:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             - name: PORT
               value: {{ .Values.langfuse.web.service.port | quote }}
+            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
+            {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
             - name: HOSTNAME
               value: "0.0.0.0"
-            {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
+            {{- end }}
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}

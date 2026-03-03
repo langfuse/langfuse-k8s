@@ -341,7 +341,17 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ .Values.redis.auth.username }}:$(REDIS_PASSWORD)@{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
+{{- $hasPassword := or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+{{- $hasUsername := .Values.redis.auth.username }}
+{{- $authPart := "" }}
+{{- if and $hasUsername $hasPassword }}
+  {{- $authPart = printf "%s:$(REDIS_PASSWORD)@" .Values.redis.auth.username }}
+{{- else if $hasPassword }}
+  {{- $authPart = ":$(REDIS_PASSWORD)@" }}
+{{- else if $hasUsername }}
+  {{- $authPart = printf "%s@" .Values.redis.auth.username }}
+{{- end }}
+  value: "{{ if .Values.redis.tls.enabled }}rediss{{ else }}redis{{ end }}://{{ $authPart }}{{ include "langfuse.redis.hostname" . }}:{{ .Values.redis.port }}/{{ .Values.redis.auth.database }}"
 {{- end }}
 {{- if .Values.redis.tls.enabled }}
 {{- if .Values.redis.tls.caPath }}

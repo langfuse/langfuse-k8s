@@ -438,3 +438,113 @@ tests:
           content:
             name: REDIS_TLS_CA_PATH
         template: web/deployment.yaml
+
+  # =====================================================
+  # PASSWORDLESS REDIS TESTS (Issue #291, #273)
+  # =====================================================
+
+  - it: should handle standalone mode without authentication (null password and username)
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.host: "my-redis.example.com"
+      redis.port: 6379
+      redis.auth.password: null
+      redis.auth.username: null
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING without auth segment
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://my-redis.example.com:6379/0"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_PASSWORD when password is null
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+        template: web/deployment.yaml
+      # Worker deployment should have same connection string
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://my-redis.example.com:6379/0"
+        template: worker/deployment.yaml
+
+  - it: should handle standalone mode with username but no password (null password)
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.host: "my-redis.example.com"
+      redis.port: 6379
+      redis.auth.password: null
+      redis.auth.username: "default"
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING with username only
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://default@my-redis.example.com:6379/0"
+        template: web/deployment.yaml
+      # Web deployment should NOT have REDIS_PASSWORD when password is null
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+        template: web/deployment.yaml
+
+  - it: should handle standalone mode with TLS but no authentication
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.host: "my-redis.example.com"
+      redis.port: 6380
+      redis.auth.password: null
+      redis.auth.username: null
+      redis.tls.enabled: true
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING with rediss:// and no auth
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "rediss://my-redis.example.com:6380/0"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_TLS_ENABLED=true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_TLS_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+
+  - it: should include password segment when password is set (existing behavior)
+    values:
+      - ../values.lint.yaml
+    set:
+      redis.deploy: false
+      redis.host: "my-redis.example.com"
+      redis.port: 6379
+      redis.auth.password: "testPassword123"
+      redis.auth.username: "default"
+    asserts:
+      # Web deployment should have REDIS_CONNECTION_STRING with full auth
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://default:$(REDIS_PASSWORD)@my-redis.example.com:6379/0"
+        template: web/deployment.yaml
+      # Web deployment should have REDIS_PASSWORD
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            value: "testPassword123"
+        template: web/deployment.yaml
