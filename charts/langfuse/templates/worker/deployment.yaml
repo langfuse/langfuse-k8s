@@ -68,6 +68,10 @@ spec:
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
+            {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            {{- end }}
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
