@@ -83,9 +83,7 @@ tests:
   - it: should not override HOSTNAME in worker deployment when set via additionalEnv
     values:
       - ../values.lint.yaml
-    set:
-      langfuse.worker.pod.additionalEnv[0].name: HOSTNAME
-      langfuse.worker.pod.additionalEnv[0].value: "127.0.0.1"
+      - values/worker-hostname-override.yaml
     asserts:
       - notContains:
           path: spec.template.spec.containers[0].env
