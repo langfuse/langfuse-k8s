@@ -184,6 +184,12 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Node selector for the web pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for the web pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for the web pods. Overrides the global affinity
+      affinity: null
       # -- Allows additional containers to be added to all langfuse web pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
@@ -313,6 +319,12 @@ langfuse:
       labels: {}
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- Node selector for the worker pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for the worker pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for the worker pods. Overrides the global affinity
+      affinity: null
       # -- Allows additional containers to be added to all langfuse worker pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.

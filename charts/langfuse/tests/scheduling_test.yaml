@@ -1,0 +1,193 @@
+suite: test per-deployment scheduling constraints (nodeSelector, affinity, tolerations)
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should apply global nodeSelector to both web and worker
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nodeSelector.kubernetes\.io/os: linux
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["kubernetes.io/os"]
+          value: linux
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector["kubernetes.io/os"]
+          value: linux
+        template: worker/deployment.yaml
+
+  - it: should override nodeSelector per web pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nodeSelector.node-type: general
+      langfuse.web.pod.nodeSelector.node-type: web-optimized
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["node-type"]
+          value: web-optimized
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector["node-type"]
+          value: general
+        template: worker/deployment.yaml
+
+  - it: should override nodeSelector per worker pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nodeSelector.node-type: general
+      langfuse.worker.pod.nodeSelector.node-type: worker-optimized
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector["node-type"]
+          value: general
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector["node-type"]
+          value: worker-optimized
+        template: worker/deployment.yaml
+
+  - it: should apply global tolerations to both web and worker
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.tolerations[0].key: dedicated
+      langfuse.tolerations[0].operator: Equal
+      langfuse.tolerations[0].value: langfuse
+      langfuse.tolerations[0].effect: NoSchedule
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: dedicated
+            operator: Equal
+            value: langfuse
+            effect: NoSchedule
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: dedicated
+            operator: Equal
+            value: langfuse
+            effect: NoSchedule
+        template: worker/deployment.yaml
+
+  - it: should override tolerations per web pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.tolerations[0].key: global-taint
+      langfuse.tolerations[0].operator: Exists
+      langfuse.web.pod.tolerations[0].key: web-taint
+      langfuse.web.pod.tolerations[0].operator: Exists
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: web-taint
+            operator: Exists
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-taint
+            operator: Exists
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-taint
+            operator: Exists
+        template: worker/deployment.yaml
+
+  - it: should override tolerations per worker pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.tolerations[0].key: global-taint
+      langfuse.tolerations[0].operator: Exists
+      langfuse.worker.pod.tolerations[0].key: worker-taint
+      langfuse.worker.pod.tolerations[0].operator: Exists
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-taint
+            operator: Exists
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: worker-taint
+            operator: Exists
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-taint
+            operator: Exists
+        template: worker/deployment.yaml
+
+  - it: should apply global affinity to both web and worker
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: topology.kubernetes.io/zone
+      langfuse.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].operator: In
+      langfuse.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].values[0]: us-east-1a
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: web/deployment.yaml
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: worker/deployment.yaml
+
+  - it: should override affinity per web pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: global-key
+      langfuse.web.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight: 100
+      langfuse.web.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: kubernetes.io/hostname
+      langfuse.web.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].key: app.kubernetes.io/component
+      langfuse.web.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].operator: In
+      langfuse.web.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].values[0]: web
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity.podAntiAffinity
+        template: web/deployment.yaml
+      - isNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: web/deployment.yaml
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: worker/deployment.yaml
+
+  - it: should override affinity per worker pod
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key: global-key
+      langfuse.worker.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight: 100
+      langfuse.worker.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey: kubernetes.io/hostname
+      langfuse.worker.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].key: app.kubernetes.io/component
+      langfuse.worker.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].operator: In
+      langfuse.worker.pod.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].values[0]: worker
+    asserts:
+      - isNotNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: web/deployment.yaml
+      - isNull:
+          path: spec.template.spec.affinity.podAntiAffinity
+        template: web/deployment.yaml
+      - isNotNull:
+          path: spec.template.spec.affinity.podAntiAffinity
+        template: worker/deployment.yaml
+      - isNull:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: worker/deployment.yaml
