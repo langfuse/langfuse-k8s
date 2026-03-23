@@ -1,0 +1,33 @@
+langfuse:
+  salt:
+    value: "secretSalt"
+  nextauth:
+    secret:
+      value: "secretSecret"
+  nodeSelector:
+    disktype: ssd
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                  - us-east-1a
+  tolerations:
+    - key: example-key
+      operator: Exists
+      effect: NoSchedule
+
+postgresql:
+  auth:
+    password: "secretPassword"
+
+clickhouse:
+  auth:
+    password: "secretPassword"
+
+redis:
+  auth:
+    password: "secretPassword"

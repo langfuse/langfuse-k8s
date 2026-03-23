@@ -1,0 +1,73 @@
+langfuse:
+  salt:
+    value: "secretSalt"
+  nextauth:
+    secret:
+      value: "secretSecret"
+  nodeSelector:
+    disktype: ssd
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                  - us-east-1a
+  tolerations:
+    - key: global-key
+      operator: Exists
+      effect: NoSchedule
+  web:
+    pod:
+      nodeSelector:
+        dedicated: web
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - web
+      tolerations:
+        - key: web-key
+          operator: Exists
+          effect: NoSchedule
+  worker:
+    pod:
+      nodeSelector:
+        dedicated: worker
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - worker
+      tolerations:
+        - key: worker-key
+          operator: Exists
+          effect: NoSchedule
+
+postgresql:
+  auth:
+    password: "secretPassword"
+
+clickhouse:
+  auth:
+    password: "secretPassword"
+
+redis:
+  auth:
+    password: "secretPassword"

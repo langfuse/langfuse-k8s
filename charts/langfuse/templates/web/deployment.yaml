@@ -115,15 +115,15 @@ spec:
           volumeMounts:
             {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
           {{- end }}
-      {{- with .Values.langfuse.nodeSelector }}
+      {{- with (coalesce .Values.langfuse.web.pod.nodeSelector .Values.langfuse.nodeSelector) }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.langfuse.affinity }}
+      {{- with (coalesce .Values.langfuse.web.pod.affinity .Values.langfuse.affinity) }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.langfuse.tolerations }}
+      {{- with (coalesce .Values.langfuse.web.pod.tolerations .Values.langfuse.tolerations) }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

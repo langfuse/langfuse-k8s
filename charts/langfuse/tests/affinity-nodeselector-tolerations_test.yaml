@@ -1,0 +1,120 @@
+suite: test per-component affinity, nodeSelector, and tolerations
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should apply global nodeSelector to both deployments
+    values:
+      - ./values/affinity-global.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector.disktype
+          value: ssd
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector.disktype
+          value: ssd
+        template: worker/deployment.yaml
+
+  - it: should apply global affinity to both deployments
+    values:
+      - ./values/affinity-global.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: topology.kubernetes.io/zone
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: topology.kubernetes.io/zone
+        template: worker/deployment.yaml
+
+  - it: should apply global tolerations to both deployments
+    values:
+      - ./values/affinity-global.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: example-key
+            operator: Exists
+            effect: NoSchedule
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: example-key
+            operator: Exists
+            effect: NoSchedule
+        template: worker/deployment.yaml
+
+  - it: should override nodeSelector per-component
+    values:
+      - ./values/affinity-per-component.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector.dedicated
+          value: web
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.nodeSelector.disktype
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector.dedicated
+          value: worker
+        template: worker/deployment.yaml
+      - notExists:
+          path: spec.template.spec.nodeSelector.disktype
+        template: worker/deployment.yaml
+
+  - it: should override affinity per-component
+    values:
+      - ./values/affinity-per-component.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].values[0]
+          value: web
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchExpressions[0].values[0]
+          value: worker
+        template: worker/deployment.yaml
+      - notExists:
+          path: spec.template.spec.affinity.nodeAffinity
+        template: worker/deployment.yaml
+
+  - it: should override tolerations per-component
+    values:
+      - ./values/affinity-per-component.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: web-key
+            operator: Exists
+            effect: NoSchedule
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-key
+            operator: Exists
+            effect: NoSchedule
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.tolerations
+          content:
+            key: worker-key
+            operator: Exists
+            effect: NoSchedule
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.tolerations
+          content:
+            key: global-key
+            operator: Exists
+            effect: NoSchedule
+        template: worker/deployment.yaml
