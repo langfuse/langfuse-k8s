@@ -68,3 +68,32 @@ tests:
           path: spec.template.spec.containers[0].image
           pattern: "langfuse/langfuse:v1.2.3$"
         template: web/deployment.yaml
+
+  - it: should set HOSTNAME=0.0.0.0 by default in worker deployment
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOSTNAME
+            value: "0.0.0.0"
+        template: worker/deployment.yaml
+
+  - it: should not override HOSTNAME in worker deployment when set via additionalEnv
+    values:
+      - ../values.lint.yaml
+      - values/worker-hostname-override.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOSTNAME
+            value: "0.0.0.0"
+        template: worker/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: HOSTNAME
+            value: "127.0.0.1"
+        template: worker/deployment.yaml
