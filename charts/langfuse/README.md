@@ -126,9 +126,12 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
 | langfuse.web.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
+| langfuse.web.pod.affinity | string | `nil` | Affinity for for the web pods. Overrides the global affinity |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
 | langfuse.web.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse web pods |
 | langfuse.web.pod.labels | object | `{}` | Labels for the web pods |
+| langfuse.web.pod.nodeSelector | string | `nil` | Node selector for for the web pods. Overrides the global nodeSelector |
+| langfuse.web.pod.tolerations | string | `nil` | Tolerations for for the web pods. Overrides the global tolerations |
 | langfuse.web.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints |
 | langfuse.web.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
 | langfuse.web.readinessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for readinessProbe. |
@@ -175,9 +178,12 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
 | langfuse.worker.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
+| langfuse.worker.pod.affinity | string | `nil` | Affinity for for the worker pods. Overrides the global affinity |
 | langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
 | langfuse.worker.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse worker pods |
 | langfuse.worker.pod.labels | object | `{}` | Labels for the worker pods |
+| langfuse.worker.pod.nodeSelector | string | `nil` | Node selector for for the worker pods. Overrides the global nodeSelector |
+| langfuse.worker.pod.tolerations | string | `nil` | Tolerations for for the worker pods. Overrides the global tolerations |
 | langfuse.worker.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
