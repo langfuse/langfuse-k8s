@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
 jobs:
   unit-tests:
     name: Run Helm Unit Tests
