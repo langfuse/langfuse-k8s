@@ -495,6 +495,23 @@ redis:
     # -- List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"]
     nodes: []
 
+  # Redis Sentinel configuration
+  sentinel:
+    # -- Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`.
+    enabled: false
+    # -- Name of the Redis Sentinel master. Required when `redis.sentinel.enabled` is `true`.
+    masterName: ""
+    # -- Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`.
+    nodes: ""
+    # -- Username for Redis Sentinel authentication (optional).
+    username: ""
+    # -- Password for Redis Sentinel authentication (optional).
+    password: ""
+    # -- If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret).
+    existingSecret: ""
+    # -- The key in the existing secret that contains the sentinel password.
+    existingSecretPasswordKey: ""
+
   # Subchart specific settings
   architecture: standalone
   primary:

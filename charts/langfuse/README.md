@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.22](https://img.shields.io/badge/Version-1.5.22-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.155.1](https://img.shields.io/badge/AppVersion-3.155.1-informational?style=flat-square)
+![Version: 1.5.24](https://img.shields.io/badge/Version-1.5.24-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.162.0](https://img.shields.io/badge/AppVersion-3.162.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -217,6 +217,13 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | redis.port | int | `6379` | Redis port to connect to. |
 | redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
+| redis.sentinel.enabled | bool | `false` | Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`. |
+| redis.sentinel.existingSecret | string | `""` | If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret). |
+| redis.sentinel.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the sentinel password. |
+| redis.sentinel.masterName | string | `""` | Name of the Redis Sentinel master. Required when `redis.sentinel.enabled` is `true`. |
+| redis.sentinel.nodes | string | `""` | Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`. |
+| redis.sentinel.password | string | `""` | Password for Redis Sentinel authentication (optional). |
+| redis.sentinel.username | string | `""` | Username for Redis Sentinel authentication (optional). |
 | redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
 | redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication |
 | redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
