@@ -29,7 +29,7 @@ spec:
   {{- if .Values.langfuse.web.vpa.updatePolicy }}
   updatePolicy:
     {{- with .Values.langfuse.web.vpa.updatePolicy.updateMode }}
-    updateMode: {{ . }}
+    updateMode: {{ . | quote }}
     {{- end }}
   {{- end }}
 {{- end }}
