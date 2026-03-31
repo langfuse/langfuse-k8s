@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'charts/**'
+
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate Helm Chart
