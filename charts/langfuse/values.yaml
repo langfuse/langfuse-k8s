@@ -182,6 +182,12 @@ langfuse:
       annotations: {}
       # -- Labels for the web pods
       labels: {}
+      # -- Node selector for for the web pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for for the web pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for for the web pods. Overrides the global affinity
+      affinity: null
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse web pods
@@ -311,6 +317,12 @@ langfuse:
       annotations: {}
       # -- Labels for the worker pods
       labels: {}
+      # -- Node selector for for the worker pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for for the worker pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for for the worker pods. Overrides the global affinity
+      affinity: null
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse worker pods
