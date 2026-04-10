@@ -45,6 +45,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.langfuse.serviceAccount.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
       {{- if .Values.langfuse.extraInitContainers }}
