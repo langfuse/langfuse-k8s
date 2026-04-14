@@ -3,7 +3,7 @@ apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
   name: {{ include "langfuse.fullname" . }}-worker
-  namespace: {{ $.Release.Namespace }}
+  namespace: {{ include "langfuse.namespace" . }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
