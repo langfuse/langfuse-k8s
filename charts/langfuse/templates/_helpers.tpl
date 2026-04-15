@@ -287,7 +287,11 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- range $providerName, $provider := .Values.langfuse.auth.providers }}
 {{- range $optionKey, $optionVal := $provider }}
 - name: AUTH_{{ $providerName | snakecase | upper }}_{{ $optionKey | snakecase | upper }}
+{{- if and $optionVal (kindIs "map" $optionVal) }}
+  {{- include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.langfuse.auth.providers.%s.%s" $providerName $optionKey) "value" $optionVal) | nindent 2 }}
+{{- else if $optionVal }}
   value: {{ $optionVal | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
