@@ -125,6 +125,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.web.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the langfuse web pods |
+| langfuse.web.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.web.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.web.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
 | langfuse.web.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse web pods |
@@ -174,6 +177,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.worker.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the worker deployment |
+| langfuse.worker.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.worker.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.worker.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
 | langfuse.worker.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse worker pods |
