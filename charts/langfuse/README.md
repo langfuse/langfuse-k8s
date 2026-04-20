@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.22](https://img.shields.io/badge/Version-1.5.22-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.155.1](https://img.shields.io/badge/AppVersion-3.155.1-informational?style=flat-square)
+![Version: 1.5.27](https://img.shields.io/badge/Version-1.5.27-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.169.0](https://img.shields.io/badge/AppVersion-3.169.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -94,6 +94,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
+| langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
@@ -125,10 +126,16 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.web.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the langfuse web pods |
+| langfuse.web.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.web.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.web.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
+| langfuse.web.pod.affinity | string | `nil` | Affinity for the web pods. Overrides the global affinity |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
 | langfuse.web.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse web pods |
 | langfuse.web.pod.labels | object | `{}` | Labels for the web pods |
+| langfuse.web.pod.nodeSelector | string | `nil` | Node selector for the web pods. Overrides the global nodeSelector |
+| langfuse.web.pod.tolerations | string | `nil` | Tolerations for the web pods. Overrides the global tolerations |
 | langfuse.web.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints |
 | langfuse.web.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
 | langfuse.web.readinessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for readinessProbe. |
@@ -174,10 +181,16 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.worker.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the worker deployment |
+| langfuse.worker.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.worker.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.worker.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
+| langfuse.worker.pod.affinity | string | `nil` | Affinity for the worker pods. Overrides the global affinity |
 | langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
 | langfuse.worker.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse worker pods |
 | langfuse.worker.pod.labels | object | `{}` | Labels for the worker pods |
+| langfuse.worker.pod.nodeSelector | string | `nil` | Node selector for the worker pods. Overrides the global nodeSelector |
+| langfuse.worker.pod.tolerations | string | `nil` | Tolerations for the worker pods. Overrides the global tolerations |
 | langfuse.worker.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
@@ -217,6 +230,13 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
 | redis.port | int | `6379` | Redis port to connect to. |
 | redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
+| redis.sentinel.enabled | bool | `false` | Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`. |
+| redis.sentinel.existingSecret | string | `""` | If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret). |
+| redis.sentinel.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the sentinel password. |
+| redis.sentinel.masterName | string | `""` | Name of the Redis Sentinel master. Required when `redis.sentinel.enabled` is `true`. |
+| redis.sentinel.nodes | string | `""` | Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`. |
+| redis.sentinel.password | string | `""` | Password for Redis Sentinel authentication (optional). |
+| redis.sentinel.username | string | `""` | Username for Redis Sentinel authentication (optional). |
 | redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
 | redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication |
 | redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
