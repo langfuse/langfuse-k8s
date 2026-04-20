@@ -77,6 +77,8 @@ langfuse:
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
+    # -- Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token.
+    automountServiceAccountToken: true
 
   smtp:
     # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
@@ -294,6 +296,15 @@ langfuse:
       # -- Success threshold for readinessProbe.
       successThreshold: 1
 
+    # Pod Disruption Budget configuration for the web deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the langfuse web pods
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
+
   # Worker deployment configuration
   worker:
     image:
@@ -384,6 +395,15 @@ langfuse:
       updatePolicy:
         # -- The update policy mode for the langfuse worker pods
         updateMode: Auto
+
+    # Pod Disruption Budget configuration for the worker deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the worker deployment
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
 
     livenessProbe:
       # -- Initial delay seconds for livenessProbe.

@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.22](https://img.shields.io/badge/Version-1.5.22-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.155.1](https://img.shields.io/badge/AppVersion-3.155.1-informational?style=flat-square)
+![Version: 1.5.26](https://img.shields.io/badge/Version-1.5.26-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.167.4](https://img.shields.io/badge/AppVersion-3.167.4-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -94,6 +94,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
+| langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
@@ -125,6 +126,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.web.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.web.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.web.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the langfuse web pods |
+| langfuse.web.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.web.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.web.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.web.pod.affinity | string | `nil` | Affinity for for the web pods. Overrides the global affinity |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
@@ -177,6 +181,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.worker.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the worker deployment |
+| langfuse.worker.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.worker.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
 | langfuse.worker.pod.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.worker.pod.affinity | string | `nil` | Affinity for for the worker pods. Overrides the global affinity |
 | langfuse.worker.pod.annotations | object | `{}` | Annotations for the worker pods |
