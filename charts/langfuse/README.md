@@ -94,6 +94,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
+| langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |
