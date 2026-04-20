@@ -290,6 +290,15 @@ langfuse:
       # -- Success threshold for readinessProbe.
       successThreshold: 1
 
+    # Pod Disruption Budget configuration for the web deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the langfuse web pods
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
+
   # Worker deployment configuration
   worker:
     image:
@@ -374,6 +383,15 @@ langfuse:
       updatePolicy:
         # -- The update policy mode for the langfuse worker pods
         updateMode: Auto
+
+    # Pod Disruption Budget configuration for the worker deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the worker deployment
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
 
     livenessProbe:
       # -- Initial delay seconds for livenessProbe.
@@ -496,6 +514,23 @@ redis:
     enabled: false
     # -- List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"]
     nodes: []
+
+  # Redis Sentinel configuration
+  sentinel:
+    # -- Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`.
+    enabled: false
+    # -- Name of the Redis Sentinel master. Required when `redis.sentinel.enabled` is `true`.
+    masterName: ""
+    # -- Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`.
+    nodes: ""
+    # -- Username for Redis Sentinel authentication (optional).
+    username: ""
+    # -- Password for Redis Sentinel authentication (optional).
+    password: ""
+    # -- If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret).
+    existingSecret: ""
+    # -- The key in the existing secret that contains the sentinel password.
+    existingSecretPasswordKey: ""
 
   # Subchart specific settings
   architecture: standalone
