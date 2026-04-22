@@ -4,6 +4,7 @@ templates:
   - worker/deployment.yaml
   - web/service.yaml
   - serviceaccount.yaml
+  - web/pdb.yaml
 tests:
   - it: should render with default values
     values:
@@ -97,3 +98,15 @@ tests:
             name: HOSTNAME
             value: "127.0.0.1"
         template: worker/deployment.yaml
+
+  - it: should create a web PDB with 2 maxUnavailable when specified
+    values:
+      - ../values.lint.yaml
+      - values/pdb.yaml
+    set:
+      langfuse.image.tag: "v1.2.3"
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 2
+        template: web/pdb.yaml
