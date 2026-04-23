@@ -5,6 +5,7 @@ metadata:
   namespace: {{ $.Release.Namespace }}
   labels:
     {{- include "langfuse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
     {{- with .Values.langfuse.worker.deployment.additionalLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -34,6 +35,7 @@ spec:
       {{- end }}
       labels:
         {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
         app: worker
         {{- $podLabels := merge (.Values.langfuse.worker.pod.labels | default dict) (.Values.langfuse.pod.labels | default dict) }}
         {{- with $podLabels }}
@@ -45,6 +47,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.langfuse.serviceAccount.automountServiceAccountToken }}
       securityContext:
         {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
       {{- if .Values.langfuse.extraInitContainers }}
@@ -68,9 +71,18 @@ spec:
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
+            {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
+            - name: HOSTNAME
+              value: "0.0.0.0"
+            {{- end }}
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- $additionalEnvFrom := concat (.Values.langfuse.additionalEnvFrom | default list ) (.Values.langfuse.worker.pod.additionalEnvFrom | default list )}}
+          {{- with $additionalEnvFrom }}
+          envFrom:
+            {{ toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.langfuse.worker.port | default 3030 }}
@@ -96,15 +108,15 @@ spec:
           volumeMounts:
             {{- toYaml .Values.langfuse.extraVolumeMounts | nindent 12 }}
           {{- end }}
-      {{- with .Values.langfuse.nodeSelector }}
+      {{- with (coalesce .Values.langfuse.worker.pod.nodeSelector .Values.langfuse.nodeSelector) }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.langfuse.affinity }}
+      {{- with (coalesce .Values.langfuse.worker.pod.affinity .Values.langfuse.affinity) }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.langfuse.tolerations }}
+      {{- with (coalesce .Values.langfuse.worker.pod.tolerations .Values.langfuse.tolerations) }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

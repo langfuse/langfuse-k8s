@@ -29,8 +29,8 @@
     {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
 {{- end -}}
 
-{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
-    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host or enable redis.cluster.enabled to continue." -}}
+{{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not $.Values.redis.sentinel.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
+    {{- fail "Redis host must be configured when using an external Redis instance. Set redis.host, enable redis.cluster.enabled, or enable redis.sentinel.enabled to continue." -}}
 {{- end -}}
 
 {{- if and $.Values.redis.host (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING")) -}}
@@ -48,6 +48,27 @@
 
 {{- if and $.Values.redis.deploy $.Values.redis.cluster.enabled -}}
     {{- fail "Redis cluster mode cannot be used with deployed Redis (redis.deploy: true). The deployed Redis is standalone/sentinel architecture. Set redis.deploy to false and configure external Redis cluster nodes to continue." -}}
+{{- end -}}
+
+# Validate Redis Sentinel settings
+{{- if and $.Values.redis.sentinel.enabled $.Values.redis.cluster.enabled -}}
+    {{- fail "Redis sentinel mode and cluster mode cannot be enabled simultaneously. Disable one of redis.sentinel.enabled or redis.cluster.enabled to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.sentinel.enabled (not $.Values.redis.sentinel.masterName) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_SENTINEL_NODES"))) -}}
+    {{- fail "Redis sentinel master name must be configured when sentinel mode is enabled. Set redis.sentinel.masterName to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.sentinel.enabled (not $.Values.redis.sentinel.nodes) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_SENTINEL_NODES"))) -}}
+    {{- fail "Redis sentinel nodes must be configured when sentinel mode is enabled. Set redis.sentinel.nodes or langfuse.additionalEnv[name: REDIS_SENTINEL_NODES] to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.sentinel.nodes (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_SENTINEL_NODES")) -}}
+    {{- fail "Only one of additionalEnv or the new structure can be configured. Set either redis.sentinel.nodes or langfuse.additionalEnv[name: REDIS_SENTINEL_NODES] to continue." -}}
+{{- end -}}
+
+{{- if and $.Values.redis.deploy $.Values.redis.sentinel.enabled -}}
+    {{- fail "Redis sentinel mode cannot be used with deployed Redis (redis.deploy: true). Set redis.deploy to false and configure external Redis sentinel nodes to continue." -}}
 {{- end -}}
 
 # Validate S3 settings
@@ -226,4 +247,23 @@
 
 {{- if and $.Values.langfuse.worker.keda.enabled (or $.Values.langfuse.worker.hpa.enabled $.Values.langfuse.worker.vpa.enabled) -}}
     {{- fail "If keda is enabled for worker component, you cannot enable hpa or vpa. Please disable either keda or both hpa and vpa." -}}
+{{- end -}}
+
+# Validate Pod Disruption Budget settings
+{{- $webPdb := default dict $.Values.langfuse.web.pdb -}}
+{{- $webMinAvailable := get $webPdb "minAvailable" -}}
+{{- $webMaxUnavailable := get $webPdb "maxUnavailable" -}}
+{{- $webMinAvailableSet := and (hasKey $webPdb "minAvailable") (ne (toString $webMinAvailable) "") (ne (printf "%v" $webMinAvailable) "<nil>") -}}
+{{- $webMaxUnavailableSet := and (hasKey $webPdb "maxUnavailable") (ne (toString $webMaxUnavailable) "") (ne (printf "%v" $webMaxUnavailable) "<nil>") -}}
+{{- if and $webPdb.create $webMinAvailableSet $webMaxUnavailableSet -}}
+    {{- fail "Pod Disruption Budget for web component cannot have both minAvailable and maxUnavailable values" -}}
+{{- end -}}
+
+{{- $workerPdb := default dict $.Values.langfuse.worker.pdb -}}
+{{- $workerMinAvailable := get $workerPdb "minAvailable" -}}
+{{- $workerMaxUnavailable := get $workerPdb "maxUnavailable" -}}
+{{- $workerMinAvailableSet := and (hasKey $workerPdb "minAvailable") (ne (toString $workerMinAvailable) "") (ne (printf "%v" $workerMinAvailable) "<nil>") -}}
+{{- $workerMaxUnavailableSet := and (hasKey $workerPdb "maxUnavailable") (ne (toString $workerMaxUnavailable) "") (ne (printf "%v" $workerMaxUnavailable) "<nil>") -}}
+{{- if and $workerPdb.create $workerMinAvailableSet $workerMaxUnavailableSet -}}
+    {{- fail "Pod Disruption Budget for worker component cannot have both minAvailable and maxUnavailable values" -}}
 {{- end -}}

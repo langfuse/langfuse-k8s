@@ -77,6 +77,8 @@ langfuse:
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
+    # -- Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token.
+    automountServiceAccountToken: true
 
   smtp:
     # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
@@ -147,6 +149,8 @@ langfuse:
 
   # -- List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
   additionalEnv: []
+  # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+  additionalEnvFrom: []
   # -- Allows additional containers to be added to all langfuse deployments
   extraContainers: []
   # -- Allows additional volumes to be added to all langfuse deployments
@@ -182,12 +186,20 @@ langfuse:
       annotations: {}
       # -- Labels for the web pods
       labels: {}
+      # -- Node selector for the web pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for the web pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for the web pods. Overrides the global affinity
+      affinity: null
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse web pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnv: []
+      # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnvFrom: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -288,6 +300,15 @@ langfuse:
       # -- Success threshold for readinessProbe.
       successThreshold: 1
 
+    # Pod Disruption Budget configuration for the web deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the langfuse web pods
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
+
   # Worker deployment configuration
   worker:
     image:
@@ -311,13 +332,20 @@ langfuse:
       annotations: {}
       # -- Labels for the worker pods
       labels: {}
+      # -- Node selector for the worker pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- Tolerations for the worker pods. Overrides the global tolerations
+      tolerations: null
+      # -- Affinity for the worker pods. Overrides the global affinity
+      affinity: null
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
       # -- Allows additional containers to be added to all langfuse worker pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnv: []
-
+      # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
+      additionalEnvFrom: []
     # -- Resources for the langfuse worker pods. Defaults to the global resources
     resources: {}
 
@@ -372,6 +400,15 @@ langfuse:
       updatePolicy:
         # -- The update policy mode for the langfuse worker pods
         updateMode: Auto
+
+    # Pod Disruption Budget configuration for the worker deployment
+    pdb:
+      # -- Set to `true` to create a Pod Disruption Budget for the worker deployment
+      create: true
+      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
 
     livenessProbe:
       # -- Initial delay seconds for livenessProbe.
@@ -495,6 +532,23 @@ redis:
     enabled: false
     # -- List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"]
     nodes: []
+
+  # Redis Sentinel configuration
+  sentinel:
+    # -- Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`.
+    enabled: false
+    # -- Name of the Redis Sentinel master. Required when `redis.sentinel.enabled` is `true`.
+    masterName: ""
+    # -- Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`.
+    nodes: ""
+    # -- Username for Redis Sentinel authentication (optional).
+    username: ""
+    # -- Password for Redis Sentinel authentication (optional).
+    password: ""
+    # -- If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret).
+    existingSecret: ""
+    # -- The key in the existing secret that contains the sentinel password.
+    existingSecretPasswordKey: ""
 
   # Subchart specific settings
   architecture: standalone
