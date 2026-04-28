@@ -68,15 +68,12 @@ langfuse:
       termination: edge
       insecureEdgeTerminationPolicy: Redirect
 
-  # OpenShift's restricted-v2 SCC requires runAsNonRoot.
-  # The Langfuse web/worker containers (Next.js) run fine as non-root.
-  podSecurityContext:
-    runAsNonRoot: true
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
+  # ⚠️  Do NOT set runAsNonRoot: true here.
+  # The Langfuse web/worker image uses a non-numeric user ("nextjs") which
+  # OpenShift cannot verify as non-root, causing CreateContainerConfigError.
+  # Leave these empty — the anyuid SCC grant (see Prerequisites) is sufficient.
+  podSecurityContext: {}
+  securityContext: {}
 
 postgresql:
   deploy: true
@@ -101,6 +98,11 @@ postgresql:
       capabilities:
         drop:
           - ALL
+
+clickhouse:
+  auth:
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
 
 redis:
   auth:

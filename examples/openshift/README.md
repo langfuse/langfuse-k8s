@@ -38,14 +38,17 @@ Edit `secret.yaml` — replace all `<CHANGE_ME>` placeholders — then apply:
 SALT=$(openssl rand -base64 32)
 ENCRYPTION_KEY=$(openssl rand -hex 32)
 NEXTAUTH_SECRET=$(openssl rand -base64 32)
-PG_PASSWORD=$(openssl rand -base64 24)
+# Use alphanumeric-only passwords — ClickHouse rejects passwords with special
+# characters such as %, @, :, &, # (see TROUBLESHOOTING.md)
+DB_PASSWORD=$(openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 24)
 
 oc create secret generic langfuse \
   --from-literal=salt="$SALT" \
   --from-literal=encryption-key="$ENCRYPTION_KEY" \
   --from-literal=nextauth-secret="$NEXTAUTH_SECRET" \
-  --from-literal=postgresql-password="$PG_PASSWORD" \
-  --from-literal=redis-password="$PG_PASSWORD" \
+  --from-literal=postgresql-password="$DB_PASSWORD" \
+  --from-literal=redis-password="$DB_PASSWORD" \
+  --from-literal=clickhouse-password="$DB_PASSWORD" \
   -n langfuse
 ```
 
@@ -56,11 +59,18 @@ UID `1001`. OpenShift's default `restricted-v2` SCC rejects fixed UIDs.
 
 **Option A — Grant `anyuid` (simplest, suitable for dev clusters):**
 
+The chart creates a `langfuse` service account for the web/worker/S3 pods.
+ClickHouse uses the `default` service account. Both need `anyuid`:
+
 ```bash
-oc adm policy add-scc-to-user anyuid \
-  -z langfuse \
-  -n langfuse
+oc adm policy add-scc-to-user anyuid -z langfuse  -n langfuse
+oc adm policy add-scc-to-user anyuid -z default   -n langfuse
 ```
+
+> **Note:** The Langfuse web/worker image uses a non-numeric user (`nextjs`).
+> Setting `podSecurityContext.runAsNonRoot: true` in `values.yaml` causes
+> `CreateContainerConfigError` because OpenShift cannot verify a named user is
+> non-root. Leave `podSecurityContext: {}` and rely on the `anyuid` grant instead.
 
 **Option B — Use an external PostgreSQL (recommended for production):**
 
