@@ -1,0 +1,4 @@
+langfuse:
+  web:
+    pdb:
+      maxUnavailable: 2
