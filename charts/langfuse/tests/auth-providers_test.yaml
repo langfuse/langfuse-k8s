@@ -1,0 +1,219 @@
+suite: test auth providers configuration with secret references
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should set AUTH provider environment variables with direct string values
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        auth:
+          disableUsernamePassword: true
+          providers:
+            azureAd:
+              clientId: "my-client-id-12345"
+              clientSecret: "my-client-secret-67890"
+              tenantId: "my-tenant-id"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_CLIENT_ID
+            value: "my-client-id-12345"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_CLIENT_SECRET
+            value: "my-client-secret-67890"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_TENANT_ID
+            value: "my-tenant-id"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_DISABLE_USERNAME_PASSWORD
+            value: "true"
+        template: web/deployment.yaml
+
+  - it: should set AUTH provider environment variables with secret references
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        auth:
+          providers:
+            azureAd:
+              clientId:
+                secretKeyRef:
+                  name: "azure-sso-secret"
+                  key: "client-id"
+              clientSecret:
+                secretKeyRef:
+                  name: "azure-sso-secret"
+                  key: "client-secret"
+              tenantId: "my-tenant-id"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: "azure-sso-secret"
+                key: "client-id"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "azure-sso-secret"
+                key: "client-secret"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_AZURE_AD_TENANT_ID
+            value: "my-tenant-id"
+        template: web/deployment.yaml
+
+  - it: should set AUTH provider environment variables with mixed string and secret values
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        auth:
+          providers:
+            github:
+              clientId: "gh-client-id-123"
+              clientSecret:
+                secretKeyRef:
+                  name: "github-sso-secret"
+                  key: "client-secret"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GITHUB_CLIENT_ID
+            value: "gh-client-id-123"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GITHUB_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "github-sso-secret"
+                key: "client-secret"
+        template: web/deployment.yaml
+
+  - it: should set AUTH provider environment variables on worker deployment
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        auth:
+          providers:
+            okta:
+              clientId:
+                secretKeyRef:
+                  name: "okta-sso-secret"
+                  key: "client-id"
+              clientSecret:
+                secretKeyRef:
+                  name: "okta-sso-secret"
+                  key: "client-secret"
+              domain: "https://my-okta-domain.okta.com"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_OKTA_CLIENT_ID
+            valueFrom:
+              secretKeyRef:
+                name: "okta-sso-secret"
+                key: "client-id"
+        template: worker/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_OKTA_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "okta-sso-secret"
+                key: "client-secret"
+        template: worker/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_OKTA_DOMAIN
+            value: "https://my-okta-domain.okta.com"
+        template: worker/deployment.yaml
+
+  - it: should handle multiple auth providers
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        auth:
+          providers:
+            google:
+              clientId: "google-client-id"
+              clientSecret:
+                secretKeyRef:
+                  name: "google-sso-secret"
+                  key: "client-secret"
+            github:
+              clientId: "github-client-id"
+              clientSecret:
+                secretKeyRef:
+                  name: "github-sso-secret"
+                  key: "client-secret"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GOOGLE_CLIENT_ID
+            value: "google-client-id"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GITHUB_CLIENT_ID
+            value: "github-client-id"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GOOGLE_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "google-sso-secret"
+                key: "client-secret"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GITHUB_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: "github-sso-secret"
+                key: "client-secret"
+        template: web/deployment.yaml
+
+  - it: should not set AUTH provider env vars when auth providers not configured
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: AUTH_GOOGLE_CLIENT_ID
+        template: web/deployment.yaml

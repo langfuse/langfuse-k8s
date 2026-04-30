@@ -1,0 +1,6 @@
+langfuse:
+  worker:
+    pod:
+      additionalEnv:
+        - name: HOSTNAME
+          value: "127.0.0.1"

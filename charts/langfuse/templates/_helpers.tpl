@@ -287,7 +287,11 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- range $providerName, $provider := .Values.langfuse.auth.providers }}
 {{- range $optionKey, $optionVal := $provider }}
 - name: AUTH_{{ $providerName | snakecase | upper }}_{{ $optionKey | snakecase | upper }}
+{{- if and $optionVal (kindIs "map" $optionVal) }}
+  {{- include "langfuse.getValueOrSecret" (dict "key" (printf ".Values.langfuse.auth.providers.%s.%s" $providerName $optionKey) "value" $optionVal) | nindent 2 }}
+{{- else if $optionVal }}
   value: {{ $optionVal | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
@@ -315,6 +319,50 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: "true"
 - name: REDIS_CLUSTER_NODES
   value: {{ join "," .Values.redis.cluster.nodes | quote }}
+{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+- name: REDIS_AUTH
+  value: "$(REDIS_PASSWORD)"
+{{- end }}
+- name: REDIS_TLS_ENABLED
+  value: {{ .Values.redis.tls.enabled | quote }}
+{{- if .Values.redis.tls.enabled }}
+{{- if .Values.redis.tls.caPath }}
+- name: REDIS_TLS_CA_PATH
+  value: {{ .Values.redis.tls.caPath | quote }}
+{{- end }}
+{{- if .Values.redis.tls.certPath }}
+- name: REDIS_TLS_CERT_PATH
+  value: {{ .Values.redis.tls.certPath | quote }}
+{{- end }}
+{{- if .Values.redis.tls.keyPath }}
+- name: REDIS_TLS_KEY_PATH
+  value: {{ .Values.redis.tls.keyPath | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- else if .Values.redis.sentinel.enabled }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_SENTINEL_NODES")) }}
+- name: REDIS_SENTINEL_ENABLED
+  value: "true"
+- name: REDIS_SENTINEL_MASTER_NAME
+  value: {{ required "redis.sentinel.masterName is required when sentinel mode is enabled" .Values.redis.sentinel.masterName | quote }}
+- name: REDIS_SENTINEL_NODES
+  value: {{ required "redis.sentinel.nodes is required when sentinel mode is enabled" .Values.redis.sentinel.nodes | quote }}
+{{- if .Values.redis.sentinel.username }}
+- name: REDIS_SENTINEL_USERNAME
+  value: {{ .Values.redis.sentinel.username | quote }}
+{{- end }}
+{{- if or .Values.redis.sentinel.existingSecret .Values.redis.sentinel.password }}
+- name: REDIS_SENTINEL_PASSWORD
+{{- if .Values.redis.sentinel.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.redis.sentinel.existingSecret }}
+      key: {{ required "redis.sentinel.existingSecretPasswordKey is required when using an existing secret" .Values.redis.sentinel.existingSecretPasswordKey }}
+{{- else }}
+  value: {{ .Values.redis.sentinel.password | quote }}
+{{- end }}
+{{- end }}
 {{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
 - name: REDIS_AUTH
   value: "$(REDIS_PASSWORD)"
