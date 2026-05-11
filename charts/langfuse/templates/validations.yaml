@@ -16,17 +16,30 @@
 {{- end -}}
 
 # Validate ClickHouse settings
-{{- if ne ($.Values.clickhouse.shards | int) 1 -}}
-    {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
-{{- end -}}
-
 {{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL"))) -}}
     {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
 {{- end -}}
+{{- if and $.Values.clickhouse.deploy (lt (int $.Values.clickhouse.cluster.replicas) 1) -}}
+    {{- fail "clickhouse.cluster.replicas must be >= 1 when clickhouse.deploy is true." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.deploy (gt (int $.Values.clickhouse.cluster.replicas) 1) (not $.Values.clickhouse.keeper.enabled) -}}
+    {{- fail "clickhouse.keeper.enabled must be true when clickhouse.cluster.replicas > 1. The upstream ClickHouse operator requires Keeper for replicated mode." -}}
+{{- end -}}
 
 # Validate Redis settings
-{{- if and $.Values.redis.deploy (not (has "--maxmemory-policy noeviction" $.Values.redis.primary.extraFlags)) -}}
-    {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
+{{- $redisExtraFlags := default (list) $.Values.redis.extraFlags -}}
+{{- $redisHasNoEviction := false -}}
+{{- range $i, $f := $redisExtraFlags -}}
+  {{- if eq $f "noeviction" -}}
+    {{- if gt $i 0 -}}
+      {{- if eq (index $redisExtraFlags (sub $i 1)) "--maxmemory-policy" -}}
+        {{- $redisHasNoEviction = true -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- if and $.Values.redis.deploy (not $redisHasNoEviction) -}}
+    {{- fail "Langfuse requires valkey to be deployed with `--maxmemory-policy noeviction`. Set redis.extraFlags to include `[\"--maxmemory-policy\", \"noeviction\"]` to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not $.Values.redis.sentinel.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
@@ -79,7 +92,7 @@
 
 #   Event Upload
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.eventUpload.bucket)) -}}
@@ -89,7 +102,7 @@
 #   Batch Export
 {{- if $.Values.s3.batchExport.enabled -}}
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.batchExport.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
@@ -100,7 +113,7 @@
 #   Media Upload
 {{- if $.Values.s3.mediaUpload.enabled -}}
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.mediaUpload.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}
