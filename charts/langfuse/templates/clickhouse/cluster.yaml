@@ -30,20 +30,21 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+  {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity }}
   podTemplate:
-    spec:
-      {{- with .Values.clickhouse.cluster.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.clickhouse.cluster.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.clickhouse.cluster.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- with .Values.clickhouse.cluster.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.affinity }}
+    affinity:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
   settings:
     defaultUserPassword:
       secret:

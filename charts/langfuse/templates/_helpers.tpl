@@ -500,14 +500,9 @@ Return ClickHouse protocol (http or https)
       key: "password"
 {{- end }}
 {{- end }}
-{{- if not .Values.clickhouse.clusterEnabled }}
-{{/* User explicitly disabled cluster mode */}}
+{{- if or .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_CLUSTER_ENABLED
-  value: "false"
-{{- else if and .Values.clickhouse.deploy ($.Values.clickhouse.cluster.replicas | int | eq 1) }}
-{{/* Cluster enabled by default, but deploying single-replica ClickHouse */}}
-- name: CLICKHOUSE_CLUSTER_ENABLED
-  value: "false"
+  value: {{ .Values.clickhouse.cluster.enabled | quote }}
 {{- end }}
 {{- if or (hasKey .Values.clickhouse.migration "autoMigrate") .Values.clickhouse.deploy }}
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED

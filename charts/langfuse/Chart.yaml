@@ -19,11 +19,6 @@ dependencies:
     repository: https://groundhog2k.github.io/helm-charts/
     condition: postgresql.deploy
     alias: postgresql
-  - name: clickhouse-operator-helm
-    version: 0.0.4
-    repository: oci://ghcr.io/clickhouse
-    condition: clickhouseOperator.deploy
-    alias: clickhouseOperator
   - name: valkey
     version: 0.9.4
     repository: https://valkey-io.github.io/valkey-helm

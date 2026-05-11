@@ -25,18 +25,19 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+  {{- if or .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity }}
   podTemplate:
-    spec:
-      {{- with .Values.clickhouse.keeper.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.clickhouse.keeper.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.clickhouse.keeper.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- with .Values.clickhouse.keeper.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.affinity }}
+    affinity:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
 {{- end }}

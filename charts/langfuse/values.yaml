@@ -491,7 +491,7 @@ postgresql:
   image:
     # -- Postgres image. Defaults to the upstream Docker Hub image (Apache 2.0 / PostgreSQL license).
     repository: postgres
-    tag: "18-alpine"
+    tag: "18"
     pullPolicy: IfNotPresent
 
   # -- Number of replicas for the Postgres StatefulSet. Single-instance only — set to 0 to suspend.
@@ -765,20 +765,20 @@ clickhouse:
     # -- Whether to run automatic ClickHouse migrations on startup
     autoMigrate: true
 
-  # -- Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting.
-  # -- When `clickhouse.deploy: true` AND `cluster.replicas: 1`, this is ignored and forced to false.
-  clusterEnabled: true
-
   # ---------------------------------------------------------------------------
   # Sub-chart settings (rendered as ClickHouseCluster + KeeperCluster CRs by this chart)
   # ---------------------------------------------------------------------------
   cluster:
-    # -- Number of ClickHouse replicas. Set to 1 for a non-HA single-pod cluster (the default
-    # -- automatically forces `CLICKHOUSE_CLUSTER_ENABLED=false`). 2+ requires Keeper enabled.
+    # -- Whether to run ClickHouse commands ON CLUSTER. Controls the CLICKHOUSE_CLUSTER_ENABLED
+    # -- env var on web/worker. Defaults to true: the operator deploys a cluster (single- or
+    # -- multi-replica) and Langfuse uses ON CLUSTER DDL. Set to false only when pointing at an
+    # -- external non-clustered ClickHouse.
+    enabled: true
+    # -- Number of ClickHouse replicas. 1 is a valid non-HA single-pod cluster; 2+ requires Keeper enabled.
     replicas: 1
     image:
       repository: clickhouse/clickhouse-server
-      tag: "24.8"
+      tag: "26.3"
     storage:
       # -- Size of each ClickHouse pod's data PVC.
       size: 100Gi
@@ -810,7 +810,7 @@ clickhouse:
     replicas: 3
     image:
       repository: clickhouse/clickhouse-keeper
-      tag: "24.8"
+      tag: "26.3"
     storage:
       size: 10Gi
       className: ""
@@ -820,41 +820,6 @@ clickhouse:
     nodeSelector: {}
     tolerations: []
     affinity: {}
-
-# ClickHouse Operator (Upstream `ClickHouse/clickhouse-operator` v0.0.4 — alpha)
-# -- The operator's admission webhook requires cert-manager. cert-manager is bundled inside the
-# -- operator's sub-chart and gated on `certManager.install` below.
-clickhouseOperator:
-  # -- Install the upstream ClickHouse operator chart. Disable if your cluster already has it.
-  # -- The operator is cluster-scoped — only ONE instance should run per cluster.
-  deploy: true
-
-  # ---------------------------------------------------------------------------
-  # Sub-chart settings (clickhouse-operator-helm v0.0.4)
-  # ---------------------------------------------------------------------------
-  manager:
-    replicas: 1
-    image:
-      repository: ghcr.io/clickhouse/clickhouse-operator
-      pullPolicy: IfNotPresent
-    resources: {}
-  crd:
-    # -- Install the operator CRDs.
-    enable: true
-    # -- Keep CRDs on `helm uninstall`. Recommended to avoid losing CRs accidentally.
-    keep: true
-  certManager:
-    # -- Tell the operator to use cert-manager for its admission webhook.
-    enable: true
-    # -- Have this chart install cert-manager as a sub-sub-chart. Set to false if cert-manager
-    # -- is already installed in the cluster.
-    install: true
-  webhook:
-    enable: true
-  metrics:
-    enable: true
-  pdbManagement:
-    enable: true
 
 # S3 / Object Storage Configuration
 # -- Deploys SeaweedFS in `allInOne` mode (single pod combining master/volume/filer/S3 gateway)
@@ -1070,9 +1035,6 @@ s3:
       requests:
         cpu: 500m
         memory: 1Gi
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
 
 # Additional manifests
 extraManifests: []
