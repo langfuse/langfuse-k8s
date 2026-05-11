@@ -33,7 +33,10 @@ There is **no automatic data migration** from v1. To upgrade, dump v1 data, inst
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
 
-### Prerequisites (v2 only)
+### Prerequisites
+
+- **Helm `v3.16` or newer.** The bundled `seaweedfs` sub-chart uses the `fromToml` template function, which is only available in Helm 3.16+.
+- **Kubernetes `v1.28` or newer**, as required by the [ClickHouse operator](https://github.com/ClickHouse/clickhouse-operator).
 
 The chart renders `ClickHouseCluster` / `KeeperCluster` CRs and cert-manager `Certificate` / `Issuer` resources. Both CRD sets must already exist in the cluster before `helm install`. Install these **once per cluster**:
 
