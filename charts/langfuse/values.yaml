@@ -1,10 +1,5 @@
 # Langfuse Helm Chart Configuration
 
-global:
-  security:
-    # -- Allow insecure images to use bitnami legacy repository. Can be set to false if secure images are being used (Paid).
-    allowInsecureImages: true
-
 # -- Override the name for the selector labels, defaults to the chart name
 nameOverride: ""
 
@@ -439,8 +434,11 @@ langfuse:
         key: ""
 
 # PostgreSQL Configuration
+# -- Deploys a single-instance PostgreSQL via the groundhog2k/postgres sub-chart (image `docker.io/postgres`).
+# -- For HA / managed Postgres, set `postgresql.deploy: false` and configure `host` + auth fields below.
 postgresql:
-  # -- Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false
+  # -- Enable PostgreSQL deployment via the bundled groundhog2k/postgres sub-chart.
+  # -- Set to false to use an external (managed) Postgres server.
   deploy: true
 
   # -- PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name.
@@ -456,25 +454,27 @@ postgresql:
   # -- If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions.
   shadowDatabaseUrl: ""
 
-  image:
-    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
-    repository: bitnamilegacy/postgresql
-    # image: docker.io/bitnami/postgresql:17.3.0-debian-12-r1
-
-  # Authentication configuration
+  # Authentication configuration (Langfuse-facing — these values are read by the chart's helpers
+  # to build DATABASE_USERNAME / DATABASE_PASSWORD / DATABASE_NAME for the langfuse pods).
   auth:
-    # -- Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically.
-    username: postgres
-    # -- Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically.
+    # -- Username Langfuse uses to connect to PostgreSQL. When `postgresql.deploy: true`, the
+    # -- groundhog2k sub-chart creates this user automatically (see `userDatabase` below).
+    username: langfuse
+    # -- Password Langfuse uses to connect to PostgreSQL. When `postgresql.deploy: true`,
+    # -- this password is propagated to the sub-chart via this chart's auto-generated Secret.
+    # -- Leave empty to have the chart generate one and store it in a release-managed Secret.
     password: ""
     # -- If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
-    # -- The keys in the existing secret that contain the passwords. If using the default `postgres` user, both `userPasswordKey` and `adminPasswordKey` must be provided.
+    # -- The keys in the existing secret that contain the passwords.
+    # -- `userPasswordKey` is the password used by Langfuse; `adminPasswordKey` is only required
+    # -- when `postgresql.deploy: true` (used as the Postgres superuser password by the sub-chart).
     secretKeys:
       userPasswordKey: password
-      adminPasswordKey: password
-    # -- Database name to use for Langfuse.
-    database: postgres_langfuse
+      adminPasswordKey: postgres-password
+    # -- Database name to use for Langfuse. When `postgresql.deploy: true`, the sub-chart creates this
+    # -- database automatically and grants ownership to `auth.username`.
+    database: langfuse
     # -- Additional database connection arguments
     args: ""
 
@@ -483,16 +483,101 @@ postgresql:
     # -- Whether to run automatic migrations on startup
     autoMigrate: true
 
-  # Subchart specific settings
-  architecture: standalone
-  primary:
-    service:
-      ports:
-        postgresql: 5432
+  # ---------------------------------------------------------------------------
+  # Sub-chart settings (groundhog2k/postgres)
+  # Anything under this section is passed straight through to the sub-chart.
+  # See https://artifacthub.io/packages/helm/groundhog2k/postgres for the full schema.
+  # ---------------------------------------------------------------------------
+  image:
+    # -- Postgres image. Defaults to the upstream Docker Hub image (Apache 2.0 / PostgreSQL license).
+    repository: postgres
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+
+  # -- Number of replicas for the Postgres StatefulSet. Single-instance only — set to 0 to suspend.
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    # -- Port the Postgres Service exposes. Must match `postgresql.port` (or the langfuse default 5432).
+    port: 5432
+
+  # -- PVC settings for the Postgres data volume.
+  storage:
+    # Size of the data PVC. Adjust based on expected trace + project volume.
+    requestedSize: 20Gi
+    # -- StorageClass name. Leave empty to use the cluster's default.
+    className: ""
+    # -- Keep the PVC after the release is uninstalled.
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Retain
+      whenScaled: Retain
+
+  # -- Postgres server settings consumed by the groundhog2k chart. The chart's helpers wire
+  # -- the chart-managed Secret into these fields automatically when `auth.password` is set
+  # -- (or `existingSecret` is provided), so users typically don't edit `settings` directly.
+  settings:
+    # -- Postgres superuser password (for the built-in `postgres` role). Auto-derived from the
+    # -- chart-managed Secret unless `existingSecret` is supplied.
+    superuserPassword: {}
+    # -- Reference an existing Secret holding the superuser password. Defaults to the
+    # -- chart-managed Secret (`<release>-postgresql-auth`) — assumes fullname "langfuse".
+    # -- Override (or set `fullnameOverride: langfuse`) if your release name differs.
+    # -- Required keys: POSTGRES_USER, POSTGRES_PASSWORD.
+    existingSecret: "langfuse-postgresql-auth"
+
+  # -- Bootstrap a Langfuse-owned database + user on first start.
+  # -- The `name`, `user`, and `password` fields are maps in groundhog2k's schema (each is
+  # -- `{ secretKey: ..., value: ... }`). When `existingSecret` is set (the default below),
+  # -- groundhog2k reads the value from that Secret using the field's `secretKey`, falling
+  # -- back to a default key matching the env var name (`POSTGRES_DB`, `USERDB_USER`,
+  # -- `USERDB_PASSWORD`). The chart-managed Secret writes those exact keys, so empty maps
+  # -- here just opt into the defaults. The actual database name + user are governed by
+  # -- `auth.database` and `auth.username` above (those values populate the Secret).
+  userDatabase:
+    name: {}
+    user: {}
+    password: {}
+    # -- Reference an existing Secret holding the userDatabase credentials. Defaults to the
+    # -- chart-managed Secret (`<release>-postgresql-auth`) — assumes fullname "langfuse".
+    # -- Override (or set `fullnameOverride: langfuse`) if your release name differs.
+    # -- Required keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB.
+    existingSecret: "langfuse-postgresql-auth"
+
+  # -- Resource limits/requests for the Postgres pod. Tune for your workload.
+  resources: {}
+    # limits:
+    #   cpu: 2000m
+    #   memory: 2Gi
+    # requests:
+    #   cpu: 500m
+    #   memory: 512Mi
+
+  # -- Node selector / tolerations / affinity for the Postgres pod.
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # -- Pod security context.
+  podSecurityContext:
+    fsGroup: 999
+  # -- Container security context.
+  securityContext:
+    runAsUser: 999
+    runAsGroup: 999
+
+  # -- Liveness / readiness probe customisations (see groundhog2k/postgres docs).
+  livenessProbe: {}
+  readinessProbe: {}
+  startupProbe: {}
 
 # Key-Value Store / Redis Configuration
+# -- Deploys Valkey via the official valkey-io/valkey sub-chart (image `docker.io/valkey/valkey`).
+# -- For HA, point Langfuse at an external Redis/Valkey cluster (e.g. an in-cluster Redis operator
+# -- or a managed service such as ElastiCache).
 redis:
-  # -- Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false.
+  # -- Enable Valkey deployment via the bundled valkey-io/valkey sub-chart.
+  # -- Set to false to use an existing Redis or Valkey deployment.
   deploy: true
 
   # -- Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name.
@@ -500,36 +585,60 @@ redis:
   # -- Redis port to connect to.
   port: 6379
 
-  image:
-    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
-    repository: bitnamilegacy/valkey
-    # image: docker.io/bitnami/valkey:8.0.2-debian-12-r2
-
   # Redis TLS configuration
   tls:
-    # -- Set to `true` to enable TLS/SSL encrypted connection to the Redis server
+    # -- Set to `true` to enable TLS/SSL encrypted connection to the Redis server.
+    # -- When `redis.deploy: true`, this also enables TLS termination on the Valkey sub-chart.
     enabled: false
-    # -- Path to the CA certificate file for TLS verification
+    # -- Path to the CA certificate file for TLS verification (mounted into Langfuse pods).
     caPath: ""
-    # -- Path to the client certificate file for mutual TLS authentication
+    # -- Path to the client certificate file for mutual TLS authentication.
     certPath: ""
-    # -- Path to the client private key file for mutual TLS authentication
+    # -- Path to the client private key file for mutual TLS authentication.
     keyPath: ""
 
-  # Authentication configuration
+  # Authentication configuration. This block is dual-purpose:
+  #   1. Langfuse-facing — `username`, `password`, `existingSecret`, `existingSecretPasswordKey`,
+  #      `database` are consumed by the chart helpers to build REDIS_PASSWORD and the connection
+  #      string for the langfuse pods.
+  #   2. Sub-chart pass-through — `enabled`, `usersExistingSecret`, `aclUsers`, `aclConfig` are
+  #      consumed by the bundled valkey-io/valkey sub-chart (when `redis.deploy: true`). The
+  #      defaults below enable ACL auth, point Valkey at the chart-managed Secret
+  #      (`<release>-redis-auth`, generated by templates/redis-secret.yaml), and grant the
+  #      `default` user full permissions for the Langfuse application.
   auth:
+    # -- Enable ACL-based authentication on the bundled Valkey sub-chart.
+    enabled: true
     # -- Username for Redis authentication. Set to null to omit username from connection string entirely.
-    # In case `redis.deploy` is set to `true`, the user will be created automatically.
+    # -- When `redis.deploy: true`, an ACL user with this name is created automatically.
     username: "default"
-    # -- Password for Redis authentication. Set to null to disable authentication (for passwordless Redis like AWS ElastiCache without auth).
-    # Use URL-encoded passwords or avoid special characters in the password.
+    # -- Password for Redis authentication. Set to null to disable authentication.
+    # -- Use URL-encoded passwords or avoid special characters.
+    # -- When `redis.deploy: true`, this password is wired into the Valkey sub-chart's ACL config
+    # -- via the chart-managed Secret `<release>-redis-auth`. Leave empty to have the chart
+    # -- generate one (idempotent across upgrades via lookup).
     password: ""
-    # -- If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret).
+    # -- If you want to use an existing secret for the redis password, set the name of the secret
+    # -- here. When set, `redis.auth.password` is ignored and the chart-managed Secret is not
+    # -- created. The Langfuse helper reads the password from this Secret using
+    # -- `existingSecretPasswordKey`.
     existingSecret: ""
     # -- The key in the existing secret that contains the password.
     existingSecretPasswordKey: ""
 
     database: 0
+
+    # -- Pass-through to valkey-helm: Secret containing one key per ACL user (key name == username).
+    # -- The default value assumes the release name resolves to fullname "langfuse" — set
+    # -- `fullnameOverride: langfuse` if your release name differs, or override here.
+    usersExistingSecret: "langfuse-redis-auth"
+    # -- Pass-through to valkey-helm: ACL users to create. Must include "default" when
+    # -- `enabled: true` (otherwise valkey rejects the config). `~* &* +@all` grants full access.
+    aclUsers:
+      default:
+        permissions: "~* &* +@all"
+    # -- Pass-through to valkey-helm: extra inline ACL config appended after `aclUsers`.
+    aclConfig: ""
 
   # Redis Cluster configuration
   cluster:
@@ -555,43 +664,92 @@ redis:
     # -- The key in the existing secret that contains the sentinel password.
     existingSecretPasswordKey: ""
 
-  # Subchart specific settings
-  architecture: standalone
-  primary:
-    # -- Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`.
-    extraFlags:
-      - "--maxmemory-policy noeviction"
+  # ---------------------------------------------------------------------------
+  # Sub-chart settings (valkey-io/valkey)
+  # Anything under this section is passed straight through to the sub-chart.
+  # See https://github.com/valkey-io/valkey-helm for the full schema.
+  # ---------------------------------------------------------------------------
+  image:
+    registry: docker.io
+    repository: valkey/valkey
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    # -- Port the primary Valkey Service exposes.
+    port: 6379
+
+  # -- Replication configuration. Default: standalone (no replicas). Set `enabled: true` and bump
+  # -- `replicas` for a primary/replica topology — the Langfuse helpers always target the primary.
+  replica:
+    enabled: false
+    replicas: 0
+    persistence:
+      size: 8Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    service:
+      enabled: true
+      type: ClusterIP
+      port: 6379
+
+  # -- Persistence for the primary node.
+  dataStorage:
+    enabled: true
+    requestedSize: 8Gi
+    className: ""
+    accessModes:
+      - ReadWriteOnce
+    keepPvc: false
+
+  # -- Set the maxmemory eviction policy. Langfuse requires `noeviction` to avoid losing job data.
+  extraFlags:
+    - "--maxmemory-policy"
+    - "noeviction"
+
+  # -- Resource limits/requests for the Valkey pods.
+  resources: {}
+
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+    runAsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  metrics:
+    # -- Enable the bundled Valkey Prometheus exporter sidecar.
+    enabled: false
 
 # ClickHouse Configuration
+# -- Deploys ClickHouse via the upstream ClickHouse/clickhouse-operator (apiVersion
+# -- `clickhouse.com/v1alpha1`). The operator is alpha-quality at the time of writing — review
+# -- release notes before upgrading and pin the operator chart version explicitly.
 clickhouse:
-  # -- Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false
+  # -- Enable a `ClickHouseCluster` + `KeeperCluster` rendered by this chart.
+  # -- Set to false to use an external ClickHouse server.
   deploy: true
 
-  # -- ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name.
+  # -- ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically
+  # -- based on the cluster CR's headless Service.
   host: ""
   # -- ClickHouse HTTP port to connect to.
   httpPort: 8123
-  # -- ClickHouse native port to connect to.
+  # -- ClickHouse native (TCP) port to connect to.
   nativePort: 9000
   # -- ClickHouse database to use.
   database: default
 
-  image:
-    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
-    repository: bitnamilegacy/clickhouse
-    #  image: docker.io/bitnami/clickhouse:25.2.1-debian-12-r0
-
-  zookeeper:
-    image:
-      # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
-      repository: bitnamilegacy/zookeeper
-      # image: docker.io/bitnami/zookeeper:3.9.3-debian-12-r8
-
-  # Authentication configuration
+  # Authentication configuration (Langfuse-facing — these values are read by the chart's helpers
+  # to build CLICKHOUSE_USER / CLICKHOUSE_PASSWORD for the langfuse pods).
   auth:
     # -- Username for the ClickHouse user.
     username: default
-    # -- Password for the ClickHouse user.
+    # -- Password for the ClickHouse user. When `clickhouse.deploy: true`, the chart creates a
+    # -- ClickHouse Secret holding the SHA256 hash and references it from the cluster CR.
+    # -- Leave empty to have the chart generate one.
     password: ""
     # -- If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret).
     existingSecret: ""
@@ -608,18 +766,103 @@ clickhouse:
     autoMigrate: true
 
   # -- Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting.
+  # -- When `clickhouse.deploy: true` AND `cluster.replicas: 1`, this is ignored and forced to false.
   clusterEnabled: true
 
-  # -- Subchart specific settings
-  shards: 1 # Fixed - Langfuse does not support sharding
-  # -- Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment.
-  replicaCount: 3
-  # -- The resources preset to use for the ClickHouse cluster.
-  resourcesPreset: 2xlarge
+  # ---------------------------------------------------------------------------
+  # Sub-chart settings (rendered as ClickHouseCluster + KeeperCluster CRs by this chart)
+  # ---------------------------------------------------------------------------
+  cluster:
+    # -- Number of ClickHouse replicas. Set to 1 for a non-HA single-pod cluster (the default
+    # -- automatically forces `CLICKHOUSE_CLUSTER_ENABLED=false`). 2+ requires Keeper enabled.
+    replicas: 1
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "24.8"
+    storage:
+      # -- Size of each ClickHouse pod's data PVC.
+      size: 100Gi
+      # -- StorageClass name. Leave empty to use the cluster's default.
+      className: ""
+      accessModes:
+        - ReadWriteOnce
+    # -- Resource limits/requests for the ClickHouse pods.
+    resources: {}
+      # limits:
+      #   cpu: 4
+      #   memory: 8Gi
+      # requests:
+      #   cpu: 1
+      #   memory: 2Gi
+    # -- Pod scheduling.
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    # -- Extra ClickHouse server settings (under `<clickhouse>` config XML).
+    settings: {}
+    # -- Extra ClickHouse profile settings (mounted into `users.xml`).
+    profileSettings: {}
 
-# S3/MinIO Configuration
+  keeper:
+    # -- Deploy a `KeeperCluster` CR alongside the ClickHouseCluster. Required for replicated mode.
+    enabled: true
+    # -- Keeper replica count. Must be odd (1, 3, 5). Use 3 for production.
+    replicas: 3
+    image:
+      repository: clickhouse/clickhouse-keeper
+      tag: "24.8"
+    storage:
+      size: 10Gi
+      className: ""
+      accessModes:
+        - ReadWriteOnce
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# ClickHouse Operator (Upstream `ClickHouse/clickhouse-operator` v0.0.4 — alpha)
+# -- The operator's admission webhook requires cert-manager. cert-manager is bundled inside the
+# -- operator's sub-chart and gated on `certManager.install` below.
+clickhouseOperator:
+  # -- Install the upstream ClickHouse operator chart. Disable if your cluster already has it.
+  # -- The operator is cluster-scoped — only ONE instance should run per cluster.
+  deploy: true
+
+  # ---------------------------------------------------------------------------
+  # Sub-chart settings (clickhouse-operator-helm v0.0.4)
+  # ---------------------------------------------------------------------------
+  manager:
+    replicas: 1
+    image:
+      repository: ghcr.io/clickhouse/clickhouse-operator
+      pullPolicy: IfNotPresent
+    resources: {}
+  crd:
+    # -- Install the operator CRDs.
+    enable: true
+    # -- Keep CRDs on `helm uninstall`. Recommended to avoid losing CRs accidentally.
+    keep: true
+  certManager:
+    # -- Tell the operator to use cert-manager for its admission webhook.
+    enable: true
+    # -- Have this chart install cert-manager as a sub-sub-chart. Set to false if cert-manager
+    # -- is already installed in the cluster.
+    install: true
+  webhook:
+    enable: true
+  metrics:
+    enable: true
+  pdbManagement:
+    enable: true
+
+# S3 / Object Storage Configuration
+# -- Deploys SeaweedFS in `allInOne` mode (single pod combining master/volume/filer/S3 gateway)
+# -- via the official seaweedfs/seaweedfs sub-chart. Image: `chrislusf/seaweedfs` (Apache 2.0).
+# -- For production, point Langfuse at S3 / Azure Blob / GCS instead by setting `s3.deploy: false`.
 s3:
-  # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.
+  # -- Enable SeaweedFS deployment via the bundled seaweedfs sub-chart.
+  # -- Set to false to use an external S3-compatible BlobStorage (S3 / GCS / Azure Blob / etc.).
   deploy: true
 
   # -- Storage provider to use. Options: s3 (default), azure, gcs
@@ -628,18 +871,15 @@ s3:
   # -- When set to 's3', uses S3-compatible interface (default behavior)
   storageProvider: "s3"
 
-  image:
-    # -- Overwrite default repository of helm chart to point to non-paid bitnami images.
-    repository: bitnamilegacy/minio
-    # image: docker.io/bitnami/minio:2024.12.18-debian-12-r1
-
   # -- S3 bucket to use for all uploads. Can be overridden per upload type.
-  bucket: ""
+  # -- When `s3.deploy: true`, this bucket is auto-created on the SeaweedFS S3 gateway.
+  bucket: "langfuse"
   # -- S3 region to use for all uploads. Can be overridden per upload type.
   region: "auto"
   # -- S3 endpoint to use for all uploads. Can be overridden per upload type.
+  # -- When `s3.deploy: true`, this is set automatically to the SeaweedFS allInOne S3 Service.
   endpoint: ""
-  # -- Whether to force path style on requests. Required for MinIO. Can be overridden per upload type.
+  # -- Whether to force path style on requests. Required for SeaweedFS / MinIO. Can be overridden per upload type.
   forcePathStyle: true
   # -- S3 accessKeyId to use for all uploads. Can be overridden per upload type.
   accessKeyId:
@@ -683,7 +923,7 @@ s3:
     region: ""
     # -- S3 endpoint to use for event uploads.
     endpoint: ""
-    # -- Whether to force path style on requests. Required for MinIO.
+    # -- Whether to force path style on requests. Required for SeaweedFS / MinIO.
     forcePathStyle: Null
     # -- S3 accessKeyId to use for event uploads.
     accessKeyId:
@@ -710,7 +950,7 @@ s3:
     region: ""
     # -- S3 endpoint to use for batch exports.
     endpoint: ""
-    # -- Whether to force path style on requests. Required for MinIO.
+    # -- Whether to force path style on requests. Required for SeaweedFS / MinIO.
     forcePathStyle: Null
     # -- S3 accessKeyId to use for batch exports.
     accessKeyId:
@@ -737,7 +977,7 @@ s3:
     region: ""
     # -- S3 endpoint to use for media uploads.
     endpoint: ""
-    # -- Whether to force path style on requests. Required for MinIO.
+    # -- Whether to force path style on requests. Required for SeaweedFS / MinIO.
     forcePathStyle: Null
     # -- S3 accessKeyId to use for media uploads.
     accessKeyId:
@@ -756,19 +996,83 @@ s3:
     # -- Expiry time for download URLs. Defaults to 1 hour.
     downloadUrlExpirySeconds: 3600
 
-  # MinIO subchart specific settings
-  defaultBuckets: langfuse
+  # Authentication for the bundled SeaweedFS S3 gateway. The chart wires these credentials
+  # into both Langfuse (as LANGFUSE_S3_*_ACCESS_KEY_ID / *_SECRET_ACCESS_KEY) and into a
+  # generated SeaweedFS IAM config Secret consumed by the allInOne pod.
   auth:
-    # -- root username
-    rootUser: minio
-    # -- Password for MinIO root user
+    # -- Access key ID Langfuse uses to authenticate against the SeaweedFS S3 gateway.
+    rootUser: "langfuse"
+    # -- Secret access key Langfuse uses to authenticate against the SeaweedFS S3 gateway.
+    # -- Leave empty to have the chart generate one.
     rootPassword: ""
-    # -- If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootPassword` will be ignored and picked up from this secret).
+    # -- Reference an existing Secret holding the access/secret key. The keys are read using
+    # -- `rootUserSecretKey` (default: access-key) and `rootPasswordSecretKey` (default: secret-key).
     existingSecret: ""
-    # -- Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret`
+    # -- Key in the existing secret that contains the S3 access key ID.
     rootUserSecretKey: ""
-    # -- Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret`
+    # -- Key in the existing secret that contains the S3 secret access key.
     rootPasswordSecretKey: ""
+
+  # -- Default bucket name list for legacy compatibility. The first entry is used as fallback
+  # -- when neither `s3.bucket` nor a per-upload `bucket` is set.
+  defaultBuckets: "langfuse"
+
+  # ---------------------------------------------------------------------------
+  # Sub-chart settings (seaweedfs/seaweedfs)
+  # In `allInOne` mode, the dedicated master/volume/filer/s3 components are disabled and
+  # replaced by a single combined pod.
+  # ---------------------------------------------------------------------------
+  master:
+    enabled: false
+  volume:
+    enabled: false
+  filer:
+    enabled: false
+  s3:
+    enabled: false
+
+  allInOne:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: chrislusf/seaweedfs
+      tag: "3.95"
+      pullPolicy: IfNotPresent
+    s3:
+      enabled: true
+      port: 8333
+      enableAuth: true
+      # -- Reference a chart-managed Secret containing the SeaweedFS IAM config JSON.
+      # -- The chart auto-generates this Secret (`<release>-s3-auth`) from
+      # -- `s3.auth.rootUser` / `rootPassword` when `s3.deploy: true`. The default value
+      # -- assumes the release name resolves to fullname "langfuse" — set
+      # -- `fullnameOverride: langfuse` if your release name differs, or override here.
+      existingConfigSecret: "langfuse-s3-auth"
+      # -- Buckets to create on first start. The chart appends `s3.bucket` automatically.
+      createBuckets:
+        - name: langfuse
+      createBucketsHook:
+        resources: {}
+    data:
+      # -- Persistence for the SeaweedFS data directory.
+      type: persistentVolumeClaim
+      size: 50Gi
+      storageClass: ""
+      accessModes:
+        - ReadWriteOnce
+    service:
+      type: ClusterIP
+      internalTrafficPolicy: Cluster
+    resources:
+      limits:
+        cpu: 2
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
 
 # Additional manifests
 extraManifests: []

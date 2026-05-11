@@ -79,7 +79,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-%s-primary" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
+{{- printf "%s-%s" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
 {{- end }}
 {{- end }}
 
@@ -96,7 +96,7 @@ Return ClickHouse hostname (without protocol)
 {{- .Values.clickhouse.host -}}
 {{- end -}}
 {{- else if .Values.clickhouse.deploy }}
-{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- printf "%s-clickhouse-headless" (include "langfuse.fullname" .) -}}
 {{- end }}
 {{- end }}
 
@@ -107,7 +107,7 @@ Return S3/MinIO endpoint -- if not set uses auto-discovery
 {{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
 {{- .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint }}
 {{- else if .Values.s3.deploy }}
-{{- printf "http://%s-%s:9000" (include "langfuse.fullname" .) (default "s3" .Values.s3.nameOverride) -}}
+{{- printf "http://%s-%s-all-in-one:8333" (include "langfuse.fullname" .) (default "s3" .Values.s3.nameOverride) -}}
 {{- else }}
 {{- end }}
 {{- end }}
@@ -201,6 +201,11 @@ Get value of a specific environment variable from additionalEnv if it exists
     secretKeyRef:
       name: {{ .Values.postgresql.auth.existingSecret }}
       key: {{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
+{{- else if .Values.postgresql.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-postgresql-auth" (include "langfuse.fullname" .) | quote }}
+      key: USERDB_PASSWORD
 {{- else }}
   value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
 {{- end }}
@@ -302,13 +307,18 @@ Get value of a specific environment variable from additionalEnv if it exists
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.redisEnv" -}}
-{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password .Values.redis.deploy }}
 - name: REDIS_PASSWORD
 {{- if .Values.redis.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.redis.auth.existingSecret }}
       key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
+{{- else if .Values.redis.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-redis-auth" (include "langfuse.fullname" .) | quote }}
+      key: {{ .Values.redis.auth.username | quote }}
 {{- else }}
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
@@ -389,7 +399,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-{{- $hasPassword := or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+{{- $hasPassword := or .Values.redis.auth.existingSecret .Values.redis.auth.password .Values.redis.deploy }}
 {{- $hasUsername := .Values.redis.auth.username }}
 {{- $authPart := "" }}
 {{- if and $hasUsername $hasPassword }}
@@ -484,14 +494,17 @@ Return ClickHouse protocol (http or https)
 {{- else if .Values.clickhouse.auth.password }}
   value: {{ .Values.clickhouse.auth.password | quote }}
 {{- else if .Values.clickhouse.deploy }}
-  value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-clickhouse-auth" (include "langfuse.fullname" .) | quote }}
+      key: "password"
 {{- end }}
 {{- end }}
 {{- if not .Values.clickhouse.clusterEnabled }}
 {{/* User explicitly disabled cluster mode */}}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
-{{- else if and .Values.clickhouse.deploy ($.Values.clickhouse.replicaCount | int | eq 1) }}
+{{- else if and .Values.clickhouse.deploy ($.Values.clickhouse.cluster.replicas | int | eq 1) }}
 {{/* Cluster enabled by default, but deploying single-replica ClickHouse */}}
 - name: CLICKHOUSE_CLUSTER_ENABLED
   value: "false"
@@ -565,7 +578,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -581,7 +597,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -622,7 +641,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -638,7 +660,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -677,7 +702,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -693,7 +721,10 @@ Return ClickHouse protocol (http or https)
       name: {{ .Values.s3.auth.existingSecret }}
       key: {{ .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
