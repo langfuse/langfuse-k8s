@@ -5,23 +5,29 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-  checks: write
-  pull-requests: write
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     name: Run Helm Unit Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Read repository contents for checkout.
+      checks: write # Publish unit test check results.
+      pull-requests: write # Comment with unit test results on pull requests.
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
         with:
           version: v3.13.2
 
@@ -37,7 +43,7 @@ jobs:
           helm unittest charts/langfuse/ --color --output-type JUnit --output-file test-results.xml
 
       - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
         if: always()
         with:
           files: test-results.xml
