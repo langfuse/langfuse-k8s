@@ -1,0 +1,26 @@
+suite: test hpa configuration
+templates:
+  - web/hpa.yaml
+  - worker/hpa.yaml
+tests:
+  - it: should render HPA annotations for web and worker
+    values:
+      - ../values.lint.yaml
+      - values/hpa-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/compare-options"]
+          value: IgnoreExtraneous
+        template: web/hpa.yaml
+      - equal:
+          path: metadata.annotations["example.com/web"]
+          value: enabled
+        template: web/hpa.yaml
+      - equal:
+          path: metadata.annotations["argocd.argoproj.io/compare-options"]
+          value: IgnoreExtraneous
+        template: worker/hpa.yaml
+      - equal:
+          path: metadata.annotations["example.com/worker"]
+          value: enabled
+        template: worker/hpa.yaml
