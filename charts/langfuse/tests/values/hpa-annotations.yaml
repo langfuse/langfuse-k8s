@@ -1,0 +1,13 @@
+langfuse:
+  web:
+    hpa:
+      enabled: true
+      annotations:
+        argocd.argoproj.io/compare-options: IgnoreExtraneous
+        example.com/web: enabled
+  worker:
+    hpa:
+      enabled: true
+      annotations:
+        argocd.argoproj.io/compare-options: IgnoreExtraneous
+        example.com/worker: enabled

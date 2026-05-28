@@ -253,6 +253,8 @@ langfuse:
       # -- Set to `true` to enable HPA for the langfuse web pods
       # Note: When both KEDA and HPA are enabled, the deployment will fail.
       enabled: false
+      # -- Annotations for the langfuse web HPA
+      annotations: {}
       # -- The minimum number of replicas to use for the langfuse web pods
       minReplicas: 1
       # -- The maximum number of replicas to use for the langfuse web pods
@@ -385,6 +387,8 @@ langfuse:
       # -- Set to `true` to enable HPA for the langfuse worker pods
       # Note: When both KEDA and HPA are enabled, the deployment will fail.
       enabled: false
+      # -- Annotations for the langfuse worker HPA
+      annotations: {}
       # -- The minimum number of replicas to use for the langfuse worker pods
       minReplicas: 1
       # -- The maximum number of replicas to use for the langfuse worker pods
