@@ -42,6 +42,10 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.langfuse.worker.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.langfuse.worker.hostAliases | nindent 8 }}
+      {{- end }}
       {{- with (.Values.langfuse.worker.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
