@@ -163,6 +163,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.deployment.additionalLabels | object | `{}` | Additional labels for the worker deployment |
 | langfuse.worker.deployment.annotations | object | `{}` | Annotations for the worker deployment |
 | langfuse.worker.deployment.strategy | object | `{}` | Deployment strategy for the worker deployment. Overrides the global deployment strategy |
+| langfuse.worker.hostAliases | list | `[]` | Adding records to /etc/hosts in the worker pod's network. |
 | langfuse.worker.hpa.annotations | object | `{}` | Annotations for the langfuse worker HPA |
 | langfuse.worker.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
 | langfuse.worker.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the langfuse worker pods |
