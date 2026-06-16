@@ -318,6 +318,8 @@ langfuse:
 
   # Worker deployment configuration
   worker:
+    # -- Adding records to /etc/hosts in the worker pod's network.
+    hostAliases: []
     image:
       # -- The image repository to use for the langfuse worker pods
       repository: langfuse/langfuse-worker
