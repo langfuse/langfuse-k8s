@@ -93,6 +93,17 @@ spec:
             - name: http
               containerPort: {{ .Values.langfuse.web.service.port }}
               protocol: TCP
+          {{- if .Values.langfuse.web.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.langfuse.web.startupProbe.path | default "/api/public/health" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.web.startupProbe.initialDelaySeconds | default 0 }}
+            periodSeconds: {{ .Values.langfuse.web.startupProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.web.startupProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.web.startupProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.web.startupProbe.failureThreshold | default 30 }}
+          {{- end }}
           livenessProbe:
             httpGet:
               path: {{ .Values.langfuse.web.livenessProbe.path | default "/api/public/health" }}

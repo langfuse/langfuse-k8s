@@ -307,6 +307,23 @@ langfuse:
       # -- Success threshold for readinessProbe.
       successThreshold: 1
 
+    # Startup probe configuration for the web deployment
+    startupProbe:
+      # -- Set to `true` to enable the startupProbe for the langfuse web pods.
+      enabled: false
+      # -- Path to check for startup.
+      path: "/api/public/health"
+      # -- Initial delay seconds for startupProbe.
+      initialDelaySeconds: 0
+      # -- Period seconds for startupProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for startupProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for startupProbe. With the default periodSeconds this allows ~5 minutes for startup.
+      failureThreshold: 30
+      # -- Success threshold for startupProbe.
+      successThreshold: 1
+
     # Pod Disruption Budget configuration for the web deployment
     pdb:
       # -- Set to `true` to create a Pod Disruption Budget for the langfuse web pods
@@ -431,6 +448,21 @@ langfuse:
       # -- Failure threshold for livenessProbe.
       failureThreshold: 3
       # -- Success threshold for livenessProbe.
+      successThreshold: 1
+
+    # Startup probe configuration for the worker deployment
+    startupProbe:
+      # -- Set to `true` to enable the startupProbe for the langfuse worker pods.
+      enabled: false
+      # -- Initial delay seconds for startupProbe.
+      initialDelaySeconds: 0
+      # -- Period seconds for startupProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for startupProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for startupProbe. With the default periodSeconds this allows ~5 minutes for startup.
+      failureThreshold: 30
+      # -- Success threshold for startupProbe.
       successThreshold: 1
 
   # NextAuth configuration

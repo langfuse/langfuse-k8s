@@ -1,0 +1,47 @@
+suite: test startupProbe configuration
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should not render a startupProbe by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+        template: worker/deployment.yaml
+
+  - it: should render the web startupProbe when enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.web.startupProbe.enabled: true
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].startupProbe
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /api/public/health
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 30
+        template: web/deployment.yaml
+
+  - it: should render the worker startupProbe when enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.worker.startupProbe.enabled: true
+    asserts:
+      - exists:
+          path: spec.template.spec.containers[0].startupProbe
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /api/health
+        template: worker/deployment.yaml

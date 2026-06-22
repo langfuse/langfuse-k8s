@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.35](https://img.shields.io/badge/Version-1.5.35-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.185.0](https://img.shields.io/badge/AppVersion-3.185.0-informational?style=flat-square)
+![Version: 1.6.0](https://img.shields.io/badge/Version-1.6.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.185.0](https://img.shields.io/badge/AppVersion-3.185.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -155,6 +155,13 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
+| langfuse.web.startupProbe.enabled | bool | `false` | Set to `true` to enable the startupProbe for the langfuse web pods. |
+| langfuse.web.startupProbe.failureThreshold | int | `30` | Failure threshold for startupProbe. With the default periodSeconds this allows ~5 minutes for startup. |
+| langfuse.web.startupProbe.initialDelaySeconds | int | `0` | Initial delay seconds for startupProbe. |
+| langfuse.web.startupProbe.path | string | `"/api/public/health"` | Path to check for startup. |
+| langfuse.web.startupProbe.periodSeconds | int | `10` | Period seconds for startupProbe. |
+| langfuse.web.startupProbe.successThreshold | int | `1` | Success threshold for startupProbe. |
+| langfuse.web.startupProbe.timeoutSeconds | int | `5` | Timeout seconds for startupProbe. |
 | langfuse.web.vpa.controlledResources | list | `[]` | The resources to control for the langfuse web pods |
 | langfuse.web.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse web pods |
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
@@ -201,6 +208,12 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.startupProbe.enabled | bool | `false` | Set to `true` to enable the startupProbe for the langfuse worker pods. |
+| langfuse.worker.startupProbe.failureThreshold | int | `30` | Failure threshold for startupProbe. With the default periodSeconds this allows ~5 minutes for startup. |
+| langfuse.worker.startupProbe.initialDelaySeconds | int | `0` | Initial delay seconds for startupProbe. |
+| langfuse.worker.startupProbe.periodSeconds | int | `10` | Period seconds for startupProbe. |
+| langfuse.worker.startupProbe.successThreshold | int | `1` | Success threshold for startupProbe. |
+| langfuse.worker.startupProbe.timeoutSeconds | int | `5` | Timeout seconds for startupProbe. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |
