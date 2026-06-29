@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.36](https://img.shields.io/badge/Version-1.5.36-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.194.1](https://img.shields.io/badge/AppVersion-3.194.1-informational?style=flat-square)
+![Version: 1.5.37](https://img.shields.io/badge/Version-1.5.37-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.201.1](https://img.shields.io/badge/AppVersion-3.201.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
