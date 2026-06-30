@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
@@ -29,39 +29,29 @@ jobs:
         id: current-version
         run: |
           CURRENT_VERSION=$(grep 'appVersion:' charts/langfuse/Chart.yaml | cut -d '"' -f 2)
-          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT_VERSION" >> "$GITHUB_OUTPUT"
           echo "Current Langfuse version: $CURRENT_VERSION"
 
       - name: Get latest Langfuse release
         id: latest-version
         run: |
           LATEST_VERSION=$(curl -s https://api.github.com/repos/langfuse/langfuse/releases/latest | jq -r '.tag_name | ltrimstr("v")')
-          echo "latest=$LATEST_VERSION" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
           echo "Latest Langfuse version: $LATEST_VERSION"
 
       - name: Compare versions
         id: version-check
         run: |
           if [ "$CURRENT_VERSION" != "$LATEST_VERSION" ]; then
-            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "needs_update=true" >> "$GITHUB_OUTPUT"
             echo "New version available: $LATEST_VERSION"
           else
-            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "needs_update=false" >> "$GITHUB_OUTPUT"
             echo "Already up to date"
           fi
         env:
           CURRENT_VERSION: ${{ steps.current-version.outputs.current }}
           LATEST_VERSION: ${{ steps.latest-version.outputs.latest }}
-
-      - name: Setup Node.js
-        if: steps.version-check.outputs.needs_update == 'true'
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: "24"
-
-      - name: Install semver
-        if: steps.version-check.outputs.needs_update == 'true'
-        run: npm install -g semver
 
       - name: Update Chart.yaml
         if: steps.version-check.outputs.needs_update == 'true'
@@ -72,14 +62,20 @@ jobs:
           echo "Current chart version: $CURRENT_CHART_VERSION"
 
           # Increment patch version
-          NEW_CHART_VERSION=$(semver -i patch $CURRENT_CHART_VERSION)
+          if [[ ! "$CURRENT_CHART_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unsupported chart version format: $CURRENT_CHART_VERSION" >&2
+            exit 1
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_CHART_VERSION"
+          NEW_CHART_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           echo "New chart version: $NEW_CHART_VERSION"
 
           # Update Chart.yaml
           sed -i "s/^version: .*/version: $NEW_CHART_VERSION/" charts/langfuse/Chart.yaml
           sed -i "s/^appVersion: .*/appVersion: \"$LATEST_VERSION\"/" charts/langfuse/Chart.yaml
 
-          echo "chart_version=$NEW_CHART_VERSION" >> $GITHUB_OUTPUT
+          echo "chart_version=$NEW_CHART_VERSION" >> "$GITHUB_OUTPUT"
         env:
           LATEST_VERSION: ${{ steps.latest-version.outputs.latest }}
 
