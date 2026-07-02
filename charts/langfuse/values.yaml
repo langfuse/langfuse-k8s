@@ -114,6 +114,37 @@ langfuse:
       # -- The name of the secret to use for TLS Key
       secretName: ""
 
+  # OpenShift Route (alternative to ingress for OpenShift / OKD clusters)
+  # Requires the `route.openshift.io/v1` API to be available on the cluster.
+  # Do not enable both `ingress` and `route` at the same time.
+  route:
+    # -- Set to `true` to create an OpenShift Route instead of an Ingress resource
+    enabled: false
+    # -- Hostname for the route. When empty, OpenShift auto-generates one based on the cluster wildcard domain.
+    host: ""
+    # -- Additional labels for the route resource
+    additionalLabels: {}
+    # -- Annotations for the route resource
+    annotations: {}
+    tls:
+      # -- Set to `true` to configure TLS on the route
+      enabled: true
+      # -- TLS termination type: `edge`, `passthrough`, or `reencrypt`
+      # edge:        TLS terminates at the router; traffic to the pod is plain HTTP
+      # reencrypt:   TLS terminates at the router and is re-encrypted toward the pod
+      # passthrough: TLS passes through unchanged to the pod (no cert needed here)
+      termination: edge
+      # -- What to do with insecure (HTTP) traffic: `Redirect`, `Allow`, or `None`
+      insecureEdgeTerminationPolicy: Redirect
+      # -- PEM-encoded TLS certificate. Leave empty to use the cluster default wildcard certificate.
+      certificate: ""
+      # -- PEM-encoded TLS private key. Required when `certificate` is set.
+      key: ""
+      # -- PEM-encoded CA certificate (required for `reencrypt` termination)
+      caCertificate: ""
+      # -- PEM-encoded destination CA certificate (required for `reencrypt` termination)
+      destinationCACertificate: ""
+
   # -- Pod security context for all langfuse deployments
   podSecurityContext: {}
   # -- Security context for all langfuse deployments
