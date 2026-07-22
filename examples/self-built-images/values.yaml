@@ -1,0 +1,63 @@
+# This values.yaml file demonstrates how to run Langfuse with self-built ClickHouse and
+# ZooKeeper images (see poc-images/README.md for how to build and push them) instead of
+# the frozen bitnamilegacy images. It is otherwise identical to the minimal-installation
+# example: secrets must be pre-created manually or via a tool like External Secrets
+# Operator (https://external-secrets.io/latest).
+#
+# Note: global.security.allowInsecureImages must be true for non-Bitnami image
+# repositories to pass the chart's image verification. It is already this chart's
+# default, so it is not repeated here.
+langfuse:
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+postgresql:
+  auth:
+    existingSecret: langfuse
+    secretKeys:
+      adminPasswordKey: postgresql-password
+      userPasswordKey: postgresql-password
+
+clickhouse:
+  # Self-built ClickHouse image (drop-in replacement for bitnami/clickhouse).
+  # The tag must be set explicitly: the chart's default tag points at a stale
+  # bitnami release and is not overridden by this chart's defaults.
+  image:
+    registry: registry.example.com
+    repository: langfuse/clickhouse
+    tag: "26.2.19.43"
+
+  zookeeper:
+    # Self-built ZooKeeper image (drop-in replacement for bitnami/zookeeper).
+    image:
+      registry: registry.example.com
+      repository: langfuse/zookeeper
+      tag: "3.9.3"
+
+  auth:
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+
+redis:
+  auth:
+    existingSecret: langfuse
+    existingSecretPasswordKey: redis-password
+
+s3:
+  auth:
+    existingSecret: langfuse
+    rootUserSecretKey: s3-user
+    rootPasswordSecretKey: s3-password

@@ -25,8 +25,8 @@ ARG BASE_IMAGE=debian:12-slim
 FROM ${BASE_IMAGE} AS assembler
 
 ARG TARGETARCH
-ARG CLICKHOUSE_VERSION="25.8.26.11"
-ARG CLICKHOUSE_TGZ_CHANNEL="lts"
+ARG CLICKHOUSE_VERSION="26.2.19.43"
+ARG CLICKHOUSE_TGZ_CHANNEL="stable"
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl \
     && apt-get clean && rm -rf /var/lib/apt/lists /var/cache/apt/archives
@@ -85,7 +85,7 @@ RUN ARCH="${TARGETARCH:-amd64}" ; \
 FROM ${BASE_IMAGE}
 
 ARG TARGETARCH
-ARG CLICKHOUSE_VERSION="25.8.26.11"
+ARG CLICKHOUSE_VERSION="26.2.19.43"
 ARG OS_FLAVOUR="debian-12"
 
 LABEL org.opencontainers.image.base.name="docker.io/debian:12-slim" \
