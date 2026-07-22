@@ -1,0 +1,442 @@
+---
+# Source: clickhouse/templates/networkpolicy.yaml
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: langfuse-clickhouse
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: langfuse
+      app.kubernetes.io/name: clickhouse
+      app.kubernetes.io/component: clickhouse
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - {}
+  ingress:
+    - ports:
+        - port: 8123
+        - port: 9000
+        - port: 9004
+        - port: 9005
+        - port: 9009
+
+---
+# Source: clickhouse/templates/pdb.yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: langfuse-clickhouse-shard0
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+    shard: "0"
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: langfuse
+      app.kubernetes.io/name: clickhouse
+      app.kubernetes.io/component: clickhouse
+      shard: "0"
+---
+# Source: clickhouse/templates/service-account.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: langfuse-clickhouse
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+automountServiceAccountToken: false
+
+---
+# Source: clickhouse/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: langfuse-clickhouse
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+type: Opaque
+data:
+  admin-password: "Y2hhbmdlbWU="
+
+---
+# Source: clickhouse/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langfuse-clickhouse
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+data:
+  00_default_overrides.xml: |
+    <clickhouse>
+      <!-- Macros -->
+      <macros>
+        <shard from_env="CLICKHOUSE_SHARD_ID"></shard>
+        <replica from_env="CLICKHOUSE_REPLICA_ID"></replica>
+        <layer>langfuse-clickhouse</layer>
+      </macros>
+      <!-- Log Level -->
+      <logger>
+        <level>information</level>
+      </logger>
+      <listen_host>0.0.0.0</listen_host>
+      <listen_host>::</listen_host>
+      <listen_try>1</listen_try>
+    </clickhouse>
+    
+
+---
+# Source: clickhouse/templates/scripts-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: langfuse-clickhouse-scripts
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+data:
+  setup.sh: |-
+    #!/bin/bash
+
+    # Execute entrypoint as usual after obtaining KEEPER_SERVER_ID
+    # check KEEPER_SERVER_ID in persistent volume via myid
+    # if not present, set based on POD hostname
+    if [[ -f "/bitnami/clickhouse/keeper/data/myid" ]]; then
+        export KEEPER_SERVER_ID="$(cat /bitnami/clickhouse/keeper/data/myid)"
+    else
+        HOSTNAME="$(hostname -s)"
+        if [[ $HOSTNAME =~ (.*)-([0-9]+)$ ]]; then
+            export KEEPER_SERVER_ID=${BASH_REMATCH[2]}
+        else
+            echo "Failed to get index from hostname $HOST"
+            exit 1
+        fi
+    fi
+    exec /opt/bitnami/scripts/clickhouse/entrypoint.sh /opt/bitnami/scripts/clickhouse/run.sh  "$@"
+
+---
+# Source: clickhouse/templates/service-headless.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-clickhouse-headless
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: http
+      targetPort: http
+      port: 8123
+      protocol: TCP
+    - name: tcp
+      targetPort: tcp
+      port: 9000
+      protocol: TCP
+    - name: tcp-mysql
+      targetPort: tcp-mysql
+      port: 9004
+      protocol: TCP
+    - name: tcp-postgresql
+      targetPort: tcp-postgresql
+      port: 9005
+      protocol: TCP
+    - name: http-intersrv
+      targetPort: http-intersrv
+      port: 9009
+      protocol: TCP
+  selector:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/component: clickhouse
+
+---
+# Source: clickhouse/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: langfuse-clickhouse
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+spec:
+  type: ClusterIP
+  sessionAffinity: None
+  ports:
+    - name: http
+      targetPort: http
+      port: 8123
+      protocol: TCP
+      nodePort: null
+    - name: tcp
+      targetPort: tcp
+      port: 9000
+      protocol: TCP
+      nodePort: null
+    - name: tcp-mysql
+      targetPort: tcp-mysql
+      port: 9004
+      protocol: TCP
+      nodePort: null
+    - name: tcp-postgresql
+      targetPort: tcp-postgresql
+      port: 9005
+      protocol: TCP
+      nodePort: null
+    - name: http-intersrv
+      targetPort: http-intersrv
+      port: 9009
+      protocol: TCP
+      nodePort: null
+  selector:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/component: clickhouse
+
+---
+# Source: clickhouse/templates/statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: langfuse-clickhouse-shard0
+  namespace: "default"
+  labels:
+    app.kubernetes.io/instance: langfuse
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/version: 25.2.1
+    helm.sh/chart: clickhouse-8.0.5
+    app.kubernetes.io/component: clickhouse
+    shard: "0"
+spec:
+  replicas: 1
+  podManagementPolicy: "Parallel"
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: langfuse
+      app.kubernetes.io/name: clickhouse
+      app.kubernetes.io/component: clickhouse
+  serviceName: langfuse-clickhouse-headless
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: a9853619dbc5ac8c8346f9fc8b2a063279540e253fe0c9f82800fc6b1209de77
+        checksum/config-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/config-users-extra: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+      labels:
+        app.kubernetes.io/instance: langfuse
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: clickhouse
+        app.kubernetes.io/version: 25.2.1
+        helm.sh/chart: clickhouse-8.0.5
+        app.kubernetes.io/component: clickhouse
+        shard: "0"
+    spec:
+      serviceAccountName: langfuse-clickhouse
+      
+      automountServiceAccountToken: false
+      affinity:
+        podAffinity:
+          
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: langfuse
+                    app.kubernetes.io/name: clickhouse
+                    app.kubernetes.io/component: clickhouse
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+        nodeAffinity:
+          
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+        supplementalGroups: []
+        sysctls: []
+      initContainers:
+      containers:
+        - name: clickhouse
+          image: docker.io/poc/bitnami-clickhouse:local
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsNonRoot: true
+            runAsUser: 1001
+            seLinuxOptions: {}
+            seccompProfile:
+              type: RuntimeDefault
+          command:
+            - /scripts/setup.sh
+          env:
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: CLICKHOUSE_HTTP_PORT
+              value: "8123"
+            - name: CLICKHOUSE_TCP_PORT
+              value: "9000"
+            - name: CLICKHOUSE_MYSQL_PORT
+              value: "9004"
+            - name: CLICKHOUSE_POSTGRESQL_PORT
+              value: "9005"
+            - name: CLICKHOUSE_INTERSERVER_HTTP_PORT
+              value: "9009"
+            - name: CLICKHOUSE_ADMIN_USER
+              value: "default"
+            - name: CLICKHOUSE_SHARD_ID
+              value: "shard0"
+            - name: CLICKHOUSE_REPLICA_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLICKHOUSE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: langfuse-clickhouse
+                  key: admin-password
+          envFrom:
+          resources:
+            limits:
+              cpu: 750m
+              ephemeral-storage: 2Gi
+              memory: 768Mi
+            requests:
+              cpu: 500m
+              ephemeral-storage: 50Mi
+              memory: 512Mi
+          ports:
+            - name: http
+              containerPort: 8123
+            - name: tcp
+              containerPort: 9000
+            - name: tcp-postgresql
+              containerPort: 9005
+            - name: tcp-mysql
+              containerPort: 9004
+            - name: http-intersrv
+              containerPort: 9009
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+            tcpSocket:
+              port: http
+          readinessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+            httpGet:
+              path: /ping
+              port: http
+          volumeMounts:
+            - name: empty-dir
+              mountPath: /opt/bitnami/clickhouse/etc
+              subPath: app-conf-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/clickhouse/logs
+              subPath: app-logs-dir
+            - name: empty-dir
+              mountPath: /opt/bitnami/clickhouse/tmp
+              subPath: app-tmp-dir
+            - name: empty-dir
+              mountPath: /tmp
+              subPath: tmp-dir
+            - name: scripts
+              mountPath: /scripts/setup.sh
+              subPath: setup.sh
+            - name: data
+              mountPath: /bitnami/clickhouse
+            - name: config
+              mountPath: /bitnami/clickhouse/etc/conf.d/default
+      volumes:
+        - name: scripts
+          configMap:
+            name: langfuse-clickhouse-scripts
+            defaultMode: 0755
+        - name: empty-dir
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: langfuse-clickhouse
+  volumeClaimTemplates:    
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: data
+        labels:
+          app.kubernetes.io/instance: langfuse
+          app.kubernetes.io/name: clickhouse
+          app.kubernetes.io/component: clickhouse
+      spec:
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: "8Gi"

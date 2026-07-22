@@ -1,0 +1,52 @@
+#!/bin/bash
+# Apache-2.0. Drop-in bash replacement for bitnami/wait-for-port (Go).
+# Same CLI: wait-for-port [--host HOST] [--state inuse|free] [--timeout SECONDS] PORT
+# Waits until the given TCP port reaches the desired state, polling every second.
+
+set -o nounset
+
+host="localhost"
+state="inuse"
+timeout=30
+port=""
+
+usage() {
+    echo "Usage: wait-for-port [--host HOST] [--state inuse|free] [--timeout SECONDS] PORT" >&2
+    exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --host|-host) host="$2"; shift 2 ;;
+        --host=*) host="${1#*=}"; shift ;;
+        --state|-state) state="$2"; shift 2 ;;
+        --state=*) state="${1#*=}"; shift ;;
+        --timeout|-timeout) timeout="$2"; shift 2 ;;
+        --timeout=*) timeout="${1#*=}"; shift ;;
+        -h|--help) usage ;;
+        -*) echo "wait-for-port: unknown flag: $1" >&2; usage ;;
+        *) port="$1"; shift ;;
+    esac
+done
+
+[[ -n "$port" ]] || usage
+[[ "$state" == "inuse" || "$state" == "free" ]] || usage
+
+port_inuse() {
+    # /dev/tcp is a bash built-in feature; no external dependency required
+    (exec 3<>"/dev/tcp/${host}/${port}") 2>/dev/null && { exec 3>&- 3<&-; return 0; }
+    return 1
+}
+
+deadline=$((SECONDS + timeout))
+while ((SECONDS < deadline)); do
+    if [[ "$state" == "inuse" ]]; then
+        port_inuse && exit 0
+    else
+        port_inuse || exit 0
+    fi
+    sleep 1
+done
+
+echo "timeout reached before the port went into state \"${state}\"" >&2
+exit 1
