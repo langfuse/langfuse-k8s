@@ -14,6 +14,144 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 - `examples` directory contains example `yaml` configurations
 - `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
+## Installing Langfuse v4
+
+For new installations or existing installations with an external ClickHouse cluster (version >25.12), we recommend to adopt [Langfuse v4](https://langfuse.com/docs/v4).
+
+Please follow the [Langfuse v4 installation example](/examples/v4-installation).
+
+If you want to upgrade an existing installation, please follow our [upgrade guide](https://langfuse.com/self-hosting/upgrade/upgrade-guides/upgrade-v3-to-v4).
+In case you run the Bitnami-based chart, please hold off from migrations for now, as the included ClickHouse version does not support Langfuse v4 yet.
+We will publish updates in our [GitHub discussion](https://github.com/orgs/langfuse/discussions/12518) once a supported upgrade path is established.
+You can also subscribe to [OSS release updates](https://langfuse.com/self-hosting/upgrade#release-notes) on our website.
+
+## Recommended Setup
+
+The Helm chart bundles PostgreSQL, ClickHouse, Redis, and MinIO as sub-charts so that a single `helm install` gives you a complete Langfuse deployment out of the box.
+This remains a quick way to get started, and existing installations based on the bundled sub-charts continue to work as before.
+
+For new installations, we recommend connecting the chart to components that you manage outside of it wherever possible.
+This is the most future-proof setup: your data stores are decoupled from chart releases, can be upgraded and scaled independently, and you always have access to the latest component versions.
+Additionally, you can benefit from managed components that often offer automatic backups and other convenience functions.
+It is also the setup that future improvements of this chart will build on.
+
+- **ClickHouse**: Run your own cluster with the official [ClickHouse Kubernetes Operator](https://github.com/ClickHouse/clickhouse-operator) — see the [tutorial below](#deploy-clickhouse-with-the-clickhouse-operator) — or connect a managed [ClickHouse Cloud](https://clickhouse.com/cloud) service ([example](#with-an-external-clickhouse-cluster)).
+- **PostgreSQL**: Use a managed service if available to you, e.g. Amazon RDS, Azure Database for PostgreSQL, or Google Cloud SQL ([example](#with-an-external-postgres-server)).
+- **Redis**: Use a managed service if available to you, e.g. Amazon ElastiCache, Azure Cache for Redis, or Google Memorystore ([example](#with-redis-cluster)).
+- **Blob Storage**: Use Amazon S3, Azure Blob Storage, Google Cloud Storage, or another S3-compatible service if available to you ([examples](#with-an-external-s3-bucket)).
+
+For all new setups we recommend the following minimum versions to ensure compatibility with [Langfuse v4](https://langfuse.com/docs/v4), our upcoming major release.
+- ClickHouse: 25.12 minimum, 26.4 recommended.
+- Postgres: 16 recommended.
+- Redis: 7.2 recommended.
+
+Please note that the ClickHouse version that comes bundled with this chart is _not_ compatible with Langfuse v4.
+We are currently exploring options for migrations and for replacing it.
+
+All external components are connected through your `values.yaml` file — see the linked examples. Components that you do not bring yourself are deployed by the chart as before.
+
+### Deploy ClickHouse with the ClickHouse Operator
+
+The official [ClickHouse Kubernetes Operator](https://github.com/ClickHouse/clickhouse-operator) is the recommended way to run a self-managed ClickHouse cluster on Kubernetes.
+It automates deployment, upgrades, scaling, and high availability of ClickHouse and ClickHouse Keeper clusters, and lets you run current ClickHouse releases independent of this chart's release cycle.
+See the [Langfuse ClickHouse documentation](https://langfuse.com/self-hosting/deployment/infrastructure/clickhouse) for background on how Langfuse uses ClickHouse.
+
+1. Install [cert-manager](https://cert-manager.io/), which the operator requires for its webhook certificates (skip if it is already installed in your cluster):
+
+   ```bash
+   helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+     --version v1.20.2 \
+     --namespace cert-manager --create-namespace \
+     --set crds.enabled=true
+   ```
+
+2. Install the ClickHouse operator (once per Kubernetes cluster):
+
+   ```bash
+   helm install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
+     --version 0.0.5 \
+     --namespace clickhouse-operator --create-namespace
+   ```
+
+3. Create a Secret with the ClickHouse password in the namespace that Langfuse will be installed into (`langfuse` in this example):
+
+   ```bash
+   kubectl create namespace langfuse
+   kubectl create secret generic langfuse-clickhouse-auth \
+     --namespace langfuse \
+     --from-literal=password="$(openssl rand -hex 32)"
+   ```
+
+4. Create a `clickhouse-cluster.yaml` containing a `KeeperCluster` and a `ClickHouseCluster` resource (see [examples/v4-installation](examples/v4-installation/clickhouse-cluster.yaml)):
+
+   ```yaml
+   apiVersion: clickhouse.com/v1alpha1
+   kind: KeeperCluster
+   metadata:
+     name: langfuse
+   spec:
+     replicas: 3 # Must be an odd number, use 3 for high availability
+     containerTemplate:
+       image:
+         repository: clickhouse/clickhouse-keeper
+         tag: "26.4"
+     dataVolumeClaimSpec:
+       resources:
+         requests:
+           storage: 10Gi
+   ---
+   apiVersion: clickhouse.com/v1alpha1
+   kind: ClickHouseCluster
+   metadata:
+     name: langfuse
+   spec:
+     replicas: 3 # We recommend 3 replicas for production setups, 1 is sufficient for evaluations
+     shards: 1 # Fixed - Langfuse does not support sharding
+     keeperClusterRef:
+       name: langfuse
+     containerTemplate:
+       image:
+         repository: clickhouse/clickhouse-server
+         tag: "26.4" # Pick a current ClickHouse release
+     dataVolumeClaimSpec:
+       resources:
+         requests:
+           storage: 100Gi # Start with a large volume to prevent early resizing
+     settings:
+       defaultUserPassword:
+         secret:
+           name: langfuse-clickhouse-auth
+           key: password
+   ```
+
+   Apply it and wait until both resources report `Ready`:
+
+   ```bash
+   kubectl apply --namespace langfuse -f clickhouse-cluster.yaml
+   kubectl wait --for=condition=Ready --timeout=600s \
+     keepercluster/langfuse clickhousecluster/langfuse \
+     --namespace langfuse
+   ```
+
+5. Connect the cluster in your `values.yaml`. The operator exposes the cluster through a headless service named `<name>-clickhouse-headless`:
+
+   ```yaml
+   clickhouse:
+     deploy: false
+     host: langfuse-clickhouse-headless # FQDN: langfuse-clickhouse-headless.langfuse.svc.cluster.local
+     auth:
+       username: default
+       existingSecret: langfuse-clickhouse-auth
+       existingSecretKey: password
+   ```
+
+   The operator configures the ClickHouse cluster name as `default`, which matches the chart's defaults, so no further changes are required.
+   See our [v4-installation](examples/v4-installation) for a fully configured example.
+
+6. Continue with the regular [chart installation](#installation) in the same namespace, e.g. `helm install langfuse langfuse/langfuse --namespace langfuse -f values.yaml`.
+
+For TLS, pod scheduling, monitoring, and other options, see the [operator documentation](https://clickhouse.com/docs/clickhouse-operator/overview).
+
 ## ⚠️ Important: Bitnami Registry Changes
 
 **Effective August 28, 2025**, Bitnami will restructure its container registry. This chart now uses `bitnamilegacy/*` images by default to prevent deployment failures.
@@ -27,6 +165,7 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 - For existing deployments: Ensure that you update your mirrors to clone from bitnamilegacy if applicable.
 - We will investigate alternative image sources that are compliant with the Helm chart and roll them out over time.
 - You _may_ upgrade to Bitnami Secure Images if desired in the meantime. In this case, set `global.security.allowInsecureImages: false` and configure image repositories to use `bitnami/*` instead of `bitnamilegacy/*`
+- For ClickHouse, you can avoid Bitnami images entirely by connecting an external cluster, e.g. via the ClickHouse operator.
 
 See [Bitnami's announcement](https://github.com/bitnami/charts/issues/35164) for more details.
 
@@ -219,6 +358,36 @@ postgresql:
   host: my-external-postgres-server.com
   directUrl: postgres://my-username:my-password@my-external-postgres-server.com
   shadowDatabaseUrl: postgres://my-username:my-password@my-external-postgres-server.com
+```
+
+##### With an external ClickHouse cluster
+
+This works for any ClickHouse deployment that runs outside of this chart, e.g. a cluster managed by the [ClickHouse Operator](#deploy-clickhouse-with-the-clickhouse-operator):
+
+```yaml
+[...]
+clickhouse:
+  deploy: false
+  host: my-clickhouse-host # For single-node instances, also set clickhouse.clusterEnabled: false
+  auth:
+    username: default
+    password: my-password
+```
+
+For [ClickHouse Cloud](https://clickhouse.com/cloud), use the HTTPS endpoint of your service together with the secure ports and SSL for migrations:
+
+```yaml
+[...]
+clickhouse:
+  deploy: false
+  host: https://<identifier>.<region>.aws.clickhouse.cloud
+  httpPort: 8443
+  nativePort: 9440
+  auth:
+    username: default
+    password: my-password
+  migration:
+    ssl: true
 ```
 
 ##### With an external S3 bucket
