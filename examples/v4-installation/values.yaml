@@ -4,7 +4,7 @@
 # External Secrets Operator like https://external-secrets.io/latest or any other secret management tool.
 langfuse:
   image:
-    tag: "4.0.0-rc.3" # Pick a current Langfuse v4 release
+    tag: "4" # Pick a current Langfuse v4 release. We recommend pinning a version, e.g. 4.0.0
 
   encryptionKey:
     secretKeyRef:
