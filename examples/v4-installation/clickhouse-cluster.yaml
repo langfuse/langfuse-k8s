@@ -1,0 +1,37 @@
+apiVersion: clickhouse.com/v1alpha1
+kind: KeeperCluster
+metadata:
+  name: langfuse
+spec:
+  replicas: 3 # Must be an odd number, use 3 for high availability
+  containerTemplate:
+    image:
+      repository: clickhouse/clickhouse-keeper
+      tag: "26.4"
+  dataVolumeClaimSpec:
+    resources:
+      requests:
+        storage: 10Gi
+---
+apiVersion: clickhouse.com/v1alpha1
+kind: ClickHouseCluster
+metadata:
+  name: langfuse
+spec:
+  replicas: 3 # We recommend 3 replicas for production setups, 1 is sufficient for evaluations
+  shards: 1 # Fixed - Langfuse does not support sharding
+  keeperClusterRef:
+    name: langfuse
+  containerTemplate:
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "26.4" # Pick a current ClickHouse release
+  dataVolumeClaimSpec:
+    resources:
+      requests:
+        storage: 100Gi # Start with a large volume to prevent early resizing
+  settings:
+    defaultUserPassword:
+      secret:
+        name: langfuse-clickhouse-auth
+        key: password
