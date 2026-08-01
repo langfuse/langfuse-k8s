@@ -1,0 +1,61 @@
+{{- if .Values.clickhouse.deploy -}}
+apiVersion: clickhouse.com/v1alpha1
+kind: ClickHouseCluster
+metadata:
+  name: {{ include "langfuse.fullname" . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.clickhouse.cluster.replicas }}
+  shards: 1
+  {{- if .Values.clickhouse.keeper.enabled }}
+  keeperClusterRef:
+    name: {{ include "langfuse.fullname" . }}
+  {{- end }}
+  dataVolumeClaimSpec:
+    accessModes:
+      {{- toYaml .Values.clickhouse.cluster.storage.accessModes | nindent 6 }}
+    {{- with .Values.clickhouse.cluster.storage.className }}
+    storageClassName: {{ . | quote }}
+    {{- end }}
+    resources:
+      requests:
+        storage: {{ .Values.clickhouse.cluster.storage.size | quote }}
+  containerTemplate:
+    image:
+      repository: {{ .Values.clickhouse.cluster.image.repository | quote }}
+      tag: {{ .Values.clickhouse.cluster.image.tag | quote }}
+    {{- with .Values.clickhouse.cluster.resources }}
+    resources:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity }}
+  podTemplate:
+    {{- with .Values.clickhouse.cluster.nodeSelector }}
+    nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.tolerations }}
+    tolerations:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.affinity }}
+    affinity:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  settings:
+    defaultUserPassword:
+      secret:
+        name: {{ .Values.clickhouse.auth.existingSecret | default (printf "%s-clickhouse-auth" (include "langfuse.fullname" .)) | quote }}
+        key: {{ .Values.clickhouse.auth.existingSecretKey | default "password" | quote }}
+    {{- with .Values.clickhouse.cluster.settings }}
+    extraConfig:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.profileSettings }}
+    extraUsersConfig:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+{{- end }}

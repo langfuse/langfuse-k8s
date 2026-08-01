@@ -12,6 +12,8 @@ postgresql:
     password: "secretPassword"
 
 clickhouse:
+  # Offline lint/unit-test rendering has no cluster API discovery — skip the CRD preflight.
+  crdCheck: false
   auth:
     password: "secretPassword"
 

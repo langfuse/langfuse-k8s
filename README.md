@@ -14,175 +14,121 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 - `examples` directory contains example `yaml` configurations
 - `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
-## Installing Langfuse v4
+## ⚠️ Breaking changes in v2.0.0
 
-For new installations or existing installations with an external ClickHouse cluster (version >25.12), we recommend to adopt [Langfuse v4](https://langfuse.com/docs/v4).
+v2.0.0 replaces the Bitnami sub-charts with OSS-licensed alternatives and deploys ClickHouse via the upstream [`ClickHouse/clickhouse-operator`](https://github.com/ClickHouse/clickhouse-operator):
 
-Please follow the [Langfuse v4 installation example](/examples/v4-installation).
+| Component | v1.x | v2.0.0 |
+|-----------|------|--------|
+| PostgreSQL | `bitnami/postgresql` | [`groundhog2k/postgres`](https://artifacthub.io/packages/helm/groundhog2k/postgres) |
+| ClickHouse | `bitnami/clickhouse` | [`ClickHouseCluster` / `KeeperCluster`](https://github.com/ClickHouse/clickhouse-operator) CRs (cluster-wide operator) |
+| Redis | `bitnami/valkey` | [`valkey-io/valkey`](https://github.com/valkey-io/valkey-helm) |
+| Object storage | `bitnami/minio` | [`seaweedfs/seaweedfs`](https://github.com/seaweedfs/seaweedfs) (allInOne) |
 
-If you want to upgrade an existing installation, please follow our [upgrade guide](https://langfuse.com/self-hosting/upgrade/upgrade-guides/upgrade-v3-to-v4).
-In case you run the Bitnami-based chart, please hold off from migrations for now, as the included ClickHouse version does not support Langfuse v4 yet.
-We will publish updates in our [GitHub discussion](https://github.com/orgs/langfuse/discussions/12518) once a supported upgrade path is established.
-You can also subscribe to [OSS release updates](https://langfuse.com/self-hosting/upgrade#release-notes) on our website.
+In v2 the chart also auto-generates credential Secrets for Postgres, ClickHouse, Valkey, and SeaweedFS on first install (persisted across upgrades via `lookup`), so only the three Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`) need to be supplied.
 
-## Recommended Setup
+There is **no automatic in-place `helm upgrade`** from v1. For a near-zero-downtime data migration (Postgres logical replication + MinIO/`mc mirror`, with ClickHouse online sync), see [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/).
 
-The Helm chart bundles PostgreSQL, ClickHouse, Redis, and MinIO as sub-charts so that a single `helm install` gives you a complete Langfuse deployment out of the box.
-This remains a quick way to get started, and existing installations based on the bundled sub-charts continue to work as before.
+### Installing Langfuse v4
 
-For new installations, we recommend connecting the chart to components that you manage outside of it wherever possible.
-This is the most future-proof setup: your data stores are decoupled from chart releases, can be upgraded and scaled independently, and you always have access to the latest component versions.
-Additionally, you can benefit from managed components that often offer automatic backups and other convenience functions.
-It is also the setup that future improvements of this chart will build on.
-
-- **ClickHouse**: Run your own cluster with the official [ClickHouse Kubernetes Operator](https://github.com/ClickHouse/clickhouse-operator) — see the [tutorial below](#deploy-clickhouse-with-the-clickhouse-operator) — or connect a managed [ClickHouse Cloud](https://clickhouse.com/cloud) service ([example](#with-an-external-clickhouse-cluster)).
-- **PostgreSQL**: Use a managed service if available to you, e.g. Amazon RDS, Azure Database for PostgreSQL, or Google Cloud SQL ([example](#with-an-external-postgres-server)).
-- **Redis**: Use a managed service if available to you, e.g. Amazon ElastiCache, Azure Cache for Redis, or Google Memorystore ([example](#with-redis-cluster)).
-- **Blob Storage**: Use Amazon S3, Azure Blob Storage, Google Cloud Storage, or another S3-compatible service if available to you ([examples](#with-an-external-s3-bucket)).
-
-For all new setups we recommend the following minimum versions to ensure compatibility with [Langfuse v4](https://langfuse.com/docs/v4), our upcoming major release.
-- ClickHouse: 25.12 minimum, 26.4 recommended.
-- Postgres: 16 recommended.
-- Redis: 7.2 recommended.
-
-Please note that the ClickHouse version that comes bundled with this chart is _not_ compatible with Langfuse v4.
-We are currently exploring options for migrations and for replacing it.
-
-All external components are connected through your `values.yaml` file — see the linked examples. Components that you do not bring yourself are deployed by the chart as before.
-
-### Deploy ClickHouse with the ClickHouse Operator
-
-The official [ClickHouse Kubernetes Operator](https://github.com/ClickHouse/clickhouse-operator) is the recommended way to run a self-managed ClickHouse cluster on Kubernetes.
-It automates deployment, upgrades, scaling, and high availability of ClickHouse and ClickHouse Keeper clusters, and lets you run current ClickHouse releases independent of this chart's release cycle.
-See the [Langfuse ClickHouse documentation](https://langfuse.com/self-hosting/deployment/infrastructure/clickhouse) for background on how Langfuse uses ClickHouse.
-
-1. Install [cert-manager](https://cert-manager.io/), which the operator requires for its webhook certificates (skip if it is already installed in your cluster):
-
-   ```bash
-   helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
-     --version v1.20.2 \
-     --namespace cert-manager --create-namespace \
-     --set crds.enabled=true
-   ```
-
-2. Install the ClickHouse operator (once per Kubernetes cluster):
-
-   ```bash
-   helm install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
-     --version 0.0.5 \
-     --namespace clickhouse-operator --create-namespace
-   ```
-
-3. Create a Secret with the ClickHouse password in the namespace that Langfuse will be installed into (`langfuse` in this example):
-
-   ```bash
-   kubectl create namespace langfuse
-   kubectl create secret generic langfuse-clickhouse-auth \
-     --namespace langfuse \
-     --from-literal=password="$(openssl rand -hex 32)"
-   ```
-
-4. Create a `clickhouse-cluster.yaml` containing a `KeeperCluster` and a `ClickHouseCluster` resource (see [examples/v4-installation](examples/v4-installation/clickhouse-cluster.yaml)):
-
-   ```yaml
-   apiVersion: clickhouse.com/v1alpha1
-   kind: KeeperCluster
-   metadata:
-     name: langfuse
-   spec:
-     replicas: 3 # Must be an odd number, use 3 for high availability
-     containerTemplate:
-       image:
-         repository: clickhouse/clickhouse-keeper
-         tag: "26.4"
-     dataVolumeClaimSpec:
-       resources:
-         requests:
-           storage: 10Gi
-   ---
-   apiVersion: clickhouse.com/v1alpha1
-   kind: ClickHouseCluster
-   metadata:
-     name: langfuse
-   spec:
-     replicas: 3 # We recommend 3 replicas for production setups, 1 is sufficient for evaluations
-     shards: 1 # Fixed - Langfuse does not support sharding
-     keeperClusterRef:
-       name: langfuse
-     containerTemplate:
-       image:
-         repository: clickhouse/clickhouse-server
-         tag: "26.4" # Pick a current ClickHouse release
-     dataVolumeClaimSpec:
-       resources:
-         requests:
-           storage: 100Gi # Start with a large volume to prevent early resizing
-     settings:
-       defaultUserPassword:
-         secret:
-           name: langfuse-clickhouse-auth
-           key: password
-   ```
-
-   Apply it and wait until both resources report `Ready`:
-
-   ```bash
-   kubectl apply --namespace langfuse -f clickhouse-cluster.yaml
-   kubectl wait --for=condition=Ready --timeout=600s \
-     keepercluster/langfuse clickhousecluster/langfuse \
-     --namespace langfuse
-   ```
-
-5. Connect the cluster in your `values.yaml`. The operator exposes the cluster through a headless service named `<name>-clickhouse-headless`:
-
-   ```yaml
-   clickhouse:
-     deploy: false
-     host: langfuse-clickhouse-headless # FQDN: langfuse-clickhouse-headless.langfuse.svc.cluster.local
-     auth:
-       username: default
-       existingSecret: langfuse-clickhouse-auth
-       existingSecretKey: password
-   ```
-
-   The operator configures the ClickHouse cluster name as `default`, which matches the chart's defaults, so no further changes are required.
-   See our [v4-installation](examples/v4-installation) for a fully configured example.
-
-6. Continue with the regular [chart installation](#installation) in the same namespace, e.g. `helm install langfuse langfuse/langfuse --namespace langfuse -f values.yaml`.
-
-For TLS, pod scheduling, monitoring, and other options, see the [operator documentation](https://clickhouse.com/docs/clickhouse-operator/overview).
-
-## ⚠️ Important: Bitnami Registry Changes
-
-**Effective August 28, 2025**, Bitnami will restructure its container registry. This chart now uses `bitnamilegacy/*` images by default to prevent deployment failures.
-
-**What changed:**
-- Bitnami moved most container images to a paid "Secure Images" tier
-- Free images are now limited to a small community subset
-- Older/versioned images moved to the "Bitnami Legacy" repository
-
-**Next steps:**
-- For existing deployments: Ensure that you update your mirrors to clone from bitnamilegacy if applicable.
-- We will investigate alternative image sources that are compliant with the Helm chart and roll them out over time.
-- You _may_ upgrade to Bitnami Secure Images if desired in the meantime. In this case, set `global.security.allowInsecureImages: false` and configure image repositories to use `bitnami/*` instead of `bitnamilegacy/*`
-- For ClickHouse, you can avoid Bitnami images entirely by connecting an external cluster, e.g. via the ClickHouse operator.
-
-See [Bitnami's announcement](https://github.com/bitnami/charts/issues/35164) for more details.
+For new installations that target [Langfuse v4](https://langfuse.com/docs/v4), prefer a current ClickHouse release (25.12 minimum, **26.4** recommended). The bundled ClickHouse CR defaults to `26.4`. You can also keep ClickHouse fully external — see [`examples/v4-installation`](./examples/v4-installation/) and [`examples/external-components`](./examples/external-components/).
 
 ## Helm Chart
 
 We provide a Helm chart that helps you deploy Langfuse on Kubernetes.
 
-### Installation
+### Prerequisites
 
-Configure the required secrets and parameters as defined below in a new `values.yaml` file.
-Then install the helm chart using the commands below:
+- **Helm `v3.17` or newer.** The bundled `seaweedfs` sub-chart uses the `fromToml` template function, which was added in Helm 3.17.0.
+- **Kubernetes `v1.28` or newer**, as required by the [ClickHouse operator](https://github.com/ClickHouse/clickhouse-operator).
+
+When `clickhouse.deploy: true` (the default), the chart renders `ClickHouseCluster` / `KeeperCluster` CRs. The operator creates its own cert-manager `Certificate` / `Issuer` resources for webhooks. Both CRD sets must already exist before `helm install`. Install these **once per cluster**:
 
 ```bash
-helm repo add langfuse https://langfuse.github.io/langfuse-k8s
-helm repo update
-helm install langfuse langfuse/langfuse -f values.yaml
+# 1. cert-manager (skip if already installed)
+helm install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+  --version v1.20.2 \
+  --namespace cert-manager --create-namespace \
+  --set crds.enabled=true
+
+kubectl wait --for=condition=Established \
+  crd/certificates.cert-manager.io crd/issuers.cert-manager.io \
+  --timeout=120s
+
+# 2. clickhouse-operator
+helm install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
+  --version 0.0.5 \
+  --namespace clickhouse-operator --create-namespace
+
+kubectl wait --for=condition=Established \
+  crd/clickhouseclusters.clickhouse.com crd/keeperclusters.clickhouse.com \
+  --timeout=120s
 ```
+
+The chart preflights the ClickHouse CRDs when `clickhouse.crdCheck: true` (default). For offline `helm template` / GitOps diff, set `clickhouse.crdCheck=false` or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`.
+
+### Installation
+
+The fastest path is to follow [`examples/minimal-installation`](./examples/minimal-installation/) — it installs Langfuse with all bundled sub-charts on a single `helm install`.
+
+1. Create a Secret containing the three Langfuse application secrets (`salt`, `encryption-key`, `nextauth-secret`). Generate them with:
+
+   ```bash
+   openssl rand -hex 32     # salt
+   openssl rand -hex 32     # encryption-key
+   openssl rand -base64 32  # nextauth-secret
+   ```
+
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   type: Opaque
+   metadata:
+     name: langfuse
+   stringData:
+     salt: "<openssl rand -hex 32>"
+     encryption-key: "<openssl rand -hex 32>"
+     nextauth-secret: "<openssl rand -base64 32>"
+   ```
+
+2. Create a `values.yaml` that references those keys (sub-component credentials are auto-generated by the chart — no need to set them):
+
+   ```yaml
+   langfuse:
+     salt:
+       secretKeyRef:
+         name: langfuse
+         key: salt
+     encryptionKey:
+       secretKeyRef:
+         name: langfuse
+         key: encryption-key
+     nextauth:
+       secret:
+         secretKeyRef:
+           name: langfuse
+           key: nextauth-secret
+   ```
+
+3. Apply the Secret and install the chart:
+
+   ```bash
+   kubectl create namespace langfuse
+   kubectl apply -n langfuse -f secret.yaml
+
+   helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+     --version 2.0.0 \
+     --namespace langfuse \
+     -f values.yaml
+   ```
+
+   Alternatively, the chart is also published via the legacy Helm repo:
+
+   ```bash
+   helm repo add langfuse https://langfuse.github.io/langfuse-k8s
+   helm repo update
+   helm install langfuse langfuse/langfuse -n langfuse -f values.yaml
+   ```
 
 ### Upgrading
 
@@ -210,102 +156,94 @@ langfuse:
       cpu: "2"
       memory: "4Gi"
 
-clickhouse:
+postgresql:
   resources:
     limits:
       cpu: "2"
-      memory: "8Gi"
+      memory: "2Gi"
     requests:
-      cpu: "2"
-      memory: "8Gi"
-      
-  zookeeper:
+      cpu: "500m"
+      memory: "512Mi"
+
+clickhouse:
+  cluster:
     resources:
       limits:
         cpu: "2"
-        memory: "4Gi"
+        memory: "8Gi"
       requests:
         cpu: "2"
-        memory: "4Gi"
+        memory: "8Gi"
+  keeper:
+    resources:
+      limits:
+        cpu: "1"
+        memory: "1Gi"
+      requests:
+        cpu: "500m"
+        memory: "512Mi"
 
 redis:
-  primary:
-    resources:
-      limits:
-        cpu: "1"
-        memory: "1.5Gi"
-      requests:
-        cpu: "1"
-        memory: "1.5Gi"
-
-s3:
   resources:
     limits:
-      cpu: "2"
-      memory: "4Gi"
+      cpu: "1"
+      memory: "1.5Gi"
     requests:
-      cpu: "2"
-      memory: "4Gi"
+      cpu: "1"
+      memory: "1.5Gi"
+
+s3:
+  allInOne:
+    resources:
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+      requests:
+        cpu: "2"
+        memory: "4Gi"
 ```
 
 ### Configuration
 
-The required configuration options to set are:
+The only **required** values are the three Langfuse application secrets — `salt`, `encryptionKey`, and `nextauth.secret`. Credentials for Postgres, ClickHouse, Valkey, and SeaweedFS are generated by the chart on first install (and persisted across upgrades via `lookup`).
+
+Provide the Langfuse secrets either inline:
 
 ```yaml
-# Optional, but highly recommended. Generate via `openssl rand -hex 32`.
-#  langfuse:
-#    encryptionKey:
-#      value: ""
-langfuse: 
+langfuse:
   salt:
-    value: secureSalt
+    value: "<openssl rand -hex 32>"
+  encryptionKey:
+    value: "<openssl rand -hex 32>"
   nextauth:
     secret:
-      value: ""
-
-postgresql:
-  auth:
-    # If you want to use `postgres` as the username, you need to provide postgresPassword instead of password.
-    username: langfuse
-    password: ""
-
-clickhouse:
-  auth:
-    password: ""
-
-redis:
-  auth:
-    password: ""
-
-s3:
-  auth:
-    rootPassword: ""
+      value: "<openssl rand -base64 32>"
 ```
 
-They can alternatively set via secret references (the secrets must exist):
+…or as references to an existing Kubernetes Secret:
 
 ```yaml
-# Optional, but highly recommended. Generate via `openssl rand -hex 32`.
-#  langfuse:
-#    encryptionKey:
-#      secretKeyRef:
-#        name: langfuse-encryption-key-secret
-#        key: encryptionKey
-langfuse: 
+langfuse:
   salt:
     secretKeyRef:
-      name: langfuse-general
+      name: langfuse
       key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
   nextauth:
     secret:
       secretKeyRef:
-        name: langfuse-nextauth-secret
+        name: langfuse
         key: nextauth-secret
+```
 
+To pin the sub-component credentials instead of letting the chart generate them, set `<component>.auth.password` (or `<component>.auth.existingSecret`):
+
+```yaml
 postgresql:
   auth:
-    # If you want to use `postgres` as the username, you need to provide a adminPasswordKey in secretKeys.
     username: langfuse
     existingSecret: langfuse-postgresql-auth
     secretKeys:
@@ -328,7 +266,7 @@ s3:
     rootUserSecretKey: rootUser
     rootPasswordSecretKey: rootPassword
 ```
-      
+
 See the [Helm README](https://github.com/langfuse/langfuse-k8s/blob/main/charts/langfuse/README.md) for a full list of all configuration options.
 
 #### Storage Provider Options
@@ -358,36 +296,6 @@ postgresql:
   host: my-external-postgres-server.com
   directUrl: postgres://my-username:my-password@my-external-postgres-server.com
   shadowDatabaseUrl: postgres://my-username:my-password@my-external-postgres-server.com
-```
-
-##### With an external ClickHouse cluster
-
-This works for any ClickHouse deployment that runs outside of this chart, e.g. a cluster managed by the [ClickHouse Operator](#deploy-clickhouse-with-the-clickhouse-operator):
-
-```yaml
-[...]
-clickhouse:
-  deploy: false
-  host: my-clickhouse-host # For single-node instances, also set clickhouse.clusterEnabled: false
-  auth:
-    username: default
-    password: my-password
-```
-
-For [ClickHouse Cloud](https://clickhouse.com/cloud), use the HTTPS endpoint of your service together with the secure ports and SSL for migrations:
-
-```yaml
-[...]
-clickhouse:
-  deploy: false
-  host: https://<identifier>.<region>.aws.clickhouse.cloud
-  httpPort: 8443
-  nativePort: 9440
-  auth:
-    username: default
-    password: my-password
-  migration:
-    ssl: true
 ```
 
 ##### With an external S3 bucket
@@ -663,33 +571,44 @@ global:
 2. **Component-specific Storage Classes**: Override the storage class for specific components.
 ```yaml
 postgresql:
-  primary:
-    persistence:
-      storageClass: "postgres-storage-class"
-   
+  storage:
+    className: "postgres-storage-class"
+
 redis:
-  primary:
-    persistence:
-      storageClass: "redis-storage-class"
+  dataStorage:
+    className: "redis-storage-class"
 
 clickhouse:
-  persistence:
-    storageClass: "clickhouse-storage-class"
+  cluster:
+    storage:
+      className: "clickhouse-storage-class"
+  keeper:
+    storage:
+      className: "clickhouse-keeper-storage-class"
 
 s3:
-  persistence:
-    storageClass: "minio-storage-class"
+  allInOne:
+    data:
+      storageClass: "seaweedfs-storage-class"
 ```
 
 If no storage class is specified, the cluster's default storage class will be used.
 
 ##### With an external Postgres server with client certificates using own secrets and additionalEnv for mappings
 
+The Langfuse application reads `DATABASE_URL`, `SALT`, and `NEXTAUTH_SECRET` from environment variables, so an `additionalEnv` override takes precedence over the chart's defaults. Combine that with `extraVolumes` to mount client certificates from a Secret:
+
 ```yaml
 langfuse:
-  salt: null
-  nextauth: 
-    secret: null
+  salt:
+    secretKeyRef:
+      name: langfuse-general
+      key: salt
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse-general
+        key: nextauth-secret
   extraVolumes:
     - name: db-keystore   # referencing an existing secret to mount server/client certs for postgres
       secret:
@@ -704,25 +623,15 @@ langfuse:
         secretKeyRef:
           name: langfuse-postgres  # referencing an existing secret
           key: database-url
-    - name: NEXTAUTH_SECRET
-      valueFrom:
-        secretKeyRef:
-          name: langfuse-general # referencing an existing secret
-          key: nextauth-secret
-    - name: SALT
-      valueFrom:
-        secretKeyRef:
-          name: langfuse-general
-          key: salt
-service:
-  [...]
-ingress:
-  [...]
+
 postgresql:
   deploy: false
+  # When DATABASE_URL is overridden via additionalEnv above, the auth block is only
+  # used to render the chart's connection-string env vars (which the additionalEnv
+  # entry replaces). Leave the defaults or set host/auth.username to match.
+  host: my-external-postgres-server.com
   auth:
-    password: null
-    username: null
+    username: langfuse
 ```
 
 ##### With SSO provider configuration using secrets and additionalEnv

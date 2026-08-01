@@ -1,0 +1,21 @@
+# Bring your own ClickHouse (operator-managed cluster, ClickHouse Cloud, or any CH ≥ 25.12).
+# Overlay on top of minimal-installation/values.yaml.
+#
+# For an in-cluster operator example that applies KeeperCluster / ClickHouseCluster
+# out-of-band, see ../v4-installation/clickhouse-cluster.yaml — host becomes
+# `<name>-clickhouse-headless`.
+clickhouse:
+  deploy: false
+  host: langfuse-clickhouse-headless
+  # host: abc123.us-east-1.aws.clickhouse.cloud   # ClickHouse Cloud (also set httpPort/nativePort + migration.ssl)
+  httpPort: 8123
+  nativePort: 9000
+  auth:
+    username: default
+    existingSecret: langfuse-clickhouse-auth
+    existingSecretKey: password
+  # For ClickHouse Cloud:
+  # httpPort: 8443
+  # nativePort: 9440
+  # migration:
+  #   ssl: true

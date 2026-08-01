@@ -1,0 +1,9 @@
+# Bring your own Redis / Valkey. Overlay on top of minimal-installation/values.yaml.
+# Langfuse requires maxmemory-policy=noeviction on the server.
+redis:
+  deploy: false
+  host: my-redis.example.com
+  port: 6379
+  auth:
+    username: default
+    password: "replace-me"           # or existingSecret + existingSecretPasswordKey

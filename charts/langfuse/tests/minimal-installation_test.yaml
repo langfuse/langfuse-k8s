@@ -45,7 +45,7 @@ tests:
     values:
       - ../../../examples/minimal-installation/values.yaml
     asserts:
-      # Test that web deployment uses correct secret references
+      # Langfuse application secrets come from the user-provided `langfuse` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
@@ -64,20 +64,66 @@ tests:
                 name: langfuse
                 key: encryption-key
         template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NEXTAUTH_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: langfuse
+                key: nextauth-secret
+        template: web/deployment.yaml
 
   - it: should configure database connections correctly
     values:
       - ../../../examples/minimal-installation/values.yaml
     asserts:
-      # Test PostgreSQL connection configuration
+      # PostgreSQL password is sourced from the chart-managed `<release>-postgresql-auth` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: langfuse
-                key: postgresql-password
+                name: "RELEASE-NAME-langfuse-postgresql-auth"
+                key: USERDB_PASSWORD
         template: web/deployment.yaml
-
-
+      # ClickHouse password is sourced from the chart-managed `<release>-clickhouse-auth` Secret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "RELEASE-NAME-langfuse-clickhouse-auth"
+                key: password
+        template: web/deployment.yaml
+      # Valkey/Redis password is sourced from the chart-managed `<release>-redis-auth` Secret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: "RELEASE-NAME-langfuse-redis-auth"
+                key: default
+        template: web/deployment.yaml
+      # SeaweedFS S3 credentials are sourced from the chart-managed `<release>-s3-auth` Secret
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: "RELEASE-NAME-langfuse-s3-auth"
+                key: accessKey
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: "RELEASE-NAME-langfuse-s3-auth"
+                key: secretKey
+        template: web/deployment.yaml

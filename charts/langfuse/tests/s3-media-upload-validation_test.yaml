@@ -14,8 +14,8 @@ tests:
       - hasDocuments:
           count: 0
 
-  # Test that validation fails when MinIO is deployed without forcePathStyle
-  - it: should fail when MinIO deployed without forcePathStyle and media upload enabled
+  # Test that validation fails when bundled SeaweedFS is deployed without forcePathStyle
+  - it: should fail when bundled S3 deployed without forcePathStyle and media upload enabled
     values:
       - ../values.lint.yaml
     set:
@@ -27,7 +27,7 @@ tests:
       s3.eventUpload.forcePathStyle: true
     asserts:
       - failedTemplate:
-          errorMessage: "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue."
+          errorMessage: "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to true to continue."
 
   # Test that validation passes when MinIO is deployed with global forcePathStyle
   - it: should pass when MinIO deployed with global forcePathStyle and media upload enabled

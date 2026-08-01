@@ -1,0 +1,54 @@
+suite: test clickhouse default resources
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should ship non-empty default resources on the ClickHouseCluster container
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.containerTemplate.resources.requests.cpu
+          value: "1"
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.resources.requests.memory
+          value: 2Gi
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.resources.limits.memory
+          value: 4Gi
+        template: clickhouse/cluster.yaml
+
+  - it: should ship non-empty default resources on the KeeperCluster container
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.containerTemplate.resources.requests.cpu
+          value: 250m
+        template: clickhouse/keeper.yaml
+      - equal:
+          path: spec.containerTemplate.resources.requests.memory
+          value: 256Mi
+        template: clickhouse/keeper.yaml
+      - equal:
+          path: spec.containerTemplate.resources.limits.memory
+          value: 1Gi
+        template: clickhouse/keeper.yaml
+
+  - it: should allow overriding the default ClickHouse resources
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.resources:
+        requests:
+          cpu: "4"
+          memory: 8Gi
+        limits:
+          memory: 16Gi
+    asserts:
+      - equal:
+          path: spec.containerTemplate.resources.limits.memory
+          value: 16Gi
+        template: clickhouse/cluster.yaml

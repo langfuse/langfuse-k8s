@@ -1,0 +1,11 @@
+# Bring your own PostgreSQL. Overlay on top of minimal-installation/values.yaml.
+postgresql:
+  deploy: false
+  host: my-postgres.example.com
+  auth:
+    username: langfuse
+    password: "replace-me"           # or use existingSecret + secretKeys.userPasswordKey
+    database: langfuse
+  # Recommended for managed Postgres / connection poolers:
+  # directUrl: postgres://langfuse:replace-me@my-postgres.example.com:5432/langfuse
+  # shadowDatabaseUrl: postgres://langfuse:replace-me@my-postgres.example.com:5432/langfuse_shadow

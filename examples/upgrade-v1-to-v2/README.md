@@ -1,0 +1,199 @@
+# Upgrading Langfuse Helm Chart v1.x → v2.0 (near-zero downtime)
+
+Chart `v2.0.0` replaces Bitnami sub-charts with OSS alternatives and moves ClickHouse to the
+upstream [`ClickHouse/clickhouse-operator`](https://github.com/ClickHouse/clickhouse-operator):
+
+| Component | v1.x | v2.0 |
+|-----------|------|------|
+| PostgreSQL | `bitnami/postgresql` | `groundhog2k/postgres` |
+| ClickHouse | `bitnami/clickhouse` (+ ZooKeeper) | `ClickHouseCluster` + `KeeperCluster` |
+| Redis | `bitnami/valkey` | `valkey-io/valkey` |
+| Object storage | `bitnami/minio` | `seaweedfs/seaweedfs` (allInOne) |
+
+A single-release `helm upgrade` is **not** supported — StatefulSet identities, PVC layouts and the
+ClickHouse coordination backend all change. The supported path is a **blue/green data migration**:
+stand up v2 next to v1, copy the bulk **while v1 keeps serving**, then freeze only for a short
+final delta and cut over.
+
+**Design targets:** ~500 GB ClickHouse, ~100 GB object storage, tens of GB Postgres, with
+**<5 minutes** of application downtime.
+
+> [!IMPORTANT]
+> Rehearse in staging. Take backups of **all** components first
+> ([Backup Strategies](https://langfuse.com/self-hosting/configuration/backups)).
+> Reuse the same Langfuse `salt`, `encryptionKey` and `nextauth.secret` on v2 — otherwise encrypted
+> Postgres columns become undecryptable. Align Langfuse `appVersion` on v1 with the v2 chart target
+> before copying data.
+
+## How <5 min downtime is achieved
+
+| Store | Online (v1 live) | Freeze delta |
+|-------|------------------|--------------|
+| **Postgres** | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
+| **Object storage (MinIO → SeaweedFS)** | `mc mirror` / `mc mirror --watch` | Final `mc mirror` (new blobs only) |
+| **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass + `OPTIMIZE FINAL` |
+| **Redis / Valkey** | — (ephemeral queue/cache) | — |
+
+Downtime ≈ freeze writers + drain v1 worker queue + final deltas + DNS cutover. The multi-hour bulk
+copy runs **outside** the freeze window.
+
+## Naming (same namespace, two releases)
+
+| | Source (v1) | Target (v2) |
+|--|--|--|
+| Helm release | `langfuse` | `langfuse-v2` |
+| Namespace | `langfuse` | `langfuse` |
+| Postgres | `langfuse-postgresql` / secret `langfuse-postgresql` | `langfuse-v2-postgresql` / `langfuse-v2-postgresql-auth` |
+| ClickHouse | `langfuse-clickhouse:9000` / `langfuse-clickhouse` | `langfuse-v2-clickhouse-0-0-0` / `langfuse-v2-clickhouse-auth` |
+| Object storage | `langfuse-s3:9000` / `langfuse-s3` (`root-user`/`root-password`) | `langfuse-v2-s3-all-in-one:8333` / `langfuse-v2-s3-auth` (`accessKey`/`secretKey`) |
+| Web / worker | `langfuse-web`, `langfuse-worker` | `langfuse-v2-web`, `langfuse-v2-worker` |
+
+---
+
+## 0. Prerequisites
+
+1. Install cluster-wide **cert-manager** + **clickhouse-operator** (see [minimal-installation](../minimal-installation/)).
+2. Enable logical replication on **v1 Postgres** (Bitnami) and `helm upgrade` v1 once (brief Postgres restart):
+
+   ```yaml
+   postgresql:
+     primary:
+       extendedConfiguration: |
+         wal_level = logical
+         max_wal_senders = 10
+         max_replication_slots = 10
+   ```
+
+   Verify: `show wal_level;` → `logical`.
+3. Point v2 at the **same** Langfuse app Secret as v1 (see [`v2-values.yaml`](./v2-values.yaml)).
+   If that Secret is Helm-owned by v1, protect it: `kubectl annotate secret <name> helm.sh/resource-policy=keep`.
+4. Size `clickhouse.cluster.resources` in `v2-values.yaml` for your data volume.
+
+---
+
+## 1. Stand up v2 alongside v1 (no downtime)
+
+```bash
+helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+  --version 2.0.0 -n langfuse -f v2-values.yaml
+kubectl -n langfuse rollout status deploy/langfuse-v2-web --timeout=600s
+```
+
+v2 runs schema migrations against empty stores. v1 keeps serving.
+
+---
+
+## 2. Online sync (no downtime)
+
+Run Postgres, object storage, and ClickHouse syncs in parallel.
+
+### 2a. PostgreSQL — logical replication (documented path)
+
+```bash
+# Publisher (v1)
+kubectl -n langfuse exec langfuse-postgresql-0 -- \
+  psql -U postgres -d postgres_langfuse -c "CREATE PUBLICATION lf_pub FOR ALL TABLES;"
+
+# Subscriber (v2): truncate freshly-migrated tables, then subscribe
+SU_PW=$(kubectl -n langfuse get secret langfuse-v2-postgresql-auth -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+kubectl -n langfuse exec langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse -tAc \
+  "SELECT 'TRUNCATE TABLE '||string_agg(format('%I.%I',schemaname,tablename),', ')||' CASCADE;' \
+   FROM pg_tables WHERE schemaname='public';" | \
+  kubectl -n langfuse exec -i langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse
+
+V1_PW=$(kubectl -n langfuse get secret langfuse-postgresql -o jsonpath='{.data.postgres-password}' | base64 -d)
+kubectl -n langfuse exec langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse -c \
+  "CREATE SUBSCRIPTION lf_sub \
+   CONNECTION 'host=langfuse-postgresql port=5432 dbname=postgres_langfuse user=postgres password=${V1_PW}' \
+   PUBLICATION lf_pub;"
+```
+
+Watch catch-up (`srsubstate=r`, `lag_bytes=0`):
+
+```bash
+kubectl -n langfuse exec langfuse-postgresql-0 -- psql -U postgres -d postgres_langfuse -c \
+  "SELECT application_name, state, pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes FROM pg_stat_replication;"
+```
+
+> The Langfuse schema uses text/cuid IDs (no Postgres sequences), so there is nothing to resync at cutover.
+
+### 2b. Object storage — MinIO → SeaweedFS (`mc mirror`, documented path)
+
+```bash
+V1_KEY=$(kubectl -n langfuse get secret langfuse-s3 -o jsonpath='{.data.root-user}' | base64 -d)
+V1_SECRET=$(kubectl -n langfuse get secret langfuse-s3 -o jsonpath='{.data.root-password}' | base64 -d)
+V2_KEY=$(kubectl -n langfuse get secret langfuse-v2-s3-auth -o jsonpath='{.data.accessKey}' | base64 -d)
+V2_SECRET=$(kubectl -n langfuse get secret langfuse-v2-s3-auth -o jsonpath='{.data.secretKey}' | base64 -d)
+
+mc alias set v1 http://langfuse-s3.langfuse.svc.cluster.local:9000 "$V1_KEY" "$V1_SECRET"
+mc alias set v2 http://langfuse-v2-s3-all-in-one.langfuse.svc.cluster.local:8333 "$V2_KEY" "$V2_SECRET"
+mc mb --ignore-existing v2/langfuse
+mc mirror --overwrite --watch v1/langfuse v2/langfuse   # or re-run periodically
+```
+
+Blobs are immutable/append-only; each pass transfers only new objects. Keep the key layout
+(`events/`, `media/`, `exports/`).
+
+### 2c. ClickHouse — `remote()` watermark loop
+
+Use [`scripts/ch-online-sync.sh`](./scripts/ch-online-sync.sh) from a machine with `kubectl` access
+(or run the equivalent SQL from a v2 ClickHouse pod). Large Langfuse tables are
+`ReplicatedReplacingMergeTree` keyed on `event_ts`, so overlapping incremental passes are idempotent.
+
+```bash
+cd scripts
+TARGET_POD=langfuse-v2-clickhouse-0-0-0 TARGET_SECRET=langfuse-v2-clickhouse-auth \
+  SOURCE_HOST=langfuse-clickhouse.langfuse.svc.cluster.local:9000 SOURCE_SECRET=langfuse-clickhouse \
+  ./ch-online-sync.sh                 # repeat until the delta is small
+```
+
+---
+
+## 3. Freeze & final delta (<5 min window)
+
+```bash
+kubectl -n langfuse scale deploy/langfuse-web deploy/langfuse-worker --replicas=0
+# wait for the v1 worker Redis queue to drain
+```
+
+1. **Postgres** — confirm `lag_bytes=0`, then:
+
+   ```bash
+   kubectl -n langfuse exec langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse -c \
+     "DROP SUBSCRIPTION lf_sub;"
+   ```
+
+2. **Object storage** — final `mc mirror` (no `--watch`).
+
+3. **ClickHouse** — final pass:
+
+   ```bash
+   ./ch-online-sync.sh --final
+   ```
+
+---
+
+## 4. Cut over & verify
+
+```bash
+kubectl -n langfuse scale deploy/langfuse-v2-web deploy/langfuse-v2-worker --replicas=1
+kubectl -n langfuse rollout status deploy/langfuse-v2-web --timeout=300s
+kubectl -n langfuse port-forward svc/langfuse-v2-web 3000:3000 &
+curl -s localhost:3000/api/public/ready
+```
+
+Repoint Ingress / DNS to `langfuse-v2-web`. Keep v1 until you are confident, then
+`helm uninstall langfuse` and delete retained v1 PVCs later.
+
+### Rollback
+
+Until DNS is cut over, abort by stopping the sync loops and leaving traffic on v1.
+After cutover, repoint DNS to `langfuse-web` and scale v1 writers back up.
+
+---
+
+## Files
+
+- [`v1-values.yaml`](./v1-values.yaml) — representative v1 source values (incl. `wal_level=logical`).
+- [`v2-values.yaml`](./v2-values.yaml) — v2 target values (shared app secrets + ClickHouse sizing).
+- [`scripts/ch-online-sync.sh`](./scripts/ch-online-sync.sh) — ClickHouse incremental sync helper.

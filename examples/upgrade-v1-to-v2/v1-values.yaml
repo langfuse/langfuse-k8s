@@ -1,0 +1,49 @@
+# Representative v1.x (Bitnami) SOURCE values used during the migration.
+# Enable wal_level=logical before starting the online Postgres sync.
+langfuse:
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+postgresql:
+  deploy: true
+  auth:
+    username: postgres
+    password: "change-me"
+    database: postgres_langfuse
+  primary:
+    extendedConfiguration: |
+      wal_level = logical
+      max_wal_senders = 10
+      max_replication_slots = 10
+
+clickhouse:
+  deploy: true
+  auth:
+    username: default
+    password: "change-me"
+  # Scale down for staging; production keeps its existing replica counts.
+  replicaCount: 1
+  zookeeper:
+    replicaCount: 1
+
+redis:
+  deploy: true
+  auth:
+    password: "change-me"
+
+s3:
+  deploy: true
+  auth:
+    rootUser: langfuse
+    rootPassword: "change-me"
