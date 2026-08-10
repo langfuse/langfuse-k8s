@@ -623,6 +623,26 @@ clickhouse:
   # -- The resources preset to use for the ClickHouse cluster.
   resourcesPreset: 2xlarge
 
+  # Data retention configuration for ClickHouse tables.
+  # Uses ClickHouse TTL to automatically purge old data.
+  retention:
+    # -- Enable ClickHouse data retention management via CronJob
+    enabled: false
+    # -- Number of days to keep data before deletion (default: 90 days = ~3 months)
+    ttlDays: 90
+    # -- Cron schedule for TTL re-application (default: daily at 3:00 AM)
+    schedule: "0 3 * * *"
+    # -- Number of completed jobs to keep in history
+    successfulJobsHistoryLimit: 3
+    # -- Number of failed jobs to keep in history
+    failedJobsHistoryLimit: 3
+    # -- Maximum number of retries for the job before marking as failed
+    backoffLimit: 2
+    # -- Image to use for running ClickHouse client commands
+    image:
+      repository: clickhouse/clickhouse-server
+      tag: "24.8"
+
 # S3/MinIO Configuration
 s3:
   # -- Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false.

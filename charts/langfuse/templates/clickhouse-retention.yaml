@@ -1,0 +1,170 @@
+{{- if and .Values.clickhouse.deploy .Values.clickhouse.retention.enabled }}
+---
+# ConfigMap containing the SQL retention script (idempotent).
+# Operates on the "default" database, matching the standard Langfuse ClickHouse deployment.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "langfuse.fullname" . }}-clickhouse-retention-sql
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": hook-succeeded
+data:
+  retention.sql: |
+    -- Idempotent: safe to run on every CronJob execution without side effects.
+    -- Appends TTL retention policy to tables (no-op if already set).
+    ALTER TABLE default.traces
+      MODIFY TTL timestamp + INTERVAL {{ .Values.clickhouse.retention.ttlDays }} DAY DELETE;
+
+    ALTER TABLE default.observations
+      MODIFY TTL start_time + INTERVAL {{ .Values.clickhouse.retention.ttlDays }} DAY DELETE;
+
+    ALTER TABLE default.scores
+      MODIFY TTL timestamp + INTERVAL {{ .Values.clickhouse.retention.ttlDays }} DAY DELETE;
+
+    -- If you also ingest via OTel (unified table):
+    -- ALTER TABLE default.events_full
+    --   MODIFY TTL timestamp + INTERVAL {{ .Values.clickhouse.retention.ttlDays }} DAY DELETE;
+
+---
+# CronJob: re-applies the TTL policy daily.
+# Cost is negligible — it only updates metadata. ClickHouse automatically purges
+# expired data during background merges.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "langfuse.fullname" . }}-clickhouse-retention
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  schedule: "{{ .Values.clickhouse.retention.schedule }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.clickhouse.retention.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.clickhouse.retention.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.clickhouse.retention.backoffLimit }}
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: clickhouse-retention
+              image: {{ .Values.clickhouse.retention.image.repository }}:{{ .Values.clickhouse.retention.image.tag }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  clickhouse-client \
+                    --host="{{ include "langfuse.fullname" . }}-clickhouse" \
+                    --port={{ .Values.clickhouse.nativePort }} \
+                    --user={{ .Values.clickhouse.auth.username }} \
+                    --password="$(CLICKHOUSE_PASSWORD)" \
+                    --multiquery < /sql/retention.sql
+              env:
+                - name: CLICKHOUSE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      {{- if .Values.clickhouse.auth.existingSecret }}
+                      name: {{ .Values.clickhouse.auth.existingSecret }}
+                      {{- else }}
+                      name: {{ include "langfuse.fullname" . }}-clickhouse
+                      {{- end }}
+                      key: {{ .Values.clickhouse.auth.existingSecretKey | default "clickhouse-password" }}
+              volumeMounts:
+                - name: sql
+                  mountPath: /sql
+          volumes:
+            - name: sql
+              configMap:
+                name: {{ include "langfuse.fullname" . }}-clickhouse-retention-sql
+
+---
+# One-shot Job: run manually ONCE to immediately purge existing data older
+# than the TTL. Without this, the TTL only applies to new data and existing
+# data is cleaned gradually during background merges (which can be slow).
+# kubectl delete job <release>-clickhouse-retention-backfill -n <namespace>
+# Then run it again with: kubectl create job --from=cronjob/<release>-clickhouse-retention
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "langfuse.fullname" . }}-clickhouse-retention-backfill
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": hook-succeeded
+spec:
+  backoffLimit: {{ .Values.clickhouse.retention.backoffLimit }}
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: clickhouse-materialize-ttl
+          image: {{ .Values.clickhouse.retention.image.repository }}:{{ .Values.clickhouse.retention.image.tag }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              # 1) First apply the TTL (idempotent):
+              clickhouse-client \
+                --host="{{ include "langfuse.fullname" . }}-clickhouse" \
+                --port={{ .Values.clickhouse.nativePort }} \
+                --user={{ .Values.clickhouse.auth.username }} \
+                --password="$(CLICKHOUSE_PASSWORD)" \
+                --multiquery < /sql/retention.sql
+
+              # 2) MATERIALIZE TTL to immediately purge expired data:
+              clickhouse-client \
+                --host="{{ include "langfuse.fullname" . }}-clickhouse" \
+                --port={{ .Values.clickhouse.nativePort }} \
+                --user={{ .Values.clickhouse.auth.username }} \
+                --password="$(CLICKHOUSE_PASSWORD)" \
+                --mutations_sync=1 \
+                --query="ALTER TABLE default.traces MATERIALIZE TTL"
+
+              clickhouse-client \
+                --host="{{ include "langfuse.fullname" . }}-clickhouse" \
+                --port={{ .Values.clickhouse.nativePort }} \
+                --user={{ .Values.clickhouse.auth.username }} \
+                --password="$(CLICKHOUSE_PASSWORD)" \
+                --mutations_sync=1 \
+                --query="ALTER TABLE default.observations MATERIALIZE TTL"
+
+              clickhouse-client \
+                --host="{{ include "langfuse.fullname" . }}-clickhouse" \
+                --port={{ .Values.clickhouse.nativePort }} \
+                --user={{ .Values.clickhouse.auth.username }} \
+                --password="$(CLICKHOUSE_PASSWORD)" \
+                --mutations_sync=1 \
+                --query="ALTER TABLE default.scores MATERIALIZE TTL"
+
+              echo "OK: TTL materialized for traces, observations, and scores"
+          env:
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  {{- if .Values.clickhouse.auth.existingSecret }}
+                  name: {{ .Values.clickhouse.auth.existingSecret }}
+                  {{- else }}
+                  name: {{ include "langfuse.fullname" . }}-clickhouse
+                  {{- end }}
+                  key: {{ .Values.clickhouse.auth.existingSecretKey | default "clickhouse-password" }}
+          volumeMounts:
+            - name: sql
+              mountPath: /sql
+      volumes:
+        - name: sql
+          configMap:
+            name: {{ include "langfuse.fullname" . }}-clickhouse-retention-sql
+{{- end }}
