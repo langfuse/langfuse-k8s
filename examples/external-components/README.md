@@ -3,13 +3,14 @@
 Each of the four data stores can be brought in from outside the chart independently via
 `*.deploy: false`. The other three continue to be deployed by the chart.
 
-These overlays are meant to be combined with [`../minimal-installation/values.yaml`](../minimal-installation/values.yaml)
-(or any base that already supplies the Langfuse app secrets):
+**Overlays are additive** — you can combine several in the same `helm install` / `helm upgrade`
+(for example Postgres + Redis both external) as long as their keys do not conflict:
 
 ```bash
 helm install langfuse . -n langfuse \
   -f ../../examples/minimal-installation/values.yaml \
-  -f ../../examples/external-components/external-postgres.yaml
+  -f ../../examples/external-components/external-postgres.yaml \
+  -f ../../examples/external-components/external-redis.yaml
 ```
 
 | Overlay | What stays bundled | What you bring |
@@ -17,10 +18,11 @@ helm install langfuse . -n langfuse \
 | [`external-postgres.yaml`](./external-postgres.yaml) | ClickHouse, Valkey, SeaweedFS | PostgreSQL |
 | [`external-redis.yaml`](./external-redis.yaml) | Postgres, ClickHouse, SeaweedFS | Redis / Valkey |
 | [`external-s3.yaml`](./external-s3.yaml) | Postgres, ClickHouse, Valkey | S3-compatible blob store |
-| [`external-clickhouse.yaml`](./external-clickhouse.yaml) | Postgres, Valkey, SeaweedFS | ClickHouse (e.g. operator-managed or ClickHouse Cloud) |
+| [`external-clickhouse.yaml`](./external-clickhouse.yaml) | Postgres, Valkey, SeaweedFS | ClickHouse (operator-managed, ClickHouse Cloud, …) |
 
-> For a fully external ClickHouse + Langfuse v4 image pin, see also
-> [`../v4-installation`](../v4-installation/), which applies the ClickHouse operator CRs out-of-band.
+For an in-cluster ClickHouse managed by the operator **outside** the chart (instead of
+`clickhouse.deploy: true`), apply [`clickhouse-cluster.yaml`](./clickhouse-cluster.yaml) and use
+[`external-clickhouse.yaml`](./external-clickhouse.yaml).
 
 ## Verification checklist (per component)
 

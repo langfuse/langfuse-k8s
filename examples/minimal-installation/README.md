@@ -1,6 +1,6 @@
-# Minimal Installation Example (v2)
+# Minimal Installation Example (v2 / Langfuse v4)
 
-This example installs Langfuse with all bundled OSS sub-charts on a single `helm install`:
+This example installs [Langfuse v4](https://langfuse.com/docs/v4) with all bundled OSS sub-charts on a single `helm install`:
 
 | Component | Bundled via |
 |-----------|-------------|
@@ -9,12 +9,12 @@ This example installs Langfuse with all bundled OSS sub-charts on a single `helm
 | Redis | `valkey-io/valkey` |
 | Object storage | `seaweedfs/seaweedfs` (allInOne) |
 
-The chart auto-generates credentials for every sub-component — you only need to provide the three Langfuse application secrets.
+All credentials — including the Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`) — are auto-generated on first install and persisted across upgrades via `lookup`. No pre-created Secret is required for a fresh install.
 
 > **v2 changes**
 >
 > - Bitnami PostgreSQL / ClickHouse / Redis / MinIO sub-charts are replaced with the OSS stack above.
-> - The chart generates `<release>-postgresql-auth`, `<release>-clickhouse-auth`, `<release>-redis-auth`, and `<release>-s3-auth` Secrets on first install. Passwords persist across upgrades via `lookup`.
+> - The chart generates `<release>-app`, `<release>-postgresql-auth`, `<release>-clickhouse-auth`, `<release>-redis-auth`, and `<release>-s3-auth` Secrets on first install.
 > - cert-manager and the ClickHouse operator are **cluster-wide prereqs** (installed once per cluster, not per release).
 > - For a near-zero-downtime migration from a v1 (Bitnami) install, see [`examples/upgrade-v1-to-v2`](../upgrade-v1-to-v2/).
 
@@ -55,57 +55,38 @@ kubectl wait --for=condition=Established \
 
 ## Installation
 
-1. Edit `secret.yaml` and replace the placeholder values with secure secrets:
+```bash
+kubectl create namespace langfuse
 
-   ```bash
-   openssl rand -hex 32     # salt
-   openssl rand -hex 32     # encryption-key
-   openssl rand -base64 32  # nextauth-secret
-   ```
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+  --version 2.0.0 \
+  --namespace langfuse \
+  -f values.yaml
+```
 
-2. Apply the Secret:
+Or with ingress enabled:
 
-   ```bash
-   kubectl create namespace langfuse
-   kubectl apply -n langfuse -f secret.yaml
-   ```
+```bash
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+  --version 2.0.0 \
+  --namespace langfuse \
+  -f values.yaml -f with-ingress.yaml
+```
 
-3. Install the chart:
+Optional: pin application secrets yourself (e.g. before a data migration) by applying [`secret.yaml`](./secret.yaml) and referencing it from values — see comments in that file.
 
-   ```bash
-   helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
-     --version 2.0.0 \
-     --namespace langfuse \
-     -f values.yaml
-   ```
+Wait for workloads:
 
-   Or with ingress enabled:
+```bash
+kubectl get pods -n langfuse -w
+```
 
-   ```bash
-   helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
-     --version 2.0.0 \
-     --namespace langfuse \
-     -f values.yaml -f with-ingress.yaml
-   ```
+Port-forward and sign in:
 
-4. Wait for the workloads to come up. Typical readiness order:
-
-   - `KeeperCluster` / `ClickHouseCluster` pods (reconciled by the operator)
-   - PostgreSQL StatefulSet
-   - Valkey
-   - SeaweedFS allInOne
-   - `langfuse-web` and `langfuse-worker` Deployments
-
-   ```bash
-   kubectl get pods -n langfuse -w
-   ```
-
-5. Port-forward and sign in:
-
-   ```bash
-   kubectl port-forward -n langfuse svc/langfuse-web 3000:3000
-   open http://localhost:3000
-   ```
+```bash
+kubectl port-forward -n langfuse svc/langfuse-web 3000:3000
+open http://localhost:3000
+```
 
 ## Local testing against this repo
 
@@ -124,12 +105,12 @@ For offline `helm template` / unit tests without a live cluster, set `clickhouse
 ## External components
 
 To bring your own Postgres, Redis, object storage, or ClickHouse instead of the bundled ones,
-see [`examples/external-components`](../external-components/) — each component can be swapped
-independently via `*.deploy: false`.
+see [`examples/external-components`](../external-components/) — overlays are additive and can be
+combined in a single `helm install`.
 
 ## Files
 
-- [`secret.yaml`](./secret.yaml) — Langfuse application secrets (`salt`, `encryption-key`, `nextauth-secret`).
-- [`values.yaml`](./values.yaml) — minimal values (all four components deployed).
+- [`values.yaml`](./values.yaml) — minimal values (all four components deployed; zero-config secrets).
+- [`secret.yaml`](./secret.yaml) — optional: pin Langfuse application secrets yourself.
 - [`with-ingress.yaml`](./with-ingress.yaml) — optional ingress overlay.
 - [`with-sso-secret-refs.yaml`](./with-sso-secret-refs.yaml) — optional SSO secret references.

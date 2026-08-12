@@ -164,6 +164,29 @@ value: {{ .value.value | quote }}
 {{- end -}}
 
 {{/*
+Name of the chart-managed Langfuse application Secret (salt / encryption-key / nextauth-secret).
+*/}}
+{{- define "langfuse.appSecretName" -}}
+{{- printf "%s-app" (include "langfuse.fullname" .) -}}
+{{- end -}}
+
+{{/*
+Resolve a Langfuse app credential: prefer explicit value / secretKeyRef / fieldRef,
+otherwise fall back to the chart-managed `<release>-app` Secret.
+*/}}
+{{- define "langfuse.getAppSecretValue" -}}
+{{- $resolved := include "langfuse.getValueOrSecret" (dict "key" .key "value" .value) -}}
+{{- if $resolved -}}
+{{- $resolved -}}
+{{- else -}}
+valueFrom:
+  secretKeyRef:
+    name: {{ include "langfuse.appSecretName" .root }}
+    key: {{ .secretKey | quote }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get value of a specific environment variable from additionalEnv if it exists
 */}}
 {{- define "langfuse.getEnvVar" -}}
@@ -241,14 +264,10 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.logging.level | quote }}
 - name: LANGFUSE_LOG_FORMAT
   value: {{ .Values.langfuse.logging.format | quote }}
-{{- with (include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.salt" "value" .Values.langfuse.salt) ) }}
 - name: SALT
-  {{- . | nindent 2 }}
-{{- end }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey) ) }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.salt" "value" .Values.langfuse.salt "secretKey" "salt") | nindent 2 }}
 - name: ENCRYPTION_KEY
-  {{- . | nindent 2 }}
-{{- end }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey "secretKey" "encryption-key") | nindent 2 }}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.licenseKey" "value" .Values.langfuse.licenseKey)) }}
 - name: LANGFUSE_EE_LICENSE_KEY
   {{- . | nindent 2 }}
@@ -283,7 +302,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: NEXTAUTH_URL
   value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
-  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret "secretKey" "nextauth-secret") | nindent 2 }}
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
 - name: AUTH_DISABLE_USERNAME_PASSWORD
   value: {{ .Values.langfuse.auth.disableUsernamePassword | quote }}

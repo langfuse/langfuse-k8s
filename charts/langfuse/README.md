@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.221.1](https://img.shields.io/badge/AppVersion-3.221.1-informational?style=flat-square)
+![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.4.0](https://img.shields.io/badge/AppVersion-4.4.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -29,26 +29,29 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clickhouse | object | `{"auth":{"existingSecret":"","existingSecretKey":"","password":"","username":"default"},"cluster":{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-server","tag":"26.3"},"nodeSelector":{},"profileSettings":{},"replicas":1,"resources":{},"settings":{},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"100Gi"},"tolerations":[]},"database":"default","deploy":true,"host":"","httpPort":8123,"keeper":{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-keeper","tag":"26.3"},"nodeSelector":{},"replicas":3,"resources":{},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"10Gi"},"tolerations":[]},"migration":{"autoMigrate":true,"ssl":false,"url":""},"nativePort":9000}` | release notes before upgrading and pin the operator chart version explicitly. |
+| clickhouse | object | `{"auth":{"existingSecret":"","existingSecretKey":"","password":"","username":"default"},"cluster":{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-server","tag":"26.4"},"nodeSelector":{},"profileSettings":{},"replicas":1,"resources":{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}},"settings":{},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"100Gi"},"tolerations":[]},"crdCheck":true,"database":"default","deploy":true,"host":"","httpPort":8123,"keeper":{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-keeper","tag":"26.4"},"nodeSelector":{},"replicas":3,"resources":{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"20Gi"},"tolerations":[]},"migration":{"autoMigrate":true,"ssl":false,"url":""},"nativePort":9000}` | release notes before upgrading and pin the operator chart version explicitly. |
 | clickhouse.auth.existingSecret | string | `""` | If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret). |
 | clickhouse.auth.existingSecretKey | string | `""` | The key in the existing secret that contains the password. |
 | clickhouse.auth.password | string | `""` | Leave empty to have the chart generate one. |
 | clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
-| clickhouse.cluster | object | `{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-server","tag":"26.3"},"nodeSelector":{},"profileSettings":{},"replicas":1,"resources":{},"settings":{},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"100Gi"},"tolerations":[]}` | ------------------------------------------------------------------------- |
+| clickhouse.cluster | object | `{"affinity":{},"enabled":true,"image":{"repository":"clickhouse/clickhouse-server","tag":"26.4"},"nodeSelector":{},"profileSettings":{},"replicas":1,"resources":{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}},"settings":{},"storage":{"accessModes":["ReadWriteOnce"],"className":"","size":"100Gi"},"tolerations":[]}` | ------------------------------------------------------------------------- |
 | clickhouse.cluster.enabled | bool | `true` | external non-clustered ClickHouse. |
+| clickhouse.cluster.image.tag | string | `"26.4"` | Keep in sync with the recommended ClickHouse version in the repo README (Langfuse v4). |
 | clickhouse.cluster.nodeSelector | object | `{}` | Pod scheduling. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse profile settings (mounted into `users.xml`). |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid non-HA single-pod cluster; 2+ requires Keeper enabled. |
-| clickhouse.cluster.resources | object | `{}` | Resource limits/requests for the ClickHouse pods. |
+| clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | ClickHouse under modest load. Override for production sizing. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings (under `<clickhouse>` config XML). |
 | clickhouse.cluster.storage.className | string | `""` | StorageClass name. Leave empty to use the cluster's default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Size of each ClickHouse pod's data PVC. |
+| clickhouse.crdCheck | bool | `true` | `helm template` / GitOps diff (or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`). |
 | clickhouse.database | string | `"default"` | ClickHouse database to use. |
 | clickhouse.deploy | bool | `true` | Set to false to use an external ClickHouse server. |
 | clickhouse.host | string | `""` | based on the cluster CR's headless Service. |
 | clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
 | clickhouse.keeper.enabled | bool | `true` | Deploy a `KeeperCluster` CR alongside the ClickHouseCluster. Required for replicated mode. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count. Must be odd (1, 3, 5). Use 3 for production. |
+| clickhouse.keeper.storage.size | string | `"20Gi"` | Default 20Gi to avoid early PVC scale-ups shortly after install. |
 | clickhouse.migration.autoMigrate | bool | `true` | Whether to run automatic ClickHouse migrations on startup |
 | clickhouse.migration.ssl | bool | `false` | Set to true to establish SSL connection for migration |
 | clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
@@ -58,11 +61,12 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
+| langfuse.allowV1Upgrade | bool | `false` | examples/upgrade-v1-to-v2 instead. |
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
 | langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
-| langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
+| langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | `value` or `secretKeyRef` to pin a known key. Generate manually via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
 | langfuse.extraLifecycle | object | `{}` | Allows additional lifecycle hooks to be added to all langfuse deployments |
@@ -84,7 +88,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.licenseKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Langfuse EE license key. |
 | langfuse.logging.format | string | `"text"` | Set the log format for the application (text or json) |
 | langfuse.logging.level | string | `"info"` | Set the log level for the application (trace, debug, info, warn, error, fatal) |
-| langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference. |
+| langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | or `secretKeyRef` to pin a known secret. |
 | langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
@@ -95,7 +99,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments |
-| langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
+| langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | To generate manually: `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
 | langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |

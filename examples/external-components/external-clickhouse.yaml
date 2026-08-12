@@ -2,8 +2,7 @@
 # Overlay on top of minimal-installation/values.yaml.
 #
 # For an in-cluster operator example that applies KeeperCluster / ClickHouseCluster
-# out-of-band, see ../v4-installation/clickhouse-cluster.yaml — host becomes
-# `<name>-clickhouse-headless`.
+# out-of-band, see ./clickhouse-cluster.yaml — host becomes `<name>-clickhouse-headless`.
 clickhouse:
   deploy: false
   host: langfuse-clickhouse-headless

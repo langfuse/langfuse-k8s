@@ -41,18 +41,18 @@ tests:
           of: ServiceAccount
         template: serviceaccount.yaml
 
-  - it: should use secret references from minimal installation values
+  - it: should use chart-managed app secret references for zero-config installs
     values:
       - ../../../examples/minimal-installation/values.yaml
     asserts:
-      # Langfuse application secrets come from the user-provided `langfuse` Secret
+      # Langfuse application secrets come from the chart-managed `<release>-app` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: SALT
             valueFrom:
               secretKeyRef:
-                name: langfuse
+                name: RELEASE-NAME-langfuse-app
                 key: salt
         template: web/deployment.yaml
       - contains:
@@ -61,7 +61,7 @@ tests:
             name: ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
-                name: langfuse
+                name: RELEASE-NAME-langfuse-app
                 key: encryption-key
         template: web/deployment.yaml
       - contains:
@@ -70,7 +70,7 @@ tests:
             name: NEXTAUTH_SECRET
             valueFrom:
               secretKeyRef:
-                name: langfuse
+                name: RELEASE-NAME-langfuse-app
                 key: nextauth-secret
         template: web/deployment.yaml
 

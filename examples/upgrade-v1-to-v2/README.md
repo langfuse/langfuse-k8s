@@ -22,8 +22,10 @@ final delta and cut over.
 > Rehearse in staging. Take backups of **all** components first
 > ([Backup Strategies](https://langfuse.com/self-hosting/configuration/backups)).
 > Reuse the same Langfuse `salt`, `encryptionKey` and `nextauth.secret` on v2 — otherwise encrypted
-> Postgres columns become undecryptable. Align Langfuse `appVersion` on v1 with the v2 chart target
-> before copying data.
+> Postgres columns become undecryptable. Keep the **same Langfuse application version** on the v1
+> source and the v2 target while copying data — that means both the chart `appVersion` **and** any
+> `langfuse.image.tag` overwrite must match. Minimum supported source version for this guide:
+> **v3.224.1**.
 
 ## How <5 min downtime is achieved
 
@@ -31,7 +33,7 @@ final delta and cut over.
 |-------|------------------|--------------|
 | **Postgres** | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
 | **Object storage (MinIO → SeaweedFS)** | `mc mirror` / `mc mirror --watch` | Final `mc mirror` (new blobs only) |
-| **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass + `OPTIMIZE FINAL` |
+| **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass (no `OPTIMIZE FINAL` by default) |
 | **Redis / Valkey** | — (ephemeral queue/cache) | — |
 
 Downtime ≈ freeze writers + drain v1 worker queue + final deltas + DNS cutover. The multi-hour bulk
@@ -151,9 +153,13 @@ TARGET_POD=langfuse-v2-clickhouse-0-0-0 TARGET_SECRET=langfuse-v2-clickhouse-aut
 
 ## 3. Freeze & final delta (<5 min window)
 
+Scale **web first** so no new events are enqueued, let the **worker drain** the Redis queue into
+ClickHouse, then scale the worker down:
+
 ```bash
-kubectl -n langfuse scale deploy/langfuse-web deploy/langfuse-worker --replicas=0
-# wait for the v1 worker Redis queue to drain
+kubectl -n langfuse scale deploy/langfuse-web --replicas=0
+# wait until the v1 worker has drained its Redis queues (queue depth → 0 / worker idle)
+kubectl -n langfuse scale deploy/langfuse-worker --replicas=0
 ```
 
 1. **Postgres** — confirm `lag_bytes=0`, then:

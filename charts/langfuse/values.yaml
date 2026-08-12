@@ -15,7 +15,10 @@ langfuse:
     # -- Set the log format for the application (text or json)
     format: text
 
-  # -- Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`.
+  # -- Used to hash API keys. Leave empty to auto-generate on first install
+  # -- (persisted in the chart-managed `<release>-app` Secret via lookup). Override with
+  # -- `value` or `secretKeyRef` if you need to pin a known salt (e.g. migrations).
+  # -- To generate manually: `openssl rand -base64 32`.
   salt:
     value: ""
     secretKeyRef:
@@ -51,7 +54,9 @@ langfuse:
   #       tenantId: "<YOUR TENANT ID>"
   # -- For sensitive fields, it is recommended to use secretKeyRef to avoid storing secrets in values.yaml
 
-  # -- Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`.
+  # -- Used to encrypt sensitive data. Must be 256 bits (64 hex characters). Leave empty
+  # -- to auto-generate on first install (persisted in `<release>-app`). Override with
+  # -- `value` or `secretKeyRef` to pin a known key. Generate manually via `openssl rand -hex 32`.
   encryptionKey:
     value: ""
     secretKeyRef:
@@ -428,11 +433,20 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
+  # -- Allow `helm upgrade` when leftover v1 Bitnami resources are still present
+  # -- (ClickHouse STS `<release>-clickhouse-shard0`, Postgres PVC
+  # -- `data-<release>-postgresql-0`, and/or MinIO Deployment `<release>-s3`).
+  # -- Default false — chart v2 is not an in-place upgrade from v1; use
+  # -- examples/upgrade-v1-to-v2 instead.
+  allowV1Upgrade: false
+
   # NextAuth configuration
   nextauth:
     # -- When deploying to production, set the `nextauth.url` value to the canonical URL of your site.
     url: http://localhost:3000
-    # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference.
+    # -- Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Leave empty
+    # -- to auto-generate on first install (persisted in `<release>-app`). Override with `value`
+    # -- or `secretKeyRef` to pin a known secret.
     secret:
       value: ""
       secretKeyRef:
@@ -824,7 +838,8 @@ clickhouse:
       repository: clickhouse/clickhouse-keeper
       tag: "26.4"
     storage:
-      size: 10Gi
+      # -- Default 20Gi to avoid early PVC scale-ups shortly after install.
+      size: 20Gi
       className: ""
       accessModes:
         - ReadWriteOnce

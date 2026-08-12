@@ -2,6 +2,10 @@
 # ---------------------------------------------------------------------------
 # ClickHouse online sync for the Langfuse v1 -> v2 migration (blue/green).
 #
+# Minimum source Langfuse version: v3.224.1 (latest published v3). Newer charts
+# default to Langfuse v4 — keep the same appVersion / langfuse.image.tag on the
+# v1 source and the v2 target while copying data.
+#
 # Copies Langfuse's ClickHouse data tables from a LIVE v1 cluster into the
 # freshly-migrated v2 cluster using the native remote() table function, one
 # incremental pass at a time keyed on an `event_ts` watermark. The big Langfuse
@@ -14,8 +18,15 @@
 #   1) Run it repeatedly while v1 is LIVE to copy the bulk + keep catching up:
 #        ./ch-online-sync.sh                       # incremental pass
 #      (loop it, e.g. `watch -n 300 ./ch-online-sync.sh`, until lag is small)
-#   2) Freeze v1 writers, let the v1 worker drain into ClickHouse, then:
-#        ./ch-online-sync.sh --final              # final delta + OPTIMIZE FINAL
+#   2) Freeze v1 writers (scale web first, then worker after the queue drains),
+#      then:
+#        ./ch-online-sync.sh --final              # final delta only
+#
+# OPTIMIZE TABLE … FINAL is intentionally NOT run by this script. On large
+# volumes it can be expensive / disruptive. If you observe too many duplicates
+# after the transfer (unexpected for identical re-inserts), you may run it
+# yourself after reading:
+#   https://clickhouse.com/docs/en/sql-reference/statements/optimize
 #
 # It is intentionally dependency-light (kubectl + clickhouse-client in the
 # target pod). Review and adapt before running against production.
@@ -39,10 +50,9 @@ set -euo pipefail
 
 # ReplacingMergeTree data tables that carry an `event_ts` version column. These
 # are safe to copy incrementally with overlap (dedup handles duplicates).
-: "${INCREMENTAL_TABLES:=traces observations scores dataset_run_items dataset_run_items_rmt project_environments blob_storage_file_log}"
-# Tables without a replacing/version column (plain MergeTree). Copied ONLY on
-# the --final pass, once, to avoid duplicate rows. event_log is an internal log.
-: "${FINAL_ONLY_TABLES:=event_log}"
+# dataset_run_items / project_environments / event_log are omitted — unused on
+# Langfuse ≥ v3.224.1.
+: "${INCREMENTAL_TABLES:=traces observations scores dataset_run_items_rmt blob_storage_file_log}"
 
 # Overlap window subtracted from the stored watermark on each pass, so slightly
 # late/out-of-order rows (event_ts < previous max) are re-picked-up. Dedup makes
@@ -77,27 +87,11 @@ copy_incremental() {
   echo "$wnew" > "$wmfile"
 }
 
-copy_final_only() {
-  local t="$1"
-  echo ">> $t: full copy (final pass, plain MergeTree)"
-  # Truncate first so a re-run of --final does not duplicate the log rows.
-  chq "TRUNCATE TABLE IF EXISTS $TARGET_DB.$t"
-  chq "INSERT INTO $TARGET_DB.$t SELECT * FROM $(remote_expr "$t")"
-}
-
 echo "== ClickHouse online sync ($([ $FINAL -eq 1 ] && echo FINAL || echo incremental)) =="
 for t in $INCREMENTAL_TABLES; do copy_incremental "$t"; done
 
-if [ $FINAL -eq 1 ]; then
-  for t in $FINAL_ONLY_TABLES; do copy_final_only "$t"; done
-  echo "== OPTIMIZE FINAL to collapse duplicates =="
-  for t in $INCREMENTAL_TABLES; do
-    echo ">> OPTIMIZE $t FINAL"; chq "OPTIMIZE TABLE $TARGET_DB.$t FINAL" || true
-  done
-fi
-
 echo "== row counts (target, FINAL) =="
-for t in $INCREMENTAL_TABLES $([ $FINAL -eq 1 ] && echo "$FINAL_ONLY_TABLES"); do
+for t in $INCREMENTAL_TABLES; do
   printf '   %-26s %s\n' "$t" "$(chq "SELECT count() FROM $TARGET_DB.$t FINAL" | tr -d '\r')"
 done
 echo "Done."
