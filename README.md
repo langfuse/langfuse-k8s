@@ -14,6 +14,22 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 - `examples` directory contains example `yaml` configurations
 - `charts/langfuse` directory contains Helm chart for deploying Langfuse with an associated database
 
+## Installing Langfuse v4
+
+Chart **v2.0.0** ships [Langfuse v4](https://langfuse.com/docs/v4) by default. For new installations we recommend adopting v4.
+
+Please follow the [minimal installation](./examples/minimal-installation/).
+
+If you want to upgrade an **existing Langfuse application** from v3 to v4, follow the [application upgrade guide](https://langfuse.com/self-hosting/upgrade/upgrade-guides/upgrade-v3-to-v4). That is a separate step from the Helm chart v1 → v2 migration.
+
+If you still run the **Bitnami-based chart (v1.x)**, migrate the chart first via [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/) (keep the same Langfuse application version while copying data), then follow the application v3 → v4 guide. You can also subscribe to [OSS release updates](https://langfuse.com/self-hosting/upgrade#release-notes) and the [GitHub discussion](https://github.com/orgs/langfuse/discussions/12518).
+
+For all new setups we recommend these minimum versions for Langfuse v4:
+
+- ClickHouse: 25.12 minimum, 26.4 recommended
+- Postgres: 16 recommended
+- Redis: 7.2 recommended
+
 ## ⚠️ Breaking changes in v2.0.0
 
 v2.0.0 replaces the Bitnami sub-charts with OSS-licensed alternatives and deploys ClickHouse via the upstream [`ClickHouse/clickhouse-operator`](https://github.com/ClickHouse/clickhouse-operator). The chart ships [Langfuse v4](https://langfuse.com/docs/v4) by default (override `langfuse.image.tag` only if you intentionally need another release).

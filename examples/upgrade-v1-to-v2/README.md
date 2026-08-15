@@ -49,7 +49,7 @@ larger step.
 ```bash
 cd examples/upgrade-v1-to-v2/scripts
 
-# Required: kubectl, helm, jq, python3
+# Required: kubectl, helm >= 3.17, jq, python3
 # YAML parsing also needs one of: yq (mikefarah), PyYAML, or Ruby
 ./migrate-v1-to-v2.sh --values /path/to/your-v1-values.yaml
 
@@ -62,7 +62,9 @@ cd examples/upgrade-v1-to-v2/scripts
 
 Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<source>-v2`),
 `--output-values`, `--output-cutover-values`, `--extra-values` (repeatable), `--context`,
-`--skip-prereqs`, `--worker-drain-seconds` (used with `--yes`).
+`--image-tag` (defaults to the v1 Helm `appVersion` / values tag), `--skip-prereqs`,
+`--worker-drain-seconds` (max wait for v1 Redis queues after web scale-down), `--force`
+(continue after lag / readiness / queue-drain failures). Helm **≥ 3.17** is required.
 
 | `*.deploy` | Action |
 |------------|--------|

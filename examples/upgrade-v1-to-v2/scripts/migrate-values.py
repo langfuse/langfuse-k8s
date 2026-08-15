@@ -78,6 +78,22 @@ S3_KEEP = (
 )
 ROOT_KEEP = ("nameOverride", "fullnameOverride")
 
+# v1 keys that do not copy into a bundled-store overlay. Pass --extra-values
+# if the sibling needs matching size / storage.
+DROPPED_HINTS = (
+    "postgresql.primary.resources",
+    "postgresql.primary.persistence",
+    "postgresql.resources",
+    "clickhouse.resources",
+    "clickhouse.persistence",
+    "clickhouse.zookeeper.replicaCount",
+    "s3.persistence",
+    "s3.resources",
+    "redis.master.resources",
+    "redis.primary.resources",
+    "redis.resources",
+)
+
 
 def load(path: str | None) -> dict[str, Any]:
     raw = sys.stdin.read() if path in (None, "-") else open(path, encoding="utf-8").read()
@@ -118,6 +134,41 @@ def pick(src: dict[str, Any] | None, keys: tuple[str, ...]) -> dict[str, Any]:
     if not src:
         return {}
     return {k: src[k] for k in keys if k in src}
+
+
+def nested_get(data: dict[str, Any], path: str) -> Any:
+    cur: Any = data
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def warn_dropped(v1: dict[str, Any]) -> None:
+    for path in DROPPED_HINTS:
+        root = path.split(".", 1)[0]
+        if not deploy_enabled(v1, root):
+            continue
+        if nested_get(v1, path) is None:
+            continue
+        sys.stderr.write(
+            f"warning: {path} is set in v1 values but is not copied into the generated overlay; "
+            "pass --extra-values if the sibling needs matching size / storage\n"
+        )
+
+
+def pin_image_tag(v2: dict[str, Any], tag: str | None) -> dict[str, Any]:
+    if not tag:
+        return v2
+    lf = v2.setdefault("langfuse", {})
+    if not isinstance(lf, dict):
+        return v2
+    image = lf.get("image")
+    image = dict(image) if isinstance(image, dict) else {}
+    image["tag"] = tag
+    lf["image"] = image
+    return v2
 
 
 def copy_langfuse(v1: dict[str, Any]) -> dict[str, Any]:
@@ -229,6 +280,11 @@ def main() -> int:
         help="v2 sibling fullname (auth Secret names). Required for sibling/cutover",
     )
     p.add_argument("--plan", action="store_true", help="print enabled-component JSON and exit")
+    p.add_argument(
+        "--image-tag",
+        dest="image_tag",
+        help="Pin langfuse.image.tag so the sibling / in-place upgrade matches v1",
+    )
     args = p.parse_args()
 
     v1 = load(None if args.input == "-" else args.input)
@@ -248,8 +304,11 @@ def main() -> int:
             sys.stderr.write("error: --target-fullname is required for sibling/cutover\n")
             return 2
         data = migrate_sibling(v1, args.target_fullname, ingress=(mode == "cutover"))
+        warn_dropped(v1)
     else:
         data = migrate_inplace(v1)
+
+    pin_image_tag(data, args.image_tag)
 
     text = dump_yaml(data)
     if args.output == "-":

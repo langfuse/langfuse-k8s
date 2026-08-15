@@ -11,6 +11,7 @@ CH_SYNC="$SCRIPT_DIR/ch-online-sync.sh"
 YES=0
 DRY_RUN=0
 SKIP_PREREQS=0
+FORCE=0
 NAMESPACE="${NAMESPACE:-langfuse}"
 SOURCE_RELEASE="${SOURCE_RELEASE:-}"
 TARGET_RELEASE="${TARGET_RELEASE:-}"
@@ -25,6 +26,9 @@ CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
 CLICKHOUSE_OPERATOR_VERSION="${CLICKHOUSE_OPERATOR_VERSION:-0.0.5}"
 WORKER_DRAIN_SECONDS="${WORKER_DRAIN_SECONDS:-60}"
 MC_IMAGE="${MC_IMAGE:-minio/mc:latest}"
+IMAGE_TAG="${IMAGE_TAG:-}"
+MC_POD=""
+RESUME_TARGET=0
 
 usage() {
   cat <<'EOF'
@@ -51,13 +55,15 @@ Options:
       --chart REF           Chart ref or path (default: local charts/langfuse or OCI)
       --chart-version VER   Chart version when using OCI (default: 2.0.0)
       --context NAME        kube-context passed to kubectl/helm
+      --image-tag TAG       Pin langfuse.image.tag (default: v1 values or Helm appVersion)
   -y, --yes                 Do not prompt; run every remaining step
+      --force               Continue after Postgres lag / readiness / queue-drain failures
       --dry-run             Preflight + plan + generate values; do not change the cluster
       --skip-prereqs        Do not install cert-manager / ClickHouse operator
-      --worker-drain-seconds N  Wait after scaling v1 web down (default: 60; used with --yes)
+      --worker-drain-seconds N  Max seconds to wait for v1 Redis queues after scaling web down (default: 60)
   -h, --help                Show this help
 
-Environment: KUBECTL, HELM, KCTX, NAMESPACE, WORKER_DRAIN_SECONDS, MC_IMAGE
+Environment: KUBECTL, HELM, KCTX, NAMESPACE, WORKER_DRAIN_SECONDS, MC_IMAGE, IMAGE_TAG
 EOF
 }
 
@@ -184,6 +190,27 @@ sys.exit(0 if parse(sys.argv[1]) >= parse(sys.argv[2]) else 1)
 PY
 }
 
+normalize_tag() {
+  local t=$1
+  t=${t#v}
+  printf '%s\n' "$t"
+}
+
+fail_or_force() {
+  if [ "$FORCE" -eq 1 ]; then
+    warn "$* (--force: continuing)"
+    return 0
+  fi
+  die "$* (pass --force to continue)"
+}
+
+cleanup() {
+  if [ -n "$MC_POD" ] && [ "$DRY_RUN" -eq 0 ]; then
+    kx -n "$NAMESPACE" delete pod "$MC_POD" --wait=false >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
 helm_apply() {
   local release=$1
   shift
@@ -212,6 +239,8 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=1; shift ;;
     --skip-prereqs) SKIP_PREREQS=1; shift ;;
     --worker-drain-seconds) WORKER_DRAIN_SECONDS=$2; shift 2 ;;
+    --image-tag) IMAGE_TAG=$2; shift 2 ;;
+    --force) FORCE=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
@@ -239,6 +268,10 @@ fi
 "$HELM" version >/dev/null
 jq --version >/dev/null
 python3 --version >/dev/null
+HELM_VER=$("$HELM" version --template '{{.Version}}' 2>/dev/null || true)
+HELM_VER=${HELM_VER#v}
+[ -n "$HELM_VER" ] || die "could not read helm version (need Helm >= 3.17)"
+semver_ge "$HELM_VER" "3.17.0" || die "Helm $HELM_VER is too old; the v2 chart requires Helm >= 3.17.0"
 yaml_to_json "$VALUES_FILE" >/dev/null
 [ -x "$VALUES_MIGRATE" ] || chmod +x "$VALUES_MIGRATE"
 [ -x "$CH_SYNC" ] || chmod +x "$CH_SYNC"
@@ -300,6 +333,19 @@ if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ]; then
   semver_ge "$SRC_APP" "3.224.1" || die "source appVersion $SRC_APP is below the minimum supported v3.224.1"
 fi
 
+VALUES_TAG=$(printf '%s' "$V1_JSON" | jq -r '.langfuse.web.image.tag // .langfuse.image.tag // empty')
+if [ -z "$IMAGE_TAG" ]; then
+  IMAGE_TAG=${VALUES_TAG:-$SRC_APP}
+fi
+[ -n "$IMAGE_TAG" ] && [ "$IMAGE_TAG" != "null" ] || die "could not determine Langfuse image tag. Set langfuse.image.tag in the values file or pass --image-tag (must match the running v1 app)."
+if [ -n "$VALUES_TAG" ] && [ "$(normalize_tag "$VALUES_TAG")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
+  die "values langfuse.image.tag ($VALUES_TAG) does not match --image-tag ($IMAGE_TAG)"
+fi
+if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ] && [ "$(normalize_tag "$SRC_APP")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
+  die "Helm appVersion $SRC_APP does not match image tag $IMAGE_TAG. Pin --image-tag to the running v1 version so the sibling does not jump to chart v2 defaults."
+fi
+log "pinning langfuse.image.tag=$IMAGE_TAG so v1 and v2 stay on the same application version"
+
 TARGET_RELEASE=${TARGET_RELEASE:-${SOURCE_RELEASE}-v2}
 SRC_FULLNAME=$(src_fullname_of "$SOURCE_RELEASE")
 TGT_FULLNAME=$(tgt_fullname_of "$TARGET_RELEASE")
@@ -318,6 +364,9 @@ V1_S3_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.existingSecret // empty'
 V1_S3_SECRET=${V1_S3_SECRET:-${SRC_FULLNAME}-s3}
 V1_S3_USER_KEY=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.rootUserSecretKey // "root-user"')
 V1_S3_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.rootPasswordSecretKey // "root-password"')
+V1_REDIS_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.redis.auth.existingSecret // empty')
+V1_REDIS_SECRET=${V1_REDIS_SECRET:-${SRC_FULLNAME}-redis}
+V1_REDIS_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.redis.auth.existingSecretPasswordKey // "redis-password"')
 V2_PG_SECRET="${TGT_FULLNAME}-postgresql-auth"
 V2_CH_SECRET="${TGT_FULLNAME}-clickhouse-auth"
 V2_S3_SECRET="${TGT_FULLNAME}-s3-auth"
@@ -328,11 +377,17 @@ v1_pg_super() {
   kx -n "$NAMESPACE" exec "${SRC_FULLNAME}-postgresql-0" -- env PGPASSWORD="$pw" psql -U postgres "$@"
 }
 
-# Only the chart Ingress is swapped automatically. A custom Ingress / HTTPRoute
-# is treated as "no chart ingress" — the script asks you to retarget it.
+# Chart Ingress is swapped automatically when values enable it, or when the
+# existing Ingress is owned by the v1 Helm release. Anything else is treated
+# as externally managed — the script asks you to retarget it.
 INGRESS_ON=$INGRESS_VALUES
-if [ "$INGRESS_ON" -eq 0 ] && kx -n "$NAMESPACE" get ingress "$V1_INGRESS" >/dev/null 2>&1; then
-  warn "Ingress/$V1_INGRESS exists but langfuse.ingress.enabled is false in values — treating it as externally managed; you will need to retarget it at $V2_WEB"
+if kx -n "$NAMESPACE" get ingress "$V1_INGRESS" >/dev/null 2>&1; then
+  ING_OWNER=$(kx -n "$NAMESPACE" get ingress "$V1_INGRESS" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || true)
+  if [ "$ING_OWNER" = "$SOURCE_RELEASE" ]; then
+    INGRESS_ON=1
+  elif [ "$INGRESS_ON" -eq 0 ]; then
+    warn "Ingress/$V1_INGRESS exists but is not owned by release $SOURCE_RELEASE — treating it as externally managed; you will need to retarget it at $V2_WEB"
+  fi
 fi
 
 V1_MARKERS=0
@@ -378,7 +433,7 @@ write_values() {
   if [ "$mode" != "inplace" ]; then
     extra+=(--target-fullname "$TGT_FULLNAME")
   fi
-  python3 "$VALUES_MIGRATE" --mode "$mode" --input "$VALUES_FILE" --output "$dest.tmp" "${extra[@]+"${extra[@]}"}"
+  python3 "$VALUES_MIGRATE" --mode "$mode" --input "$VALUES_FILE" --output "$dest.tmp" --image-tag "$IMAGE_TAG" "${extra[@]+"${extra[@]}"}"
   if [ "$(head -c 1 "$dest.tmp")" = "{" ]; then
     json_to_yaml < "$dest.tmp" > "$dest.body"
     rm -f "$dest.tmp"
@@ -439,6 +494,7 @@ Migration plan (from values; deploy defaults to true when unset)
   object storage:   $([ "$S3_ON" -eq 1 ] && echo "migrate (mc mirror MinIO → SeaweedFS)" || echo "skip (external / deploy=false)")
   redis/valkey:     $([ "$REDIS_ON" -eq 1 ] && echo "redeploy empty (ephemeral; no data copy)" || echo "skip (external / deploy=false)")
   traffic:          $([ "$NEED_STORES" -eq 0 ] && echo "in-place (Service / Ingress unchanged)" || { [ "$INGRESS_ON" -eq 1 ] && echo "Ingress swap (delete $V1_INGRESS, then create $TGT_FULLNAME)" || echo "manual (point traffic at Service/$V2_WEB)"; })
+  image tag:        $IMAGE_TAG
   values:           $OUTPUT_VALUES
 $([ "$NEED_STORES" -eq 1 ] && [ "$INGRESS_ON" -eq 1 ] && echo "  cutover values:   $OUTPUT_CUTOVER_VALUES")
 
@@ -461,7 +517,7 @@ ensure_crds() {
   kx get crd "$crd" >/dev/null 2>&1
 }
 
-if [ "$SKIP_PREREQS" -eq 0 ]; then
+if [ "$SKIP_PREREQS" -eq 0 ] && [ "$NEED_STORES" -eq 1 ]; then
   if ! ensure_crds certificates.cert-manager.io; then
     confirm "Install cert-manager $CERT_MANAGER_VERSION into namespace cert-manager?"
     hx install cert-manager oci://quay.io/jetstack/charts/cert-manager \
@@ -473,7 +529,7 @@ if [ "$SKIP_PREREQS" -eq 0 ]; then
     log "cert-manager CRDs already present"
   fi
 
-  if { [ "$NEED_STORES" -eq 1 ] && [ "$CH_ON" -eq 1 ]; } && ! ensure_crds clickhouseclusters.clickhouse.com; then
+  if [ "$CH_ON" -eq 1 ] && ! ensure_crds clickhouseclusters.clickhouse.com; then
     confirm "Install ClickHouse operator $CLICKHOUSE_OPERATOR_VERSION?"
     hx install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
       --version "$CLICKHOUSE_OPERATOR_VERSION" \
@@ -484,6 +540,8 @@ if [ "$SKIP_PREREQS" -eq 0 ]; then
   elif [ "$CH_ON" -eq 1 ]; then
     log "ClickHouse operator CRDs already present"
   fi
+elif [ "$SKIP_PREREQS" -eq 0 ]; then
+  log "all stores are external — skipping cert-manager / ClickHouse operator install"
 fi
 
 # Protect the shared app Secret if Helm still owns it
@@ -502,6 +560,7 @@ if [ "$NEED_STORES" -eq 0 ]; then
   READY=$(kx -n "$NAMESPACE" run "${SRC_FULLNAME}-ready-check" --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
     curl -sf "http://${SRC_FULLNAME}-web.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
   log "v2 readiness: ${READY:-<empty>}"
+  [ -n "$READY" ] || fail_or_force "in-place upgrade readiness check failed"
   cat <<EOF
 
 In-place upgrade finished. Release $SOURCE_RELEASE is chart v2.
@@ -528,11 +587,22 @@ if [ "$PG_ON" -eq 1 ]; then
 fi
 
 # --- 5. Stand up sibling v2 -------------------------------------------------
+require_sibling_store() {
+  local kind=$1 name=$2
+  kx -n "$NAMESPACE" get "$kind" "$name" >/dev/null 2>&1 \
+    || die "resume failed: $kind/$name is missing on $TARGET_RELEASE. helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run."
+}
+
 if ! hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
   confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime; ingress stays on v1)?"
   helm_apply "$TARGET_RELEASE" -f "$OUTPUT_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
 else
-  log "reusing existing release $TARGET_RELEASE"
+  RESUME_TARGET=1
+  confirm "Resume against existing release $TARGET_RELEASE? Stores must already match the generated overlay."
+  [ "$PG_ON" -eq 1 ] && require_sibling_store sts "${TGT_FULLNAME}-postgresql"
+  [ "$S3_ON" -eq 1 ] && require_sibling_store deploy "${TGT_FULLNAME}-s3-all-in-one"
+  [ "$CH_ON" -eq 1 ] && require_sibling_store pod "${TGT_FULLNAME}-clickhouse-0-0-0"
+  require_sibling_store deploy "$V2_WEB"
 fi
 
 [ "$PG_ON" -eq 1 ] && wait_sts "${TGT_FULLNAME}-postgresql"
@@ -548,10 +618,15 @@ if [ "$CH_ON" -eq 1 ]; then
   log "waiting for ClickHouse pod ${TGT_FULLNAME}-clickhouse-0-0-0"
   kx -n "$NAMESPACE" wait pod "${TGT_FULLNAME}-clickhouse-0-0-0" --for=condition=Ready --timeout=600s
 fi
-wait_deploy "$V2_WEB"
-log "scaling $V2_WEB / $V2_WORKER to 0 after schema init (v1 stays the writer)"
-kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=0
-kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=0 >/dev/null 2>&1 || true
+V2_WEB_REPLICAS=$(kx -n "$NAMESPACE" get deploy "$V2_WEB" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)
+if [ "${V2_WEB_REPLICAS:-0}" != "0" ]; then
+  wait_deploy "$V2_WEB"
+  log "scaling $V2_WEB / $V2_WORKER to 0 after schema init (v1 stays the writer)"
+  kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=0
+  kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=0 >/dev/null 2>&1 || true
+else
+  log "$V2_WEB is already at 0 replicas — assuming schema init completed on a previous run"
+fi
 
 # --- 6. Online sync ---------------------------------------------------------
 V1_S3_SVC="${SRC_FULLNAME}-s3.${NAMESPACE}.svc.cluster.local:9000"
@@ -562,9 +637,15 @@ MC_POD="${TGT_FULLNAME}-migrate-mc"
 pg_exec_v1() {
   v1_pg_super -d "$V1_PG_DB" "$@"
 }
+V2_PG_DB=langfuse
+if [ "$PG_ON" -eq 1 ]; then
+  V2_PG_DB=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_DB 2>/dev/null || true)
+  V2_PG_DB=${V2_PG_DB:-langfuse}
+fi
+
 pg_exec_v2() {
   local su_pw=$1; shift
-  kx -n "$NAMESPACE" exec "${TGT_FULLNAME}-postgresql-0" -- env PGPASSWORD="$su_pw" psql -U postgres -d langfuse "$@"
+  kx -n "$NAMESPACE" exec -i "${TGT_FULLNAME}-postgresql-0" -- env PGPASSWORD="$su_pw" psql -U postgres -d "$V2_PG_DB" "$@"
 }
 
 if [ "$PG_ON" -eq 1 ]; then
@@ -584,8 +665,10 @@ if [ "$PG_ON" -eq 1 ]; then
     if [ -n "$TRUNCATE_SQL" ]; then
       pg_exec_v2 "$SU_PW" -c "$TRUNCATE_SQL"
     fi
-    pg_exec_v2 "$SU_PW" -c \
-      "CREATE SUBSCRIPTION lf_sub CONNECTION 'host=${SRC_FULLNAME}-postgresql port=5432 dbname=${V1_PG_DB} user=postgres password=${V1_PW}' PUBLICATION lf_pub;"
+    # Password goes on stdin so it is not in the kubectl/psql argv.
+    printf '%s\n' \
+      "CREATE SUBSCRIPTION lf_sub CONNECTION 'host=${SRC_FULLNAME}-postgresql port=5432 dbname=${V1_PG_DB} user=postgres password=${V1_PW}' PUBLICATION lf_pub;" \
+      | pg_exec_v2 "$SU_PW"
   fi
   log "watching replication lag (Ctrl-C only stops the watch; re-run the script to continue)"
   for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -653,17 +736,77 @@ if [ "$YES" -eq 0 ] && { [ "$CH_ON" -eq 1 ] || [ "$S3_ON" -eq 1 ]; }; then
   done
 fi
 
+v1_redis_pod() {
+  local cand
+  for cand in \
+    "${SRC_FULLNAME}-redis-primary-0" \
+    "${SRC_FULLNAME}-valkey-primary-0" \
+    "${SRC_FULLNAME}-redis-master-0" \
+    "${SRC_FULLNAME}-redis-0"
+  do
+    if kx -n "$NAMESPACE" get pod "$cand" >/dev/null 2>&1; then
+      printf '%s\n' "$cand"
+      return 0
+    fi
+  done
+  return 1
+}
+
+v1_queue_depth() {
+  local pod=$1 pw=$2
+  kx -n "$NAMESPACE" exec "$pod" -- sh -c "
+    export REDISCLI_AUTH=$(printf '%q' "$pw")
+    depth=0
+    for k in \$(redis-cli --no-auth-warning --scan --pattern 'bull:*:wait' ; redis-cli --no-auth-warning --scan --pattern 'bull:*:active'); do
+      n=\$(redis-cli --no-auth-warning LLEN \"\$k\" 2>/dev/null || echo 0)
+      depth=\$((depth + \${n:-0}))
+    done
+    for k in \$(redis-cli --no-auth-warning --scan --pattern 'bull:*:delayed'); do
+      n=\$(redis-cli --no-auth-warning ZCARD \"\$k\" 2>/dev/null || echo 0)
+      depth=\$((depth + \${n:-0}))
+    done
+    echo \$depth
+  " | tr -d '[:space:]'
+}
+
+drain_v1_queues() {
+  local pod pw depth i
+  if [ "$REDIS_ON" -ne 1 ]; then
+    if [ "$YES" -eq 1 ]; then
+      log "v1 Redis is external — waiting ${WORKER_DRAIN_SECONDS}s for the worker to drain"
+      sleep "$WORKER_DRAIN_SECONDS"
+    else
+      printf 'Scale-down of %s-web is done. Wait until the v1 worker is idle, then press Enter.\n' "$SRC_FULLNAME"
+      read -r _
+    fi
+    return 0
+  fi
+  pod=$(v1_redis_pod) || {
+    warn "could not find a v1 Redis pod; falling back to a ${WORKER_DRAIN_SECONDS}s wait"
+    sleep "$WORKER_DRAIN_SECONDS"
+    return 0
+  }
+  pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" "$V1_REDIS_PW_KEY" 2>/dev/null || true)
+  [ -n "$pw" ] || pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" password 2>/dev/null || true)
+  if [ -z "$pw" ]; then
+    warn "could not read v1 Redis password; falling back to a ${WORKER_DRAIN_SECONDS}s wait"
+    sleep "$WORKER_DRAIN_SECONDS"
+    return 0
+  fi
+  log "waiting up to ${WORKER_DRAIN_SECONDS}s for v1 Redis BullMQ queues on $pod to drain"
+  for i in $(seq 1 "$WORKER_DRAIN_SECONDS"); do
+    depth=$(v1_queue_depth "$pod" "$pw" || echo 999)
+    [ "${depth:-999}" = "0" ] && { log "v1 Redis queues are empty"; return 0; }
+    sleep 1
+  done
+  fail_or_force "v1 Redis queue depth is still ${depth:-unknown} after ${WORKER_DRAIN_SECONDS}s"
+}
+
 # --- 7. Freeze & final delta ------------------------------------------------
 confirm "FREEZE window: scale down v1 web (then worker) and run final deltas? This starts application downtime."
 
 kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-web" --replicas=0
-if [ "$YES" -eq 1 ]; then
-  log "waiting ${WORKER_DRAIN_SECONDS}s for the v1 worker to drain Redis queues"
-  sleep "$WORKER_DRAIN_SECONDS"
-else
-  printf 'Scale-down of %s-web is done. Wait until the v1 worker is idle (queue depth ~ 0), then press Enter.\n' "$SRC_FULLNAME"
-  read -r _
-fi
+drain_v1_queues
 kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-worker" --replicas=0
 
 if [ "$PG_ON" -eq 1 ]; then
@@ -674,7 +817,7 @@ if [ "$PG_ON" -eq 1 ]; then
     [ "${LAG:-999}" = "0" ] && break
     sleep 2
   done
-  [ "${LAG:-999}" = "0" ] || warn "Postgres lag_bytes=$LAG (continuing to drop subscription)"
+  [ "${LAG:-999}" = "0" ] || fail_or_force "Postgres lag_bytes=$LAG; refusing to drop the subscription"
   pg_exec_v2 "$SU_PW" -c "DROP SUBSCRIPTION IF EXISTS lf_sub;"
 fi
 
@@ -721,10 +864,7 @@ fi
 READY=$(kx -n "$NAMESPACE" run "${TGT_FULLNAME}-ready-check" --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
   curl -sf "http://${V2_WEB}.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
 log "v2 readiness: ${READY:-<empty>}"
-
-if kx -n "$NAMESPACE" get pod "$MC_POD" >/dev/null 2>&1; then
-  kx -n "$NAMESPACE" delete pod "$MC_POD" --wait=false >/dev/null || true
-fi
+[ -n "$READY" ] || fail_or_force "v2 readiness check failed for Service/$V2_WEB"
 
 cat <<EOF
 
