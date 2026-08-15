@@ -41,18 +41,17 @@ tests:
           of: ServiceAccount
         template: serviceaccount.yaml
 
-  - it: should use chart-managed app secret references for zero-config installs
+  - it: should use secret references from minimal installation values
     values:
       - ../../../examples/minimal-installation/values.yaml
     asserts:
-      # Langfuse application secrets come from the chart-managed `<release>-app` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: SALT
             valueFrom:
               secretKeyRef:
-                name: RELEASE-NAME-langfuse-app
+                name: langfuse
                 key: salt
         template: web/deployment.yaml
       - contains:
@@ -61,7 +60,7 @@ tests:
             name: ENCRYPTION_KEY
             valueFrom:
               secretKeyRef:
-                name: RELEASE-NAME-langfuse-app
+                name: langfuse
                 key: encryption-key
         template: web/deployment.yaml
       - contains:
@@ -70,7 +69,7 @@ tests:
             name: NEXTAUTH_SECRET
             valueFrom:
               secretKeyRef:
-                name: RELEASE-NAME-langfuse-app
+                name: langfuse
                 key: nextauth-secret
         template: web/deployment.yaml
 
@@ -78,45 +77,41 @@ tests:
     values:
       - ../../../examples/minimal-installation/values.yaml
     asserts:
-      # PostgreSQL password is sourced from the chart-managed `<release>-postgresql-auth` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: DATABASE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: "RELEASE-NAME-langfuse-postgresql-auth"
-                key: USERDB_PASSWORD
+                name: langfuse
+                key: postgresql-password
         template: web/deployment.yaml
-      # ClickHouse password is sourced from the chart-managed `<release>-clickhouse-auth` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: CLICKHOUSE_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: "RELEASE-NAME-langfuse-clickhouse-auth"
-                key: password
+                name: langfuse
+                key: clickhouse-password
         template: web/deployment.yaml
-      # Valkey/Redis password is sourced from the chart-managed `<release>-redis-auth` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: REDIS_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: "RELEASE-NAME-langfuse-redis-auth"
-                key: default
+                name: langfuse
+                key: redis-password
         template: web/deployment.yaml
-      # SeaweedFS S3 credentials are sourced from the chart-managed `<release>-s3-auth` Secret
       - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
             valueFrom:
               secretKeyRef:
-                name: "RELEASE-NAME-langfuse-s3-auth"
-                key: accessKey
+                name: langfuse
+                key: s3-user
         template: web/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].env
@@ -124,6 +119,6 @@ tests:
             name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
             valueFrom:
               secretKeyRef:
-                name: "RELEASE-NAME-langfuse-s3-auth"
-                key: secretKey
+                name: langfuse
+                key: s3-password
         template: web/deployment.yaml

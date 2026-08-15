@@ -1,26 +1,10 @@
-# Minimal Installation Example (v2 / Langfuse v4)
+# Minimal Installation Example
 
-This example installs [Langfuse v4](https://langfuse.com/docs/v4) with all bundled OSS sub-charts on a single `helm install`:
-
-| Component | Bundled via |
-|-----------|-------------|
-| PostgreSQL | `groundhog2k/postgres` |
-| ClickHouse | `ClickHouseCluster` + `KeeperCluster` CRs (managed by the cluster-wide [ClickHouse operator](https://github.com/ClickHouse/clickhouse-operator)) |
-| Redis | `valkey-io/valkey` |
-| Object storage | `seaweedfs/seaweedfs` (allInOne) |
-
-All credentials — including the Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`) — are auto-generated on first install and persisted across upgrades via `lookup`. No pre-created Secret is required for a fresh install.
-
-> **v2 changes**
->
-> - Bitnami PostgreSQL / ClickHouse / Redis / MinIO sub-charts are replaced with the OSS stack above.
-> - The chart generates `<release>-app`, `<release>-postgresql-auth`, `<release>-clickhouse-auth`, `<release>-redis-auth`, and `<release>-s3-auth` Secrets on first install.
-> - cert-manager and the ClickHouse operator are **cluster-wide prereqs** (installed once per cluster, not per release).
-> - For a near-zero-downtime migration from a v1 (Bitnami) install, see [`examples/upgrade-v1-to-v2`](../upgrade-v1-to-v2/).
+This example demonstrates a minimal installation of Langfuse in a Kubernetes cluster. It includes a basic configuration with ingress support.
 
 ## Prerequisites
 
-The chart renders `ClickHouseCluster` / `KeeperCluster` CRs. The ClickHouse operator (not this chart) creates cert-manager `Certificate` / `Issuer` resources for its webhooks. Install these once per cluster, in order:
+The chart renders `ClickHouseCluster` / `KeeperCluster` CRs. Install these once per cluster (skip if already present), in order:
 
 ### 1. cert-manager
 
@@ -38,8 +22,6 @@ kubectl wait --for=condition=Established \
   --timeout=120s
 ```
 
-Skip this step if cert-manager is already running in the cluster.
-
 ### 2. ClickHouse operator
 
 ```bash
@@ -55,62 +37,103 @@ kubectl wait --for=condition=Established \
 
 ## Installation
 
+To install Langfuse using this example:
+
+1. Create the namespace and required secret:
 ```bash
 kubectl create namespace langfuse
 
+# Edit secret.yaml and set secure values before applying
+kubectl apply -f secret.yaml -n langfuse
+```
+
+2. Install the chart using the base values file and optional ingress configuration:
+```bash
+# Basic installation
 helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
   --version 2.0.0 \
   --namespace langfuse \
   -f values.yaml
-```
 
-Or with ingress enabled:
-
-```bash
+# Or with ingress enabled
 helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
   --version 2.0.0 \
   --namespace langfuse \
   -f values.yaml -f with-ingress.yaml
 ```
 
-Optional: pin application secrets yourself (e.g. before a data migration) by applying [`secret.yaml`](./secret.yaml) and referencing it from values — see comments in that file.
-
-Wait for workloads:
+Alternatively, via the Helm repository:
 
 ```bash
-kubectl get pods -n langfuse -w
+helm repo add langfuse https://langfuse.github.io/langfuse-k8s
+helm repo update
+helm install langfuse langfuse/langfuse -n langfuse -f values.yaml
 ```
 
-Port-forward and sign in:
+## Configuration
 
-```bash
-kubectl port-forward -n langfuse svc/langfuse-web 3000:3000
-open http://localhost:3000
+The example contains three configuration files:
+
+### `secret.yaml`
+Contains all required secrets for the Langfuse installation. **Must be applied before installing the Helm chart**. Make sure to replace all placeholder values with secure values before applying.
+
+### `values.yaml`
+The core values file that configures Langfuse to use the pre-created secret for all required credentials:
+```yaml
+langfuse:
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+postgresql:
+  auth:
+    existingSecret: langfuse
+    secretKeys:
+      userPasswordKey: postgresql-password
+
+clickhouse:
+  auth:
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+
+redis:
+  auth:
+    existingSecret: langfuse
+    existingSecretPasswordKey: redis-password
+
+s3:
+  auth:
+    existingSecret: langfuse
+    rootUserSecretKey: s3-user
+    rootPasswordSecretKey: s3-password
 ```
 
-## Local testing against this repo
-
-From `./charts/langfuse`:
-
-```bash
-helm dependency update .
-helm install langfuse . \
-  --namespace langfuse \
-  -f ../../examples/minimal-installation/values.yaml
+### `with-ingress.yaml` (Optional)
+Additional configuration to enable ingress:
+```yaml
+langfuse:
+  nextauth:
+    url: http://langfuse.example.com
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+    - host: langfuse.example.com
+      paths:
+      - path: /
+        pathType: Prefix
 ```
 
-For offline `helm template` / unit tests without a live cluster, set `clickhouse.crdCheck=false`
-(or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`).
-
-## External components
-
-To bring your own Postgres, Redis, object storage, or ClickHouse instead of the bundled ones,
-see [`examples/external-components`](../external-components/) — overlays are additive and can be
-combined in a single `helm install`.
-
-## Files
-
-- [`values.yaml`](./values.yaml) — minimal values (all four components deployed; zero-config secrets).
-- [`secret.yaml`](./secret.yaml) — optional: pin Langfuse application secrets yourself.
-- [`with-ingress.yaml`](./with-ingress.yaml) — optional ingress overlay.
-- [`with-sso-secret-refs.yaml`](./with-sso-secret-refs.yaml) — optional SSO secret references.
+Make sure to adjust the hostname in the values file to match your environment before installing.

@@ -65,10 +65,12 @@ The chart preflights the ClickHouse CRDs when `clickhouse.crdCheck: true` (defau
 
 ### Installation
 
-The fastest path is to follow [`examples/minimal-installation`](./examples/minimal-installation/) — a zero-config install of Langfuse v4 with all bundled sub-charts (application + datastore credentials are auto-generated).
+The fastest path is to follow [`examples/minimal-installation`](./examples/minimal-installation/) — a minimal install of Langfuse with all bundled sub-charts, using a single pre-created Secret for credentials.
 
 ```bash
 kubectl create namespace langfuse
+# Edit examples/minimal-installation/secret.yaml, then:
+kubectl apply -f examples/minimal-installation/secret.yaml -n langfuse
 
 helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
   --version 2.0.0 \
@@ -84,7 +86,7 @@ helm repo update
 helm install langfuse langfuse/langfuse -n langfuse -f values.yaml
 ```
 
-To pin Langfuse application secrets yourself (recommended when migrating existing data), set `langfuse.salt` / `encryptionKey` / `nextauth.secret` via `value` or `secretKeyRef` — see [`examples/minimal-installation/secret.yaml`](./examples/minimal-installation/secret.yaml). To pin a non-default Langfuse image, set `langfuse.image.tag`.
+To use a different Secret or External Secrets Operator, point `langfuse.salt` / `encryptionKey` / `nextauth.secret` (and the datastore `auth.existingSecret` fields) at your Secret — see [`examples/minimal-installation`](./examples/minimal-installation/). To pin a non-default Langfuse image, set `langfuse.image.tag`.
 
 ### Upgrading
 
@@ -125,7 +127,8 @@ postgresql:
 
 clickhouse:
   cluster:
-    # defaults already set storage.size: 100Gi
+    storage:
+      size: 100Gi
     resources:
       limits:
         cpu: "2"
@@ -134,7 +137,8 @@ clickhouse:
         cpu: "2"
         memory: "8Gi"
   keeper:
-    # defaults already set storage.size: 20Gi
+    storage:
+      size: 20Gi
     resources:
       limits:
         cpu: "1"
