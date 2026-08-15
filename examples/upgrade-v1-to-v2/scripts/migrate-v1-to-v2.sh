@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Blue/green Langfuse Helm v1 → v2 migration.
+# Langfuse Helm v1 → v2 migration.
 # Mirrors examples/upgrade-v1-to-v2/README.md. Review that file before running.
 set -euo pipefail
 
@@ -16,6 +16,8 @@ SOURCE_RELEASE="${SOURCE_RELEASE:-}"
 TARGET_RELEASE="${TARGET_RELEASE:-}"
 VALUES_FILE=""
 OUTPUT_VALUES=""
+OUTPUT_CUTOVER_VALUES=""
+EXTRA_VALUES=()
 KCTX="${KCTX:-}"
 CHART="${CHART:-}"
 CHART_VERSION="${CHART_VERSION:-2.0.0}"
@@ -28,16 +30,24 @@ usage() {
   cat <<'EOF'
 Usage: migrate-v1-to-v2.sh --values <v1-values.yaml> [options]
 
-Blue/green migration from Langfuse Helm chart v1 (Bitnami) to v2 (OSS).
-Stands up a second release, copies data while v1 serves traffic, then freezes
-for a short final delta. Does not uninstall v1 or change Ingress/DNS.
+Migration from Langfuse Helm chart v1 (Bitnami) to v2 (OSS).
+
+  • All stores external (*.deploy: false): helm-upgrade the original release
+    in place. Service / Ingress names stay the same.
+  • At least one bundled store: install a sibling v2 release, copy data, then
+    shift traffic (delete v1 Ingress then create v2 Ingress, or confirm a
+    manual Service cutover).
 
 Options:
   -f, --values PATH         Current v1 values file (required)
   -n, --namespace NAME      Kubernetes namespace (default: langfuse)
       --source-release NAME v1 Helm release (default: auto-detect)
-      --target-release NAME v2 Helm release (default: <source>-v2)
-  -o, --output-values PATH  Generated v2 values (default: ./v2-values.generated.yaml)
+      --target-release NAME sibling v2 release (default: <source>-v2)
+      --stores-release NAME alias for --target-release
+  -o, --output-values PATH  Generated sibling or in-place overlay
+      --output-cutover-values PATH  Sibling overlay with ingress enabled
+      --output-app-values PATH      alias for --output-cutover-values
+      --extra-values PATH   Extra Helm values (repeatable)
       --chart REF           Chart ref or path (default: local charts/langfuse or OCI)
       --chart-version VER   Chart version when using OCI (default: 2.0.0)
       --context NAME        kube-context passed to kubectl/helm
@@ -112,7 +122,9 @@ json_to_yaml() {
   cat
 }
 
-fullname_of() {
+# Helm fullname for a release, using optional values JSON on stdin-style global V1_JSON
+# only for the *source* release (v1 name/fullname overrides).
+src_fullname_of() {
   local release=$1
   local fo no
   fo=$(printf '%s' "$V1_JSON" | jq -r '.fullnameOverride // empty')
@@ -125,6 +137,15 @@ fullname_of() {
   case "$release" in
     *"$name"*) printf '%s\n' "$release" ;;
     *) printf '%s-%s\n' "$release" "$name" ;;
+  esac
+}
+
+# Sibling v2 chart has no fullnameOverride; default chart name is langfuse.
+tgt_fullname_of() {
+  local release=$1
+  case "$release" in
+    *langfuse*) printf '%s\n' "$release" ;;
+    *) printf '%s-langfuse\n' "$release" ;;
   esac
 }
 
@@ -146,7 +167,6 @@ wait_deploy() {
 }
 
 semver_ge() {
-  # true if $1 >= $2 (major.minor.patch, ignores pre-release suffix)
   python3 - "$1" "$2" <<'PY'
 import sys
 def parse(v):
@@ -164,14 +184,27 @@ sys.exit(0 if parse(sys.argv[1]) >= parse(sys.argv[2]) else 1)
 PY
 }
 
+helm_apply() {
+  local release=$1
+  shift
+  if [ -d "$CHART" ]; then
+    hx dependency update "$CHART" >/dev/null
+    hx upgrade --install "$release" "$CHART" -n "$NAMESPACE" "$@"
+  else
+    hx upgrade --install "$release" "$CHART" --version "$CHART_VERSION" -n "$NAMESPACE" "$@"
+  fi
+}
+
 # --- args -------------------------------------------------------------------
 while [ $# -gt 0 ]; do
   case "$1" in
     -f|--values) VALUES_FILE=$2; shift 2 ;;
     -n|--namespace) NAMESPACE=$2; shift 2 ;;
     --source-release) SOURCE_RELEASE=$2; shift 2 ;;
-    --target-release) TARGET_RELEASE=$2; shift 2 ;;
+    --target-release|--stores-release) TARGET_RELEASE=$2; shift 2 ;;
     -o|--output-values) OUTPUT_VALUES=$2; shift 2 ;;
+    --output-cutover-values|--output-app-values) OUTPUT_CUTOVER_VALUES=$2; shift 2 ;;
+    --extra-values) EXTRA_VALUES+=("$2"); shift 2 ;;
     --chart) CHART=$2; shift 2 ;;
     --chart-version) CHART_VERSION=$2; shift 2 ;;
     --context) KCTX=$2; shift 2 ;;
@@ -187,6 +220,7 @@ done
 [ -n "$VALUES_FILE" ] || { usage >&2; die "--values is required"; }
 [ -f "$VALUES_FILE" ] || die "values file not found: $VALUES_FILE"
 OUTPUT_VALUES=${OUTPUT_VALUES:-$PWD/v2-values.generated.yaml}
+OUTPUT_CUTOVER_VALUES=${OUTPUT_CUTOVER_VALUES:-$PWD/v2-cutover-values.generated.yaml}
 
 KUBECTL=${KUBECTL:-kubectl}
 HELM=${HELM:-helm}
@@ -205,7 +239,6 @@ fi
 "$HELM" version >/dev/null
 jq --version >/dev/null
 python3 --version >/dev/null
-# YAML parser (values file)
 yaml_to_json "$VALUES_FILE" >/dev/null
 [ -x "$VALUES_MIGRATE" ] || chmod +x "$VALUES_MIGRATE"
 [ -x "$CH_SYNC" ] || chmod +x "$CH_SYNC"
@@ -222,11 +255,15 @@ fi
 
 V1_JSON=$(yaml_to_json "$VALUES_FILE")
 PLAN_JSON=$(printf '%s' "$V1_JSON" | python3 "$VALUES_MIGRATE" --plan --input -)
-PG_ON=0; CH_ON=0; REDIS_ON=0; S3_ON=0
+PG_ON=0; CH_ON=0; REDIS_ON=0; S3_ON=0; INGRESS_VALUES=0
 printf '%s' "$PLAN_JSON" | jq -e '.postgresql == true' >/dev/null && PG_ON=1
 printf '%s' "$PLAN_JSON" | jq -e '.clickhouse == true' >/dev/null && CH_ON=1
 printf '%s' "$PLAN_JSON" | jq -e '.redis == true' >/dev/null && REDIS_ON=1
 printf '%s' "$PLAN_JSON" | jq -e '.s3 == true' >/dev/null && S3_ON=1
+printf '%s' "$PLAN_JSON" | jq -e '.ingress == true' >/dev/null && INGRESS_VALUES=1
+
+NEED_STORES=0
+[ "$PG_ON" -eq 1 ] || [ "$CH_ON" -eq 1 ] || [ "$S3_ON" -eq 1 ] || [ "$REDIS_ON" -eq 1 ] && NEED_STORES=1
 
 # --- 1. Cluster / release detection -----------------------------------------
 log "checking kube-context and Langfuse v1 release"
@@ -264,14 +301,11 @@ if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ]; then
 fi
 
 TARGET_RELEASE=${TARGET_RELEASE:-${SOURCE_RELEASE}-v2}
-SRC_FULLNAME=$(fullname_of "$SOURCE_RELEASE")
-if [ -n "$(printf '%s' "$V1_JSON" | jq -r '.fullnameOverride // empty')" ]; then
-  die "fullnameOverride is set; blue/green in one namespace needs distinct resource names. Unset it or install v2 in another namespace."
-fi
-case "$TARGET_RELEASE" in
-  *langfuse*) TGT_FULLNAME=$TARGET_RELEASE ;;
-  *) TGT_FULLNAME="${TARGET_RELEASE}-langfuse" ;;
-esac
+SRC_FULLNAME=$(src_fullname_of "$SOURCE_RELEASE")
+TGT_FULLNAME=$(tgt_fullname_of "$TARGET_RELEASE")
+V2_WEB="${TGT_FULLNAME}-web"
+V2_WORKER="${TGT_FULLNAME}-worker"
+V1_INGRESS="$SRC_FULLNAME"
 
 V1_PG_DB=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.database // "postgres_langfuse"')
 V1_PG_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.existingSecret // empty')
@@ -294,9 +328,13 @@ v1_pg_super() {
   kx -n "$NAMESPACE" exec "${SRC_FULLNAME}-postgresql-0" -- env PGPASSWORD="$pw" psql -U postgres "$@"
 }
 
-# Bitnami leftover identities only exist for stores the v1 chart deployed.
-# External (deploy: false) installs have none of these — the Helm release itself
-# is enough proof, and migrate-values.py still rewrites connection settings.
+# Only the chart Ingress is swapped automatically. A custom Ingress / HTTPRoute
+# is treated as "no chart ingress" — the script asks you to retarget it.
+INGRESS_ON=$INGRESS_VALUES
+if [ "$INGRESS_ON" -eq 0 ] && kx -n "$NAMESPACE" get ingress "$V1_INGRESS" >/dev/null 2>&1; then
+  warn "Ingress/$V1_INGRESS exists but langfuse.ingress.enabled is false in values — treating it as externally managed; you will need to retarget it at $V2_WEB"
+fi
+
 V1_MARKERS=0
 EXPECTED_MARKERS=0
 if [ "$CH_ON" -eq 1 ]; then
@@ -324,38 +362,70 @@ if [ "$S3_ON" -eq 1 ]; then
   fi
 fi
 if [ "$EXPECTED_MARKERS" -eq 0 ]; then
-  log "all data stores are external (deploy: false) — skipping Bitnami leftover checks; will migrate values and cut over the app only"
+  log "all data stores are external (deploy: false) — will helm-upgrade $SOURCE_RELEASE in place"
 elif [ "$V1_MARKERS" -eq 0 ]; then
   die "no v1 Bitnami resources found for bundled stores on release $SOURCE_RELEASE (looked for ClickHouse STS ${SRC_FULLNAME}-clickhouse-shard0, PVC data-${SRC_FULLNAME}-postgresql-0, and/or Deployment ${SRC_FULLNAME}-s3). Wrong context or already migrated?"
 fi
 
-if hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
+if [ "$NEED_STORES" -eq 1 ] && hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
   warn "target release $TARGET_RELEASE already exists — later steps will reuse it"
 fi
 
 # --- 2. Generate v2 values --------------------------------------------------
-log "generating v2 values from $VALUES_FILE"
-python3 "$VALUES_MIGRATE" --input "$VALUES_FILE" --output "$OUTPUT_VALUES.tmp" --target-fullname "$TGT_FULLNAME"
-if [ "$(head -c 1 "$OUTPUT_VALUES.tmp")" = "{" ]; then
-  json_to_yaml < "$OUTPUT_VALUES.tmp" > "$OUTPUT_VALUES.body"
-else
-  mv "$OUTPUT_VALUES.tmp" "$OUTPUT_VALUES.body"
-  rm -f "$OUTPUT_VALUES.tmp"
-fi
-{
-  cat <<EOF
-# Generated by migrate-v1-to-v2.sh from $VALUES_FILE
-# Install as a SECOND release alongside v1:
+write_values() {
+  local mode=$1 dest=$2 header=$3
+  local extra=()
+  if [ "$mode" != "inplace" ]; then
+    extra+=(--target-fullname "$TGT_FULLNAME")
+  fi
+  python3 "$VALUES_MIGRATE" --mode "$mode" --input "$VALUES_FILE" --output "$dest.tmp" "${extra[@]+"${extra[@]}"}"
+  if [ "$(head -c 1 "$dest.tmp")" = "{" ]; then
+    json_to_yaml < "$dest.tmp" > "$dest.body"
+    rm -f "$dest.tmp"
+  else
+    mv "$dest.tmp" "$dest.body"
+  fi
+  {
+    printf '%s\n' "$header"
+    cat "$dest.body"
+  } > "$dest"
+  rm -f "$dest.body"
+  log "wrote $dest"
+}
+
+if [ "$NEED_STORES" -eq 1 ]; then
+  log "generating sibling v2 values from $VALUES_FILE"
+  write_values sibling "$OUTPUT_VALUES" "$(cat <<EOF
+# Generated by migrate-v1-to-v2.sh (sibling) from $VALUES_FILE
+# New v2 release next to v1. Ingress is off so v1 keeps the domain.
 #   helm install $TARGET_RELEASE ... -n $NAMESPACE -f $OUTPUT_VALUES
-#
-# Application secrets are copied from v1. Bundled datastore credentials are
-# generated by the v2 chart. Review before applying.
 
 EOF
-  cat "$OUTPUT_VALUES.body"
-} > "$OUTPUT_VALUES"
-rm -f "$OUTPUT_VALUES.body" "$OUTPUT_VALUES.tmp"
-log "wrote $OUTPUT_VALUES"
+)"
+  if [ "$INGRESS_ON" -eq 1 ]; then
+    write_values cutover "$OUTPUT_CUTOVER_VALUES" "$(cat <<EOF
+# Generated by migrate-v1-to-v2.sh (cutover) from $VALUES_FILE
+# Enable after deleting Ingress/$V1_INGRESS so the same hosts land on $V2_WEB.
+#   helm upgrade $TARGET_RELEASE ... -n $NAMESPACE -f $OUTPUT_CUTOVER_VALUES
+
+EOF
+)"
+  fi
+else
+  log "generating in-place v2 values from $VALUES_FILE"
+  write_values inplace "$OUTPUT_VALUES" "$(cat <<EOF
+# Generated by migrate-v1-to-v2.sh (inplace) from $VALUES_FILE
+# All stores are external — helm-upgrade the original release.
+#   helm upgrade $SOURCE_RELEASE ... -n $NAMESPACE -f $OUTPUT_VALUES
+
+EOF
+)"
+fi
+
+helm_extra=()
+for extra in "${EXTRA_VALUES[@]+"${EXTRA_VALUES[@]}"}"; do
+  helm_extra+=(-f "$extra")
+done
 
 cat <<EOF
 
@@ -363,12 +433,14 @@ Migration plan (from values; deploy defaults to true when unset)
   namespace:        $NAMESPACE
   context:          $CTX_NAME
   source release:   $SOURCE_RELEASE  (fullname $SRC_FULLNAME)
-  target release:   $TARGET_RELEASE  (fullname $TGT_FULLNAME)
+  target release:   $([ "$NEED_STORES" -eq 1 ] && echo "$TARGET_RELEASE  (fullname $TGT_FULLNAME)" || echo "(in-place upgrade of $SOURCE_RELEASE)")
   postgresql:       $([ "$PG_ON" -eq 1 ] && echo "migrate (logical replication)" || echo "skip (external / deploy=false)")
   clickhouse:       $([ "$CH_ON" -eq 1 ] && echo "migrate (remote() watermark sync)" || echo "skip (external / deploy=false)")
   object storage:   $([ "$S3_ON" -eq 1 ] && echo "migrate (mc mirror MinIO → SeaweedFS)" || echo "skip (external / deploy=false)")
   redis/valkey:     $([ "$REDIS_ON" -eq 1 ] && echo "redeploy empty (ephemeral; no data copy)" || echo "skip (external / deploy=false)")
-  v2 values:        $OUTPUT_VALUES
+  traffic:          $([ "$NEED_STORES" -eq 0 ] && echo "in-place (Service / Ingress unchanged)" || { [ "$INGRESS_ON" -eq 1 ] && echo "Ingress swap (delete $V1_INGRESS, then create $TGT_FULLNAME)" || echo "manual (point traffic at Service/$V2_WEB)"; })
+  values:           $OUTPUT_VALUES
+$([ "$NEED_STORES" -eq 1 ] && [ "$INGRESS_ON" -eq 1 ] && echo "  cutover values:   $OUTPUT_CUTOVER_VALUES")
 
 EOF
 
@@ -377,7 +449,11 @@ if [ "$DRY_RUN" -eq 1 ]; then
   exit 0
 fi
 
-confirm "Review $OUTPUT_VALUES, then start the cluster migration (prereqs + v2 install + data copy)?"
+if [ "$NEED_STORES" -eq 0 ]; then
+  confirm "Review $OUTPUT_VALUES, then helm-upgrade $SOURCE_RELEASE in place to chart v2?"
+else
+  confirm "Review generated values, then start the cluster migration (prereqs + sibling v2 + data copy + traffic shift)?"
+fi
 
 # --- 3. Cluster prereqs -----------------------------------------------------
 ensure_crds() {
@@ -397,7 +473,7 @@ if [ "$SKIP_PREREQS" -eq 0 ]; then
     log "cert-manager CRDs already present"
   fi
 
-  if [ "$CH_ON" -eq 1 ] && ! ensure_crds clickhouseclusters.clickhouse.com; then
+  if { [ "$NEED_STORES" -eq 1 ] && [ "$CH_ON" -eq 1 ]; } && ! ensure_crds clickhouseclusters.clickhouse.com; then
     confirm "Install ClickHouse operator $CLICKHOUSE_OPERATOR_VERSION?"
     hx install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
       --version "$CLICKHOUSE_OPERATOR_VERSION" \
@@ -410,7 +486,33 @@ if [ "$SKIP_PREREQS" -eq 0 ]; then
   fi
 fi
 
-# --- 4. Enable logical replication on v1 Postgres ---------------------------
+# Protect the shared app Secret if Helm still owns it
+APP_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.langfuse.salt.secretKeyRef.name // .langfuse.encryptionKey.secretKeyRef.name // empty')
+if [ -n "$APP_SECRET" ]; then
+  if kx -n "$NAMESPACE" get secret "$APP_SECRET" >/dev/null 2>&1; then
+    log "annotating Secret/$APP_SECRET with helm.sh/resource-policy=keep"
+    kx -n "$NAMESPACE" annotate secret "$APP_SECRET" helm.sh/resource-policy=keep --overwrite
+  fi
+fi
+
+# --- 4a. In-place path (all stores external) --------------------------------
+if [ "$NEED_STORES" -eq 0 ]; then
+  helm_apply "$SOURCE_RELEASE" -f "$OUTPUT_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
+  wait_deploy "${SRC_FULLNAME}-web"
+  READY=$(kx -n "$NAMESPACE" run "${SRC_FULLNAME}-ready-check" --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
+    curl -sf "http://${SRC_FULLNAME}-web.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
+  log "v2 readiness: ${READY:-<empty>}"
+  cat <<EOF
+
+In-place upgrade finished. Release $SOURCE_RELEASE is chart v2.
+Service ${SRC_FULLNAME}-web and Ingress/$V1_INGRESS (if any) are unchanged.
+
+Generated values: $OUTPUT_VALUES
+EOF
+  exit 0
+fi
+
+# --- 4b. Enable logical replication on v1 Postgres --------------------------
 if [ "$PG_ON" -eq 1 ]; then
   WAL=$(v1_pg_super -d postgres -tAc "SHOW wal_level;" | tr -d '[:space:]' || true)
   if [ "$WAL" != "logical" ]; then
@@ -425,33 +527,20 @@ if [ "$PG_ON" -eq 1 ]; then
   fi
 fi
 
-# Protect the shared app Secret from helm uninstall of v1 later
-APP_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.langfuse.salt.secretKeyRef.name // .langfuse.encryptionKey.secretKeyRef.name // empty')
-if [ -n "$APP_SECRET" ]; then
-  if kx -n "$NAMESPACE" get secret "$APP_SECRET" >/dev/null 2>&1; then
-    log "annotating Secret/$APP_SECRET with helm.sh/resource-policy=keep"
-    kx -n "$NAMESPACE" annotate secret "$APP_SECRET" helm.sh/resource-policy=keep --overwrite
-  fi
-fi
-
-# --- 5. Stand up v2 ---------------------------------------------------------
+# --- 5. Stand up sibling v2 -------------------------------------------------
 if ! hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
-  confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime)?"
-  if [ -d "$CHART" ]; then
-    hx dependency update "$CHART" >/dev/null
-    hx install "$TARGET_RELEASE" "$CHART" -n "$NAMESPACE" -f "$OUTPUT_VALUES"
-  else
-    hx install "$TARGET_RELEASE" "$CHART" --version "$CHART_VERSION" -n "$NAMESPACE" -f "$OUTPUT_VALUES"
-  fi
+  confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime; ingress stays on v1)?"
+  helm_apply "$TARGET_RELEASE" -f "$OUTPUT_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
 else
   log "reusing existing release $TARGET_RELEASE"
 fi
 
-wait_deploy "${TGT_FULLNAME}-web"
 [ "$PG_ON" -eq 1 ] && wait_sts "${TGT_FULLNAME}-postgresql"
 [ "$REDIS_ON" -eq 1 ] && {
   if kx -n "$NAMESPACE" get sts "${TGT_FULLNAME}-redis" >/dev/null 2>&1; then
     wait_sts "${TGT_FULLNAME}-redis"
+  elif kx -n "$NAMESPACE" get deploy "${TGT_FULLNAME}-redis" >/dev/null 2>&1; then
+    wait_deploy "${TGT_FULLNAME}-redis"
   fi
 }
 [ "$S3_ON" -eq 1 ] && wait_deploy "${TGT_FULLNAME}-s3-all-in-one"
@@ -459,6 +548,10 @@ if [ "$CH_ON" -eq 1 ]; then
   log "waiting for ClickHouse pod ${TGT_FULLNAME}-clickhouse-0-0-0"
   kx -n "$NAMESPACE" wait pod "${TGT_FULLNAME}-clickhouse-0-0-0" --for=condition=Ready --timeout=600s
 fi
+wait_deploy "$V2_WEB"
+log "scaling $V2_WEB / $V2_WORKER to 0 after schema init (v1 stays the writer)"
+kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=0
+kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=0 >/dev/null 2>&1 || true
 
 # --- 6. Online sync ---------------------------------------------------------
 V1_S3_SVC="${SRC_FULLNAME}-s3.${NAMESPACE}.svc.cluster.local:9000"
@@ -595,13 +688,38 @@ if [ "$CH_ON" -eq 1 ]; then
   run_ch_sync --final
 fi
 
-# --- 8. Cut over (scale v2; DNS is left to the operator) --------------------
-confirm "Scale up v2 web/worker and check /api/public/ready?"
-kx -n "$NAMESPACE" scale deploy/"${TGT_FULLNAME}-web" deploy/"${TGT_FULLNAME}-worker" --replicas=1
-wait_deploy "${TGT_FULLNAME}-web"
+# --- 8. Bring v2 writers up, then shift traffic -----------------------------
+log "scaling $V2_WEB / $V2_WORKER up"
+kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=1
+kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=1 >/dev/null 2>&1 || true
+wait_deploy "$V2_WEB"
+
+if [ "$INGRESS_ON" -eq 1 ]; then
+  confirm "Shift traffic: delete Ingress/$V1_INGRESS, then create the v2 Ingress on $TARGET_RELEASE (same hosts)?"
+  if kx -n "$NAMESPACE" get ingress "$V1_INGRESS" >/dev/null 2>&1; then
+    kx -n "$NAMESPACE" delete ingress "$V1_INGRESS" --wait=true
+  else
+    warn "Ingress/$V1_INGRESS already gone"
+  fi
+  helm_apply "$TARGET_RELEASE" -f "$OUTPUT_CUTOVER_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
+else
+  cat <<EOF
+
+v1 did not use the chart Ingress. Point traffic at the new Service before continuing:
+
+  Service:  $V2_WEB.$NAMESPACE.svc.cluster.local:3000
+  Selector: app.kubernetes.io/instance=$TARGET_RELEASE, app.kubernetes.io/name=langfuse
+  kubectl -n $NAMESPACE get svc,deploy -l app.kubernetes.io/instance=$TARGET_RELEASE
+
+If you expose Langfuse via a LoadBalancer, NodePort, or an Ingress/HTTPRoute
+managed outside this chart, retarget that at $V2_WEB now.
+
+EOF
+  confirm "Traffic is pointed at Service/$V2_WEB (or you accept downtime until it is)?"
+fi
 
 READY=$(kx -n "$NAMESPACE" run "${TGT_FULLNAME}-ready-check" --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
-  curl -sf "http://${TGT_FULLNAME}-web.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
+  curl -sf "http://${V2_WEB}.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
 log "v2 readiness: ${READY:-<empty>}"
 
 if kx -n "$NAMESPACE" get pod "$MC_POD" >/dev/null 2>&1; then
@@ -612,14 +730,18 @@ cat <<EOF
 
 Migration steps finished.
 
+v2 is release $TARGET_RELEASE (Service $V2_WEB). v1 ($SOURCE_RELEASE) is scaled to 0.
+
 Next (manual):
-  1. Point Ingress / DNS at Service ${TGT_FULLNAME}-web
-  2. Keep release $SOURCE_RELEASE until you are confident
-  3. Then: helm uninstall $SOURCE_RELEASE -n $NAMESPACE
-     (delete retained v1 PVCs later)
+  1. Keep $SOURCE_RELEASE until you are confident
+  2. helm uninstall $SOURCE_RELEASE -n $NAMESPACE
+  3. Delete retained v1 Bitnami PVCs (data-${SRC_FULLNAME}-postgresql-0, …)
 
-Rollback before DNS cutover: leave traffic on ${SRC_FULLNAME}-web
+Rollback before uninstalling v1: scale v1 writers back up
   kubectl -n $NAMESPACE scale deploy/${SRC_FULLNAME}-web deploy/${SRC_FULLNAME}-worker --replicas=1
+$([ "$INGRESS_ON" -eq 1 ] && echo "  (re-create Ingress/$V1_INGRESS from the v1 release if you already deleted it)")
 
-Generated v2 values: $OUTPUT_VALUES
+Generated values:
+  sibling: $OUTPUT_VALUES
+$([ "$INGRESS_ON" -eq 1 ] && echo "  cutover: $OUTPUT_CUTOVER_VALUES")
 EOF

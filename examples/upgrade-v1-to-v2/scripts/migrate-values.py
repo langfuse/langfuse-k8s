@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
-"""Transform Langfuse Helm v1 values into a v2 overlay for blue/green install.
+"""Transform Langfuse Helm v1 values into v2 overlays.
+
+Modes:
+
+  sibling   Full v2 chart for a *new* Helm release next to live v1. Bundled
+            stores keep deploy: true; external stores keep host/auth.
+            Ingress is forced off so v1 keeps the domain until cutover.
+
+  cutover   Same as sibling, but ingress.enabled is restored from v1 so the
+            configured hosts move onto the v2 Service after v1's Ingress is
+            deleted.
+
+  inplace   Overlay for `helm upgrade` of the original release. Used when
+            every store is already external (*.deploy: false). Ingress and
+            Service names stay on that release.
 
 Reads YAML (or JSON) on stdin / --input and writes v2 values YAML to stdout.
-Keeps Langfuse app settings and external-store connection fields; drops Bitnami
-sub-chart keys. Components with deploy: false are passed through as external.
 """
 from __future__ import annotations
 
@@ -16,7 +28,6 @@ try:
     import yaml
 except ImportError:  # pragma: no cover
     yaml = None
-
 
 PG_KEEP = (
     "deploy",
@@ -97,14 +108,64 @@ def deploy_enabled(values: dict[str, Any], key: str) -> bool:
     return bool(block["deploy"])
 
 
+def ingress_enabled(values: dict[str, Any]) -> bool:
+    lf = values.get("langfuse") or {}
+    ing = lf.get("ingress") if isinstance(lf, dict) else None
+    return bool(isinstance(ing, dict) and ing.get("enabled"))
+
+
 def pick(src: dict[str, Any] | None, keys: tuple[str, ...]) -> dict[str, Any]:
     if not src:
         return {}
     return {k: src[k] for k in keys if k in src}
 
 
-def apply_target_secrets(v2: dict[str, Any], fullname: str) -> dict[str, Any]:
-    """Point sub-charts at the release-prefixed auth Secrets this chart creates."""
+def copy_langfuse(v1: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(v1.get("langfuse"), dict):
+        return {}
+    lf = dict(v1["langfuse"])
+    lf.pop("allowV1Upgrade", None)
+    return lf
+
+
+def store_blocks(v1: dict[str, Any]) -> dict[str, Any]:
+    v2: dict[str, Any] = {}
+    if deploy_enabled(v1, "postgresql"):
+        v2["postgresql"] = {"deploy": True}
+    else:
+        v2["postgresql"] = pick(v1.get("postgresql"), PG_KEEP)
+        v2["postgresql"]["deploy"] = False
+
+    ch_src = v1.get("clickhouse") or {}
+    if deploy_enabled(v1, "clickhouse"):
+        cluster: dict[str, Any] = {}
+        if isinstance(ch_src, dict) and ch_src.get("replicaCount") is not None:
+            cluster["replicas"] = ch_src["replicaCount"]
+        v2["clickhouse"] = {"deploy": True}
+        if cluster:
+            v2["clickhouse"]["cluster"] = cluster
+    else:
+        v2["clickhouse"] = pick(ch_src if isinstance(ch_src, dict) else {}, CH_KEEP)
+        v2["clickhouse"]["deploy"] = False
+        if isinstance(ch_src, dict) and isinstance(ch_src.get("cluster"), dict):
+            v2["clickhouse"]["cluster"] = pick(ch_src["cluster"], ("enabled",))
+
+    if deploy_enabled(v1, "redis"):
+        v2["redis"] = {"deploy": True}
+    else:
+        v2["redis"] = pick(v1.get("redis"), REDIS_KEEP)
+        v2["redis"]["deploy"] = False
+
+    if deploy_enabled(v1, "s3"):
+        v2["s3"] = {"deploy": True}
+    else:
+        v2["s3"] = pick(v1.get("s3"), S3_KEEP)
+        v2["s3"]["deploy"] = False
+    return v2
+
+
+def apply_auth_secrets(v2: dict[str, Any], fullname: str) -> dict[str, Any]:
+    """Point bundled-store sub-charts at <fullname>-*-auth (chart defaults assume 'langfuse')."""
     pg = v2.setdefault("postgresql", {})
     if pg.get("deploy", True):
         pg.setdefault("settings", {})["existingSecret"] = f"{fullname}-postgresql-auth"
@@ -118,55 +179,25 @@ def apply_target_secrets(v2: dict[str, Any], fullname: str) -> dict[str, Any]:
     return v2
 
 
-def migrate(v1: dict[str, Any], target_fullname: str | None = None) -> dict[str, Any]:
+def migrate_sibling(v1: dict[str, Any], target_fullname: str, *, ingress: bool) -> dict[str, Any]:
+    lf = copy_langfuse(v1)
+    lf.setdefault("ingress", {})
+    if isinstance(lf["ingress"], dict):
+        lf["ingress"] = dict(lf["ingress"])
+        lf["ingress"]["enabled"] = bool(ingress and ingress_enabled(v1))
+    v2: dict[str, Any] = {"langfuse": lf}
+    v2.update(store_blocks(v1))
+    return apply_auth_secrets(v2, target_fullname)
+
+
+def migrate_inplace(v1: dict[str, Any]) -> dict[str, Any]:
     v2: dict[str, Any] = {}
     for k in ROOT_KEEP:
         if k in v1:
             v2[k] = v1[k]
-
-    if isinstance(v1.get("langfuse"), dict):
-        lf = dict(v1["langfuse"])
-        lf.pop("allowV1Upgrade", None)
+    if lf := copy_langfuse(v1):
         v2["langfuse"] = lf
-
-    pg_on = deploy_enabled(v1, "postgresql")
-    if pg_on:
-        v2["postgresql"] = {"deploy": True}
-    else:
-        v2["postgresql"] = pick(v1.get("postgresql"), PG_KEEP)
-        v2["postgresql"]["deploy"] = False
-
-    ch_on = deploy_enabled(v1, "clickhouse")
-    ch_src = v1.get("clickhouse") or {}
-    if ch_on:
-        cluster: dict[str, Any] = {}
-        if isinstance(ch_src, dict) and ch_src.get("replicaCount") is not None:
-            cluster["replicas"] = ch_src["replicaCount"]
-        v2["clickhouse"] = {"deploy": True}
-        if cluster:
-            v2["clickhouse"]["cluster"] = cluster
-    else:
-        v2["clickhouse"] = pick(ch_src if isinstance(ch_src, dict) else {}, CH_KEEP)
-        v2["clickhouse"]["deploy"] = False
-        if isinstance(ch_src, dict) and isinstance(ch_src.get("cluster"), dict):
-            v2["clickhouse"]["cluster"] = pick(ch_src["cluster"], ("enabled",))
-
-    redis_on = deploy_enabled(v1, "redis")
-    if redis_on:
-        v2["redis"] = {"deploy": True}
-    else:
-        v2["redis"] = pick(v1.get("redis"), REDIS_KEEP)
-        v2["redis"]["deploy"] = False
-
-    s3_on = deploy_enabled(v1, "s3")
-    if s3_on:
-        v2["s3"] = {"deploy": True}
-    else:
-        v2["s3"] = pick(v1.get("s3"), S3_KEEP)
-        v2["s3"]["deploy"] = False
-
-    if target_fullname:
-        apply_target_secrets(v2, target_fullname)
+    v2.update(store_blocks(v1))
     return v2
 
 
@@ -176,6 +207,7 @@ def plan(v1: dict[str, Any]) -> dict[str, bool]:
         "clickhouse": deploy_enabled(v1, "clickhouse"),
         "redis": deploy_enabled(v1, "redis"),
         "s3": deploy_enabled(v1, "s3"),
+        "ingress": ingress_enabled(v1),
     }
 
 
@@ -183,7 +215,19 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--input", "-i", default="-", help="v1 values YAML/JSON (default: stdin)")
     p.add_argument("--output", "-o", default="-", help="v2 values YAML (default: stdout)")
-    p.add_argument("--target-fullname", help="v2 release fullname; wires sub-chart auth Secret names")
+    p.add_argument(
+        "--mode",
+        choices=("sibling", "cutover", "inplace", "stores", "final", "app"),
+        default="sibling",
+        help="sibling/stores: new v2 release, ingress off. cutover: same with ingress restored. inplace/final/app: in-place overlay for all-external stores",
+    )
+    p.add_argument(
+        "--target-fullname",
+        "--source-fullname",
+        "--stores-fullname",
+        dest="target_fullname",
+        help="v2 sibling fullname (auth Secret names). Required for sibling/cutover",
+    )
     p.add_argument("--plan", action="store_true", help="print enabled-component JSON and exit")
     args = p.parse_args()
 
@@ -193,7 +237,21 @@ def main() -> int:
         sys.stdout.write("\n")
         return 0
 
-    text = dump_yaml(migrate(v1, target_fullname=args.target_fullname))
+    mode = args.mode
+    if mode in ("final", "app"):
+        mode = "inplace"
+    elif mode == "stores":
+        mode = "sibling"
+
+    if mode in ("sibling", "cutover"):
+        if not args.target_fullname:
+            sys.stderr.write("error: --target-fullname is required for sibling/cutover\n")
+            return 2
+        data = migrate_sibling(v1, args.target_fullname, ingress=(mode == "cutover"))
+    else:
+        data = migrate_inplace(v1)
+
+    text = dump_yaml(data)
     if args.output == "-":
         sys.stdout.write(text)
     else:

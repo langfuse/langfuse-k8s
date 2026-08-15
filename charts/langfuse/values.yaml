@@ -424,7 +424,7 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
-  # -- Allow helm upgrade despite leftover v1 Bitnami resources (CH STS, PG PVC, MinIO Deploy). Default false — use examples/upgrade-v1-to-v2 instead of in-place upgrade.
+  # -- Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release).
   allowV1Upgrade: false
 
   # NextAuth configuration

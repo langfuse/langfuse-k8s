@@ -7,10 +7,10 @@
 {{- end -}}
 
 {{/*
-Block an in-place helm upgrade from a v1 (Bitnami) install onto this chart.
-Helm itself does not prevent major-version upgrades; without this check the
-upgrade would try to mutate/replace immutable workloads and orphan data for
-Postgres, ClickHouse, and MinIO — all three require a data migration.
+Block a helm upgrade from a v1 (Bitnami) install that would still *deploy*
+Postgres, ClickHouse, or MinIO. That replaces immutable workloads and orphans
+data. All three require a data migration before the original release can move
+to chart v2.
 
 Detection (release-prefixed names; Postgres STS name collides with v2, so we
 key off the Bitnami PVC naming instead):
@@ -20,24 +20,28 @@ key off the Bitnami PVC naming instead):
   - MinIO:      Deployment <release>-s3
                 (v2 SeaweedFS uses <release>-s3-all-in-one)
 
-Follow examples/upgrade-v1-to-v2 instead. Override with langfuse.allowV1Upgrade=true
-only if you know what you are doing (e.g. leftover v1 resources after a completed
-blue/green cutover).
+The supported paths (examples/upgrade-v1-to-v2):
+  - all stores already external (deploy: false): in-place helm upgrade
+  - at least one bundled store: sibling v2 release + data copy + traffic shift
+
+A raw `helm upgrade` that would *replace* a leftover store with empty volumes
+is blocked. Override with langfuse.allowV1Upgrade=true only if you know
+what you are doing.
 */}}
 {{- if and .Release.IsUpgrade (not .Values.langfuse.allowV1Upgrade) -}}
 {{- $fullname := include "langfuse.fullname" . -}}
 {{- $found := list -}}
-{{- if lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-clickhouse-shard0" $fullname) -}}
+{{- if and .Values.clickhouse.deploy (lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-clickhouse-shard0" $fullname)) -}}
   {{- $found = append $found (printf "StatefulSet/%s-clickhouse-shard0 (Bitnami ClickHouse)" $fullname) -}}
 {{- end -}}
-{{- if lookup "v1" "PersistentVolumeClaim" .Release.Namespace (printf "data-%s-postgresql-0" $fullname) -}}
+{{- if and .Values.postgresql.deploy (lookup "v1" "PersistentVolumeClaim" .Release.Namespace (printf "data-%s-postgresql-0" $fullname)) -}}
   {{- $found = append $found (printf "PersistentVolumeClaim/data-%s-postgresql-0 (Bitnami PostgreSQL)" $fullname) -}}
 {{- end -}}
-{{- if lookup "apps/v1" "Deployment" .Release.Namespace (printf "%s-s3" $fullname) -}}
+{{- if and .Values.s3.deploy (lookup "apps/v1" "Deployment" .Release.Namespace (printf "%s-s3" $fullname)) -}}
   {{- $found = append $found (printf "Deployment/%s-s3 (Bitnami MinIO)" $fullname) -}}
 {{- end -}}
 {{- if gt (len $found) 0 -}}
-    {{- fail (printf "Refusing to helm upgrade: found v1 Bitnami resources in namespace %q: %s. Chart v2.0.0 is not an in-place upgrade from v1 — Postgres, ClickHouse, and object storage all require a data migration. Follow examples/upgrade-v1-to-v2. To override this guard (unsafe), set langfuse.allowV1Upgrade=true." .Release.Namespace (join ", " $found)) -}}
+    {{- fail (printf "Refusing to helm upgrade: found v1 Bitnami resources in namespace %q that this release would replace with empty v2 volumes: %s. Follow examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise install a sibling v2 release). To override this guard (unsafe), set langfuse.allowV1Upgrade=true." .Release.Namespace (join ", " $found)) -}}
 {{- end -}}
 {{- end -}}
 

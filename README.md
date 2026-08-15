@@ -27,7 +27,7 @@ v2.0.0 replaces the Bitnami sub-charts with OSS-licensed alternatives and deploy
 
 On first install the chart auto-generates credential Secrets for Postgres, ClickHouse, Valkey, SeaweedFS, **and** the three Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`), persisted across upgrades via `lookup`. You can still pin any of them with `value` / `secretKeyRef` when needed (e.g. migrations).
 
-**`helm upgrade` from v1 → v2 is not supported and is blocked by default.** Helm itself does not prevent major-version upgrades, so the chart refuses to upgrade when it detects leftover v1 Bitnami resources — ClickHouse StatefulSet (`<release>-clickhouse-shard0`), Postgres PVC (`data-<release>-postgresql-0`), or MinIO Deployment (`<release>-s3`). All three require a data migration. Use the blue/green path in [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/) instead. Only set `langfuse.allowV1Upgrade=true` if you intentionally need to override that guard.
+**Do not `helm upgrade` v1 → v2 onto empty v2 volumes.** That would replace Bitnami data. The supported path is [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/): in-place upgrade when every store is already external (`*.deploy: false`); otherwise stand up a sibling v2 release, copy data, then shift traffic. The chart blocks an upgrade that would replace leftover Bitnami ClickHouse (`<release>-clickhouse-shard0`), Postgres (`data-<release>-postgresql-0`), or MinIO (`<release>-s3`) with empty volumes. Only set `langfuse.allowV1Upgrade=true` if you intentionally need to override that guard.
 
 ## Helm Chart
 
@@ -98,7 +98,7 @@ helm upgrade langfuse langfuse/langfuse
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
 
-Upgrading a **v1 (Bitnami) release in place to v2 is not supported**. Helm will happily run `helm upgrade` across major chart versions, but this chart detects leftover Bitnami ClickHouse / Postgres / MinIO resources and fails with a clear error. Use [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/) instead.
+Upgrading a **v1 (Bitnami) release to v2** onto empty v2 volumes is blocked. Follow [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/): in-place upgrade when every store is already external; otherwise install a sibling v2 release, copy data, then shift traffic.
 
 ### Sizing
 

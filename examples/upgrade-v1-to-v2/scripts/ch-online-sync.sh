@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# ClickHouse online sync for the Langfuse v1 -> v2 migration (blue/green).
+# ClickHouse online sync for the Langfuse v1 -> v2 migration.
 #
 # Minimum source Langfuse version: v3.224.1 (latest published v3). Newer charts
 # default to Langfuse v4 — keep the same appVersion / langfuse.image.tag on the
