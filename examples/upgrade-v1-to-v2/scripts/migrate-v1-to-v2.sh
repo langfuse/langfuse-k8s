@@ -1,0 +1,625 @@
+#!/usr/bin/env bash
+# Blue/green Langfuse Helm v1 → v2 migration.
+# Mirrors examples/upgrade-v1-to-v2/README.md. Review that file before running.
+set -euo pipefail
+
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+REPO_ROOT=$(cd "$SCRIPT_DIR/../../.." && pwd)
+VALUES_MIGRATE="$SCRIPT_DIR/migrate-values.py"
+CH_SYNC="$SCRIPT_DIR/ch-online-sync.sh"
+
+YES=0
+DRY_RUN=0
+SKIP_PREREQS=0
+NAMESPACE="${NAMESPACE:-langfuse}"
+SOURCE_RELEASE="${SOURCE_RELEASE:-}"
+TARGET_RELEASE="${TARGET_RELEASE:-}"
+VALUES_FILE=""
+OUTPUT_VALUES=""
+KCTX="${KCTX:-}"
+CHART="${CHART:-}"
+CHART_VERSION="${CHART_VERSION:-2.0.0}"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
+CLICKHOUSE_OPERATOR_VERSION="${CLICKHOUSE_OPERATOR_VERSION:-0.0.5}"
+WORKER_DRAIN_SECONDS="${WORKER_DRAIN_SECONDS:-60}"
+MC_IMAGE="${MC_IMAGE:-minio/mc:latest}"
+
+usage() {
+  cat <<'EOF'
+Usage: migrate-v1-to-v2.sh --values <v1-values.yaml> [options]
+
+Blue/green migration from Langfuse Helm chart v1 (Bitnami) to v2 (OSS).
+Stands up a second release, copies data while v1 serves traffic, then freezes
+for a short final delta. Does not uninstall v1 or change Ingress/DNS.
+
+Options:
+  -f, --values PATH         Current v1 values file (required)
+  -n, --namespace NAME      Kubernetes namespace (default: langfuse)
+      --source-release NAME v1 Helm release (default: auto-detect)
+      --target-release NAME v2 Helm release (default: <source>-v2)
+  -o, --output-values PATH  Generated v2 values (default: ./v2-values.generated.yaml)
+      --chart REF           Chart ref or path (default: local charts/langfuse or OCI)
+      --chart-version VER   Chart version when using OCI (default: 2.0.0)
+      --context NAME        kube-context passed to kubectl/helm
+  -y, --yes                 Do not prompt; run every remaining step
+      --dry-run             Preflight + plan + generate values; do not change the cluster
+      --skip-prereqs        Do not install cert-manager / ClickHouse operator
+      --worker-drain-seconds N  Wait after scaling v1 web down (default: 60; used with --yes)
+  -h, --help                Show this help
+
+Environment: KUBECTL, HELM, KCTX, NAMESPACE, WORKER_DRAIN_SECONDS, MC_IMAGE
+EOF
+}
+
+log() { printf '==> %s\n' "$*"; }
+warn() { printf 'warning: %s\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+NEED_CMDS=()
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || NEED_CMDS+=("$1")
+}
+
+kx() { "$KUBECTL" ${KCTX:+--context "$KCTX"} "$@"; }
+hx() { "$HELM" ${KCTX:+--kube-context "$KCTX"} "$@"; }
+
+confirm() {
+  local msg=$1
+  if [ "$YES" -eq 1 ]; then
+    log "$msg [yes]"
+    return 0
+  fi
+  printf '%s\n' "$msg"
+  printf 'Proceed? [y/N] '
+  local ans
+  read -r ans
+  case "$ans" in
+    y|Y|yes|YES) return 0 ;;
+    *) die "aborted" ;;
+  esac
+}
+
+yaml_to_json() {
+  local file=$1
+  if command -v yq >/dev/null 2>&1 && yq --version 2>&1 | grep -qi 'mikefarah\|yq'; then
+    yq -o=json "$file"
+    return
+  fi
+  if python3 -c "import yaml" >/dev/null 2>&1; then
+    python3 -c "import json,sys,yaml; json.dump(yaml.safe_load(open(sys.argv[1])), sys.stdout)" "$file"
+    return
+  fi
+  if command -v ruby >/dev/null 2>&1; then
+    ruby -ryaml -rjson -e 'puts JSON.generate(YAML.load_file(ARGV[0]) || {})' "$file"
+    return
+  fi
+  die "cannot parse YAML: install yq (mikefarah), PyYAML (pip install pyyaml), or Ruby"
+}
+
+json_to_yaml() {
+  if python3 -c "import yaml" >/dev/null 2>&1; then
+    python3 -c "import json,sys,yaml; yaml.safe_dump(json.load(sys.stdin), sys.stdout, sort_keys=False)"
+    return
+  fi
+  if command -v yq >/dev/null 2>&1; then
+    yq -P -o=yaml .
+    return
+  fi
+  if command -v ruby >/dev/null 2>&1; then
+    ruby -rjson -ryaml -e 'print YAML.dump(JSON.parse(STDIN.read))'
+    return
+  fi
+  cat
+}
+
+fullname_of() {
+  local release=$1
+  local fo no
+  fo=$(printf '%s' "$V1_JSON" | jq -r '.fullnameOverride // empty')
+  no=$(printf '%s' "$V1_JSON" | jq -r '.nameOverride // empty')
+  if [ -n "$fo" ]; then
+    printf '%s\n' "$fo"
+    return
+  fi
+  local name=${no:-langfuse}
+  case "$release" in
+    *"$name"*) printf '%s\n' "$release" ;;
+    *) printf '%s-%s\n' "$release" "$name" ;;
+  esac
+}
+
+secret_data() {
+  local ns=$1 name=$2 key=$3
+  kx -n "$ns" get secret "$name" -o "jsonpath={.data.$key}" | base64 -d
+}
+
+wait_sts() {
+  local name=$1
+  log "waiting for StatefulSet/$name"
+  kx -n "$NAMESPACE" rollout status "sts/$name" --timeout=600s
+}
+
+wait_deploy() {
+  local name=$1
+  log "waiting for Deployment/$name"
+  kx -n "$NAMESPACE" rollout status "deploy/$name" --timeout=600s
+}
+
+semver_ge() {
+  # true if $1 >= $2 (major.minor.patch, ignores pre-release suffix)
+  python3 - "$1" "$2" <<'PY'
+import sys
+def parse(v):
+    v = v.split("-")[0].split("+")[0]
+    parts = []
+    for p in v.split("."):
+        try:
+            parts.append(int(p))
+        except ValueError:
+            parts.append(0)
+    while len(parts) < 3:
+        parts.append(0)
+    return tuple(parts[:3])
+sys.exit(0 if parse(sys.argv[1]) >= parse(sys.argv[2]) else 1)
+PY
+}
+
+# --- args -------------------------------------------------------------------
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -f|--values) VALUES_FILE=$2; shift 2 ;;
+    -n|--namespace) NAMESPACE=$2; shift 2 ;;
+    --source-release) SOURCE_RELEASE=$2; shift 2 ;;
+    --target-release) TARGET_RELEASE=$2; shift 2 ;;
+    -o|--output-values) OUTPUT_VALUES=$2; shift 2 ;;
+    --chart) CHART=$2; shift 2 ;;
+    --chart-version) CHART_VERSION=$2; shift 2 ;;
+    --context) KCTX=$2; shift 2 ;;
+    -y|--yes) YES=1; shift ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --skip-prereqs) SKIP_PREREQS=1; shift ;;
+    --worker-drain-seconds) WORKER_DRAIN_SECONDS=$2; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "unknown option: $1" ;;
+  esac
+done
+
+[ -n "$VALUES_FILE" ] || { usage >&2; die "--values is required"; }
+[ -f "$VALUES_FILE" ] || die "values file not found: $VALUES_FILE"
+OUTPUT_VALUES=${OUTPUT_VALUES:-$PWD/v2-values.generated.yaml}
+
+KUBECTL=${KUBECTL:-kubectl}
+HELM=${HELM:-helm}
+
+# --- 0. CLI preflight -------------------------------------------------------
+log "checking required CLI tools"
+need_cmd "$KUBECTL"
+need_cmd "$HELM"
+need_cmd jq
+need_cmd python3
+need_cmd base64
+if [ ${#NEED_CMDS[@]} -gt 0 ]; then
+  die "missing required tools: ${NEED_CMDS[*]}"
+fi
+"$KUBECTL" version --client >/dev/null
+"$HELM" version >/dev/null
+jq --version >/dev/null
+python3 --version >/dev/null
+# YAML parser (values file)
+yaml_to_json "$VALUES_FILE" >/dev/null
+[ -x "$VALUES_MIGRATE" ] || chmod +x "$VALUES_MIGRATE"
+[ -x "$CH_SYNC" ] || chmod +x "$CH_SYNC"
+[ -f "$VALUES_MIGRATE" ] || die "missing $VALUES_MIGRATE"
+[ -f "$CH_SYNC" ] || die "missing $CH_SYNC"
+
+if [ -z "$CHART" ]; then
+  if [ -f "$REPO_ROOT/charts/langfuse/Chart.yaml" ]; then
+    CHART="$REPO_ROOT/charts/langfuse"
+  else
+    CHART="oci://ghcr.io/langfuse/langfuse-k8s/langfuse"
+  fi
+fi
+
+V1_JSON=$(yaml_to_json "$VALUES_FILE")
+PLAN_JSON=$(printf '%s' "$V1_JSON" | python3 "$VALUES_MIGRATE" --plan --input -)
+PG_ON=0; CH_ON=0; REDIS_ON=0; S3_ON=0
+printf '%s' "$PLAN_JSON" | jq -e '.postgresql == true' >/dev/null && PG_ON=1
+printf '%s' "$PLAN_JSON" | jq -e '.clickhouse == true' >/dev/null && CH_ON=1
+printf '%s' "$PLAN_JSON" | jq -e '.redis == true' >/dev/null && REDIS_ON=1
+printf '%s' "$PLAN_JSON" | jq -e '.s3 == true' >/dev/null && S3_ON=1
+
+# --- 1. Cluster / release detection -----------------------------------------
+log "checking kube-context and Langfuse v1 release"
+CTX_NAME=$(kx config current-context)
+log "kube-context: $CTX_NAME"
+kx get ns "$NAMESPACE" >/dev/null || die "namespace '$NAMESPACE' not found in context $CTX_NAME"
+
+RELEASES_JSON=$(hx list -n "$NAMESPACE" -o json)
+if [ -z "$SOURCE_RELEASE" ]; then
+  SOURCE_RELEASE=$(printf '%s' "$RELEASES_JSON" | jq -r '
+    [.[] | select((.chart | test("langfuse")) and (.chart | test("langfuse-2") | not))]
+    | if length == 1 then .[0].name
+      elif length == 0 then empty
+      else empty end')
+  if [ -z "$SOURCE_RELEASE" ]; then
+    CANDIDATES=$(printf '%s' "$RELEASES_JSON" | jq -r '.[] | select(.chart | test("langfuse")) | "\(.name)\t\(.chart)\t\(.app_version)"')
+    [ -n "$CANDIDATES" ] || die "no Langfuse Helm release found in namespace $NAMESPACE (context $CTX_NAME). Pass --source-release."
+    die "could not uniquely identify the v1 release. Candidates:\n$CANDIDATES\nPass --source-release."
+  fi
+fi
+hx status "$SOURCE_RELEASE" -n "$NAMESPACE" >/dev/null \
+  || die "Helm release '$SOURCE_RELEASE' not found in $NAMESPACE"
+
+SRC_META=$(hx list -n "$NAMESPACE" -o json | jq -r --arg n "$SOURCE_RELEASE" '.[] | select(.name==$n)')
+SRC_CHART=$(printf '%s' "$SRC_META" | jq -r '.chart')
+SRC_APP=$(printf '%s' "$SRC_META" | jq -r '.app_version')
+log "source release: $SOURCE_RELEASE  chart=$SRC_CHART  appVersion=$SRC_APP"
+
+case "$SRC_CHART" in
+  langfuse-2*|langfuse-2.*) die "release $SOURCE_RELEASE already looks like chart v2 ($SRC_CHART)" ;;
+esac
+
+if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ]; then
+  semver_ge "$SRC_APP" "3.224.1" || die "source appVersion $SRC_APP is below the minimum supported v3.224.1"
+fi
+
+TARGET_RELEASE=${TARGET_RELEASE:-${SOURCE_RELEASE}-v2}
+SRC_FULLNAME=$(fullname_of "$SOURCE_RELEASE")
+if [ -n "$(printf '%s' "$V1_JSON" | jq -r '.fullnameOverride // empty')" ]; then
+  die "fullnameOverride is set; blue/green in one namespace needs distinct resource names. Unset it or install v2 in another namespace."
+fi
+case "$TARGET_RELEASE" in
+  *langfuse*) TGT_FULLNAME=$TARGET_RELEASE ;;
+  *) TGT_FULLNAME="${TARGET_RELEASE}-langfuse" ;;
+esac
+
+V1_PG_DB=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.database // "postgres_langfuse"')
+V1_PG_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.existingSecret // empty')
+V1_PG_SECRET=${V1_PG_SECRET:-${SRC_FULLNAME}-postgresql}
+V1_PG_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.secretKeys.adminPasswordKey // .postgresql.auth.secretKeys.userPasswordKey // "postgres-password"')
+V1_CH_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.clickhouse.auth.existingSecret // empty')
+V1_CH_SECRET=${V1_CH_SECRET:-${SRC_FULLNAME}-clickhouse}
+V1_CH_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.clickhouse.auth.existingSecretKey // "admin-password"')
+V1_S3_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.existingSecret // empty')
+V1_S3_SECRET=${V1_S3_SECRET:-${SRC_FULLNAME}-s3}
+V1_S3_USER_KEY=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.rootUserSecretKey // "root-user"')
+V1_S3_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.s3.auth.rootPasswordSecretKey // "root-password"')
+V2_PG_SECRET="${TGT_FULLNAME}-postgresql-auth"
+V2_CH_SECRET="${TGT_FULLNAME}-clickhouse-auth"
+V2_S3_SECRET="${TGT_FULLNAME}-s3-auth"
+
+v1_pg_super() {
+  local pw
+  pw=$(secret_data "$NAMESPACE" "$V1_PG_SECRET" "$V1_PG_PW_KEY")
+  kx -n "$NAMESPACE" exec "${SRC_FULLNAME}-postgresql-0" -- env PGPASSWORD="$pw" psql -U postgres "$@"
+}
+
+# Bitnami leftover identities only exist for stores the v1 chart deployed.
+# External (deploy: false) installs have none of these — the Helm release itself
+# is enough proof, and migrate-values.py still rewrites connection settings.
+V1_MARKERS=0
+EXPECTED_MARKERS=0
+if [ "$CH_ON" -eq 1 ]; then
+  EXPECTED_MARKERS=$((EXPECTED_MARKERS + 1))
+  if kx -n "$NAMESPACE" get sts "${SRC_FULLNAME}-clickhouse-shard0" >/dev/null 2>&1; then
+    V1_MARKERS=$((V1_MARKERS + 1))
+  else
+    warn "clickhouse.deploy is true but StatefulSet ${SRC_FULLNAME}-clickhouse-shard0 was not found"
+  fi
+fi
+if [ "$PG_ON" -eq 1 ]; then
+  EXPECTED_MARKERS=$((EXPECTED_MARKERS + 1))
+  if kx -n "$NAMESPACE" get pvc "data-${SRC_FULLNAME}-postgresql-0" >/dev/null 2>&1; then
+    V1_MARKERS=$((V1_MARKERS + 1))
+  else
+    warn "postgresql.deploy is true but PVC data-${SRC_FULLNAME}-postgresql-0 was not found"
+  fi
+fi
+if [ "$S3_ON" -eq 1 ]; then
+  EXPECTED_MARKERS=$((EXPECTED_MARKERS + 1))
+  if kx -n "$NAMESPACE" get deploy "${SRC_FULLNAME}-s3" >/dev/null 2>&1; then
+    V1_MARKERS=$((V1_MARKERS + 1))
+  else
+    warn "s3.deploy is true but Deployment ${SRC_FULLNAME}-s3 was not found"
+  fi
+fi
+if [ "$EXPECTED_MARKERS" -eq 0 ]; then
+  log "all data stores are external (deploy: false) — skipping Bitnami leftover checks; will migrate values and cut over the app only"
+elif [ "$V1_MARKERS" -eq 0 ]; then
+  die "no v1 Bitnami resources found for bundled stores on release $SOURCE_RELEASE (looked for ClickHouse STS ${SRC_FULLNAME}-clickhouse-shard0, PVC data-${SRC_FULLNAME}-postgresql-0, and/or Deployment ${SRC_FULLNAME}-s3). Wrong context or already migrated?"
+fi
+
+if hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
+  warn "target release $TARGET_RELEASE already exists — later steps will reuse it"
+fi
+
+# --- 2. Generate v2 values --------------------------------------------------
+log "generating v2 values from $VALUES_FILE"
+python3 "$VALUES_MIGRATE" --input "$VALUES_FILE" --output "$OUTPUT_VALUES.tmp" --target-fullname "$TGT_FULLNAME"
+if [ "$(head -c 1 "$OUTPUT_VALUES.tmp")" = "{" ]; then
+  json_to_yaml < "$OUTPUT_VALUES.tmp" > "$OUTPUT_VALUES.body"
+else
+  mv "$OUTPUT_VALUES.tmp" "$OUTPUT_VALUES.body"
+  rm -f "$OUTPUT_VALUES.tmp"
+fi
+{
+  cat <<EOF
+# Generated by migrate-v1-to-v2.sh from $VALUES_FILE
+# Install as a SECOND release alongside v1:
+#   helm install $TARGET_RELEASE ... -n $NAMESPACE -f $OUTPUT_VALUES
+#
+# Application secrets are copied from v1. Bundled datastore credentials are
+# generated by the v2 chart. Review before applying.
+
+EOF
+  cat "$OUTPUT_VALUES.body"
+} > "$OUTPUT_VALUES"
+rm -f "$OUTPUT_VALUES.body" "$OUTPUT_VALUES.tmp"
+log "wrote $OUTPUT_VALUES"
+
+cat <<EOF
+
+Migration plan (from values; deploy defaults to true when unset)
+  namespace:        $NAMESPACE
+  context:          $CTX_NAME
+  source release:   $SOURCE_RELEASE  (fullname $SRC_FULLNAME)
+  target release:   $TARGET_RELEASE  (fullname $TGT_FULLNAME)
+  postgresql:       $([ "$PG_ON" -eq 1 ] && echo "migrate (logical replication)" || echo "skip (external / deploy=false)")
+  clickhouse:       $([ "$CH_ON" -eq 1 ] && echo "migrate (remote() watermark sync)" || echo "skip (external / deploy=false)")
+  object storage:   $([ "$S3_ON" -eq 1 ] && echo "migrate (mc mirror MinIO → SeaweedFS)" || echo "skip (external / deploy=false)")
+  redis/valkey:     $([ "$REDIS_ON" -eq 1 ] && echo "redeploy empty (ephemeral; no data copy)" || echo "skip (external / deploy=false)")
+  v2 values:        $OUTPUT_VALUES
+
+EOF
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  log "dry-run: stopping before any cluster changes"
+  exit 0
+fi
+
+confirm "Review $OUTPUT_VALUES, then start the cluster migration (prereqs + v2 install + data copy)?"
+
+# --- 3. Cluster prereqs -----------------------------------------------------
+ensure_crds() {
+  local crd=$1
+  kx get crd "$crd" >/dev/null 2>&1
+}
+
+if [ "$SKIP_PREREQS" -eq 0 ]; then
+  if ! ensure_crds certificates.cert-manager.io; then
+    confirm "Install cert-manager $CERT_MANAGER_VERSION into namespace cert-manager?"
+    hx install cert-manager oci://quay.io/jetstack/charts/cert-manager \
+      --version "$CERT_MANAGER_VERSION" \
+      --namespace cert-manager --create-namespace \
+      --set crds.enabled=true
+    kx wait --for=condition=Established crd/certificates.cert-manager.io crd/issuers.cert-manager.io --timeout=180s
+  else
+    log "cert-manager CRDs already present"
+  fi
+
+  if [ "$CH_ON" -eq 1 ] && ! ensure_crds clickhouseclusters.clickhouse.com; then
+    confirm "Install ClickHouse operator $CLICKHOUSE_OPERATOR_VERSION?"
+    hx install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
+      --version "$CLICKHOUSE_OPERATOR_VERSION" \
+      --namespace clickhouse-operator --create-namespace
+    kx wait --for=condition=Established \
+      crd/clickhouseclusters.clickhouse.com \
+      crd/keeperclusters.clickhouse.com --timeout=180s
+  elif [ "$CH_ON" -eq 1 ]; then
+    log "ClickHouse operator CRDs already present"
+  fi
+fi
+
+# --- 4. Enable logical replication on v1 Postgres ---------------------------
+if [ "$PG_ON" -eq 1 ]; then
+  WAL=$(v1_pg_super -d postgres -tAc "SHOW wal_level;" | tr -d '[:space:]' || true)
+  if [ "$WAL" != "logical" ]; then
+    confirm "Enable wal_level=logical on v1 Postgres (ALTER SYSTEM + StatefulSet restart)?"
+    v1_pg_super -d postgres -c "ALTER SYSTEM SET wal_level = 'logical'; ALTER SYSTEM SET max_wal_senders = 10; ALTER SYSTEM SET max_replication_slots = 10;"
+    kx -n "$NAMESPACE" rollout restart "sts/${SRC_FULLNAME}-postgresql"
+    wait_sts "${SRC_FULLNAME}-postgresql"
+    WAL=$(v1_pg_super -d postgres -tAc "SHOW wal_level;" | tr -d '[:space:]')
+    [ "$WAL" = "logical" ] || die "wal_level is '$WAL', expected logical"
+  else
+    log "v1 Postgres already has wal_level=logical"
+  fi
+fi
+
+# Protect the shared app Secret from helm uninstall of v1 later
+APP_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.langfuse.salt.secretKeyRef.name // .langfuse.encryptionKey.secretKeyRef.name // empty')
+if [ -n "$APP_SECRET" ]; then
+  if kx -n "$NAMESPACE" get secret "$APP_SECRET" >/dev/null 2>&1; then
+    log "annotating Secret/$APP_SECRET with helm.sh/resource-policy=keep"
+    kx -n "$NAMESPACE" annotate secret "$APP_SECRET" helm.sh/resource-policy=keep --overwrite
+  fi
+fi
+
+# --- 5. Stand up v2 ---------------------------------------------------------
+if ! hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
+  confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime)?"
+  if [ -d "$CHART" ]; then
+    hx dependency update "$CHART" >/dev/null
+    hx install "$TARGET_RELEASE" "$CHART" -n "$NAMESPACE" -f "$OUTPUT_VALUES"
+  else
+    hx install "$TARGET_RELEASE" "$CHART" --version "$CHART_VERSION" -n "$NAMESPACE" -f "$OUTPUT_VALUES"
+  fi
+else
+  log "reusing existing release $TARGET_RELEASE"
+fi
+
+wait_deploy "${TGT_FULLNAME}-web"
+[ "$PG_ON" -eq 1 ] && wait_sts "${TGT_FULLNAME}-postgresql"
+[ "$REDIS_ON" -eq 1 ] && {
+  if kx -n "$NAMESPACE" get sts "${TGT_FULLNAME}-redis" >/dev/null 2>&1; then
+    wait_sts "${TGT_FULLNAME}-redis"
+  fi
+}
+[ "$S3_ON" -eq 1 ] && wait_deploy "${TGT_FULLNAME}-s3-all-in-one"
+if [ "$CH_ON" -eq 1 ]; then
+  log "waiting for ClickHouse pod ${TGT_FULLNAME}-clickhouse-0-0-0"
+  kx -n "$NAMESPACE" wait pod "${TGT_FULLNAME}-clickhouse-0-0-0" --for=condition=Ready --timeout=600s
+fi
+
+# --- 6. Online sync ---------------------------------------------------------
+V1_S3_SVC="${SRC_FULLNAME}-s3.${NAMESPACE}.svc.cluster.local:9000"
+V2_S3_SVC="${TGT_FULLNAME}-s3-all-in-one.${NAMESPACE}.svc.cluster.local:8333"
+S3_BUCKET=$(printf '%s' "$V1_JSON" | jq -r '(.s3.bucket | select(type=="string" and length>0)) // "langfuse"')
+MC_POD="${TGT_FULLNAME}-migrate-mc"
+
+pg_exec_v1() {
+  v1_pg_super -d "$V1_PG_DB" "$@"
+}
+pg_exec_v2() {
+  local su_pw=$1; shift
+  kx -n "$NAMESPACE" exec "${TGT_FULLNAME}-postgresql-0" -- env PGPASSWORD="$su_pw" psql -U postgres -d langfuse "$@"
+}
+
+if [ "$PG_ON" -eq 1 ]; then
+  confirm "Start PostgreSQL logical replication (publication on v1, subscription on v2)?"
+  SU_PW=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_PASSWORD)
+  V1_PW=$(secret_data "$NAMESPACE" "$V1_PG_SECRET" "$V1_PG_PW_KEY")
+  if [ "$(pg_exec_v1 -tAc "SELECT 1 FROM pg_publication WHERE pubname='lf_pub';" | tr -d '[:space:]')" = "1" ]; then
+    log "publication lf_pub already exists"
+  else
+    pg_exec_v1 -c "CREATE PUBLICATION lf_pub FOR ALL TABLES;"
+  fi
+  if [ "$(pg_exec_v2 "$SU_PW" -tAc "SELECT 1 FROM pg_subscription WHERE subname='lf_sub';" | tr -d '[:space:]')" = "1" ]; then
+    log "subscription lf_sub already exists"
+  else
+    TRUNCATE_SQL=$(pg_exec_v2 "$SU_PW" -tAc \
+      "SELECT 'TRUNCATE TABLE '||string_agg(format('%I.%I',schemaname,tablename),', ')||' CASCADE;' FROM pg_tables WHERE schemaname='public';")
+    if [ -n "$TRUNCATE_SQL" ]; then
+      pg_exec_v2 "$SU_PW" -c "$TRUNCATE_SQL"
+    fi
+    pg_exec_v2 "$SU_PW" -c \
+      "CREATE SUBSCRIPTION lf_sub CONNECTION 'host=${SRC_FULLNAME}-postgresql port=5432 dbname=${V1_PG_DB} user=postgres password=${V1_PW}' PUBLICATION lf_pub;"
+  fi
+  log "watching replication lag (Ctrl-C only stops the watch; re-run the script to continue)"
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    pg_exec_v1 -c "SELECT application_name, state, pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes FROM pg_stat_replication;" || true
+    sleep 3
+  done
+fi
+
+ensure_mc_pod() {
+  if kx -n "$NAMESPACE" get pod "$MC_POD" >/dev/null 2>&1; then
+    return
+  fi
+  kx -n "$NAMESPACE" run "$MC_POD" --restart=Never --image="$MC_IMAGE" --command -- sleep 86400
+  kx -n "$NAMESPACE" wait pod "$MC_POD" --for=condition=Ready --timeout=180s
+}
+
+mc_mirror() {
+  local watch=$1
+  local v1_key v1_secret v2_key v2_secret extra
+  v1_key=$(secret_data "$NAMESPACE" "$V1_S3_SECRET" "$V1_S3_USER_KEY")
+  v1_secret=$(secret_data "$NAMESPACE" "$V1_S3_SECRET" "$V1_S3_PW_KEY")
+  v2_key=$(secret_data "$NAMESPACE" "$V2_S3_SECRET" accessKey)
+  v2_secret=$(secret_data "$NAMESPACE" "$V2_S3_SECRET" secretKey)
+  extra=""
+  [ "$watch" = "watch" ] && extra="--watch"
+  ensure_mc_pod
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc alias set v1 "http://${V1_S3_SVC}" "$v1_key" "$v1_secret"
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc alias set v2 "http://${V2_S3_SVC}" "$v2_key" "$v2_secret"
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc mb --ignore-existing "v2/${S3_BUCKET}"
+  log "mc mirror v1/${S3_BUCKET} → v2/${S3_BUCKET} ${extra}"
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc mirror --overwrite $extra "v1/${S3_BUCKET}" "v2/${S3_BUCKET}"
+}
+
+if [ "$S3_ON" -eq 1 ]; then
+  confirm "Mirror object storage MinIO → SeaweedFS (online pass)?"
+  mc_mirror ""
+fi
+
+run_ch_sync() {
+  local extra=${1:-}
+  TARGET_NS="$NAMESPACE" SOURCE_NS="$NAMESPACE" \
+    TARGET_POD="${TGT_FULLNAME}-clickhouse-0-0-0" TARGET_SECRET="$V2_CH_SECRET" \
+    SOURCE_HOST="${SRC_FULLNAME}-clickhouse.${NAMESPACE}.svc.cluster.local:9000" \
+    SOURCE_SECRET="$V1_CH_SECRET" SOURCE_SECRET_KEY="$V1_CH_PW_KEY" \
+    KUBECTL="$KUBECTL" KCTX="$KCTX" \
+    "$CH_SYNC" $extra
+}
+
+if [ "$CH_ON" -eq 1 ]; then
+  confirm "Run ClickHouse incremental sync (remote() watermark pass)?"
+  run_ch_sync
+fi
+
+if [ "$YES" -eq 0 ] && { [ "$CH_ON" -eq 1 ] || [ "$S3_ON" -eq 1 ]; }; then
+  while true; do
+    printf 'Run another online sync pass (ClickHouse / object storage) before freeze? [y/N] '
+    read -r again
+    case "$again" in
+      y|Y|yes|YES)
+        [ "$S3_ON" -eq 1 ] && mc_mirror ""
+        [ "$CH_ON" -eq 1 ] && run_ch_sync
+        ;;
+      *) break ;;
+    esac
+  done
+fi
+
+# --- 7. Freeze & final delta ------------------------------------------------
+confirm "FREEZE window: scale down v1 web (then worker) and run final deltas? This starts application downtime."
+
+kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-web" --replicas=0
+if [ "$YES" -eq 1 ]; then
+  log "waiting ${WORKER_DRAIN_SECONDS}s for the v1 worker to drain Redis queues"
+  sleep "$WORKER_DRAIN_SECONDS"
+else
+  printf 'Scale-down of %s-web is done. Wait until the v1 worker is idle (queue depth ~ 0), then press Enter.\n' "$SRC_FULLNAME"
+  read -r _
+fi
+kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-worker" --replicas=0
+
+if [ "$PG_ON" -eq 1 ]; then
+  log "waiting for Postgres lag_bytes=0"
+  SU_PW=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_PASSWORD)
+  for i in $(seq 1 60); do
+    LAG=$(pg_exec_v1 -tAc "SELECT COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn),0) FROM pg_stat_replication;" | tr -d '[:space:]' || echo 999)
+    [ "${LAG:-999}" = "0" ] && break
+    sleep 2
+  done
+  [ "${LAG:-999}" = "0" ] || warn "Postgres lag_bytes=$LAG (continuing to drop subscription)"
+  pg_exec_v2 "$SU_PW" -c "DROP SUBSCRIPTION IF EXISTS lf_sub;"
+fi
+
+if [ "$S3_ON" -eq 1 ]; then
+  log "final object-storage mirror"
+  mc_mirror ""
+fi
+
+if [ "$CH_ON" -eq 1 ]; then
+  log "final ClickHouse watermark pass"
+  run_ch_sync --final
+fi
+
+# --- 8. Cut over (scale v2; DNS is left to the operator) --------------------
+confirm "Scale up v2 web/worker and check /api/public/ready?"
+kx -n "$NAMESPACE" scale deploy/"${TGT_FULLNAME}-web" deploy/"${TGT_FULLNAME}-worker" --replicas=1
+wait_deploy "${TGT_FULLNAME}-web"
+
+READY=$(kx -n "$NAMESPACE" run "${TGT_FULLNAME}-ready-check" --rm -i --restart=Never --image=curlimages/curl:8.11.1 -- \
+  curl -sf "http://${TGT_FULLNAME}-web.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
+log "v2 readiness: ${READY:-<empty>}"
+
+if kx -n "$NAMESPACE" get pod "$MC_POD" >/dev/null 2>&1; then
+  kx -n "$NAMESPACE" delete pod "$MC_POD" --wait=false >/dev/null || true
+fi
+
+cat <<EOF
+
+Migration steps finished.
+
+Next (manual):
+  1. Point Ingress / DNS at Service ${TGT_FULLNAME}-web
+  2. Keep release $SOURCE_RELEASE until you are confident
+  3. Then: helm uninstall $SOURCE_RELEASE -n $NAMESPACE
+     (delete retained v1 PVCs later)
+
+Rollback before DNS cutover: leave traffic on ${SRC_FULLNAME}-web
+  kubectl -n $NAMESPACE scale deploy/${SRC_FULLNAME}-web deploy/${SRC_FULLNAME}-worker --replicas=1
+
+Generated v2 values: $OUTPUT_VALUES
+EOF

@@ -44,8 +44,10 @@ set -euo pipefail
 : "${SOURCE_DB:=default}"
 : "${SOURCE_USER:=default}"
 # Passwords: taken from the cluster secrets by default; override to pin.
-: "${TARGET_SECRET:=langfuse-clickhouse-auth}"  # v2 secret, key `password`
-: "${SOURCE_SECRET:=langfuse-clickhouse}"       # v1 Bitnami secret, key `admin-password`
+: "${TARGET_SECRET:=langfuse-clickhouse-auth}"  # v2 secret
+: "${TARGET_SECRET_KEY:=password}"
+: "${SOURCE_SECRET:=langfuse-clickhouse}"       # v1 Bitnami default; override when using existingSecret
+: "${SOURCE_SECRET_KEY:=admin-password}"
 : "${SOURCE_NS:=${TARGET_NS}}"                  # namespace holding the v1 secret
 
 # ReplacingMergeTree data tables that carry an `event_ts` version column. These
@@ -65,8 +67,8 @@ FINAL=0; [ "${1:-}" = "--final" ] && FINAL=1
 kx() { $KUBECTL ${KCTX:+--context "$KCTX"} "$@"; }
 mkdir -p "$STATE_DIR"
 
-TPW=$(kx -n "$TARGET_NS" get secret "$TARGET_SECRET" -o jsonpath='{.data.password}' | base64 -d)
-SPW=$(kx -n "$SOURCE_NS" get secret "$SOURCE_SECRET" -o jsonpath='{.data.admin-password}' | base64 -d)
+TPW=$(kx -n "$TARGET_NS" get secret "$TARGET_SECRET" -o jsonpath="{.data.$TARGET_SECRET_KEY}" | base64 -d)
+SPW=$(kx -n "$SOURCE_NS" get secret "$SOURCE_SECRET" -o jsonpath="{.data.$SOURCE_SECRET_KEY}" | base64 -d)
 
 # Run a query on the target ClickHouse (stdin-safe).
 chq() { kx -n "$TARGET_NS" exec -i "$TARGET_POD" -- clickhouse-client --password "$TPW" -q "$1"; }
