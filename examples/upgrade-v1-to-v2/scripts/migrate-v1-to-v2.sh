@@ -97,7 +97,7 @@ confirm() {
 
 yaml_to_json() {
   local file=$1
-  if command -v yq >/dev/null 2>&1 && yq --version 2>&1 | grep -qi 'mikefarah\|yq'; then
+  if command -v yq >/dev/null 2>&1 && yq --version 2>&1 | grep -qi 'mikefarah'; then
     yq -o=json "$file"
     return
   fi
@@ -796,6 +796,8 @@ drain_v1_queues() {
     return 0
   }
   pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" "$V1_REDIS_PW_KEY" 2>/dev/null || true)
+  # Bitnami valkey (the v1 redis alias) stores the password under valkey-password
+  [ -n "$pw" ] || pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" valkey-password 2>/dev/null || true)
   [ -n "$pw" ] || pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" password 2>/dev/null || true)
   if [ -z "$pw" ]; then
     warn "could not read v1 Redis password; falling back to a ${WORKER_DRAIN_SECONDS}s wait"
