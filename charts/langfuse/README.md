@@ -273,7 +273,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
 | redis.dataStorage | object | `{"accessModes":["ReadWriteOnce"],"className":"","enabled":true,"keepPvc":false,"requestedSize":"8Gi"}` | Persistence for the primary node. |
 | redis.deploy | bool | `true` | Deploy Valkey via the bundled valkey-io/valkey sub-chart. Disable to use an external Redis or Valkey. |
-| redis.extraFlags | list | `["--maxmemory-policy","noeviction"]` | Set the maxmemory eviction policy. Langfuse requires `noeviction` to avoid losing job data. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
 | redis.image.pullPolicy | string | `"IfNotPresent"` |  |
 | redis.image.registry | string | `"docker.io"` |  |
@@ -300,6 +299,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication. |
 | redis.tls.enabled | bool | `false` | Enable TLS for Langfuse↔Redis. When deploy is true, also enables TLS on the Valkey sub-chart. |
 | redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication. |
+| redis.valkeyConfig | string | `"maxmemory-policy noeviction\n"` | Pass-through to valkey-helm: contents of valkey.conf. This is the sub-chart's only config mechanism (it consumes no command-line flag values). Langfuse requires `maxmemory-policy noeviction` to avoid losing job data — validated at render time. |
 | s3.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for all uploads. Can be overridden per upload type. |
 | s3.allInOne.data.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | s3.allInOne.data.size | string | `"50Gi"` |  |

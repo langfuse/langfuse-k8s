@@ -665,10 +665,9 @@ redis:
       - ReadWriteOnce
     keepPvc: false
 
-  # -- Set the maxmemory eviction policy. Langfuse requires `noeviction` to avoid losing job data.
-  extraFlags:
-    - "--maxmemory-policy"
-    - "noeviction"
+  # -- Pass-through to valkey-helm: contents of valkey.conf. This is the sub-chart's only config mechanism (it consumes no command-line flag values). Langfuse requires `maxmemory-policy noeviction` to avoid losing job data — validated at render time.
+  valkeyConfig: |
+    maxmemory-policy noeviction
 
   # -- Resource limits/requests for the Valkey pods.
   resources: {}

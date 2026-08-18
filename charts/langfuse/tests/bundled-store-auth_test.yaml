@@ -93,3 +93,12 @@ tests:
       - hasDocuments:
           count: 0
         template: validations.yaml
+
+  - it: should reject a bundled Valkey config without the noeviction policy
+    set:
+      clickhouse.crdCheck: false
+      redis.valkeyConfig: "maxmemory 2gb"
+    asserts:
+      - failedTemplate:
+          errorPattern: "maxmemory-policy noeviction"
+        template: validations.yaml

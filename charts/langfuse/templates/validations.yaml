@@ -112,19 +112,8 @@ what you are doing.
 {{- end -}}
 
 # Validate Redis settings
-{{- $redisExtraFlags := default (list) $.Values.redis.extraFlags -}}
-{{- $redisHasNoEviction := false -}}
-{{- range $i, $f := $redisExtraFlags -}}
-  {{- if eq $f "noeviction" -}}
-    {{- if gt $i 0 -}}
-      {{- if eq (index $redisExtraFlags (sub $i 1)) "--maxmemory-policy" -}}
-        {{- $redisHasNoEviction = true -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
-{{- if and $.Values.redis.deploy (not $redisHasNoEviction) -}}
-    {{- fail "Langfuse requires valkey to be deployed with `--maxmemory-policy noeviction`. Set redis.extraFlags to include `[\"--maxmemory-policy\", \"noeviction\"]` to continue." -}}
+{{- if and $.Values.redis.deploy (not (contains "maxmemory-policy noeviction" (default "" $.Values.redis.valkeyConfig))) -}}
+    {{- fail "Langfuse requires the bundled Valkey to run with `maxmemory-policy noeviction` (jobs are lost under eviction). Keep `maxmemory-policy noeviction` in redis.valkeyConfig — valkey.conf is the sub-chart's only config mechanism. (redis.extraFlags from earlier 2.0.0 pre-releases was never applied and has been removed.)" -}}
 {{- end -}}
 
 {{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not $.Values.redis.sentinel.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
