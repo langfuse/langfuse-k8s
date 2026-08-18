@@ -45,6 +45,21 @@ what you are doing.
 {{- end -}}
 {{- end -}}
 
+# Validate bring-your-own auth Secrets against the bundled stores.
+# Setting <store>.auth.existingSecret suppresses the chart-managed Secret,
+# but the sub-charts keep mounting whatever name their pass-through values
+# hold — left at the default, that Secret would no longer exist and the
+# store pods fail at start with no render-time hint.
+{{- if and .Values.postgresql.deploy .Values.postgresql.auth.existingSecret (eq (include "langfuse.postgresql.authSecretName" .) "langfuse-postgresql-auth") (ne .Values.postgresql.auth.existingSecret "langfuse-postgresql-auth") -}}
+    {{- fail "postgresql.auth.existingSecret suppresses the chart-managed langfuse-postgresql-auth Secret, but the Postgres sub-chart still mounts it. Also point postgresql.settings.existingSecret and postgresql.userDatabase.existingSecret at a Secret with POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB/USERDB_USER/USERDB_PASSWORD keys (see examples/minimal-installation), or unset postgresql.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+{{- if and .Values.redis.deploy .Values.redis.auth.existingSecret (eq (include "langfuse.redis.authSecretName" .) "langfuse-redis-auth") (ne .Values.redis.auth.existingSecret "langfuse-redis-auth") -}}
+    {{- fail "redis.auth.existingSecret suppresses the chart-managed langfuse-redis-auth Secret, but the Valkey sub-chart still mounts it for ACL users. Also point redis.auth.usersExistingSecret at a Secret holding one key per ACL username (see examples/minimal-installation), or unset redis.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+{{- if and .Values.s3.deploy .Values.s3.auth.existingSecret (eq (include "langfuse.s3.authSecretName" .) "langfuse-s3-auth") (ne .Values.s3.auth.existingSecret "langfuse-s3-auth") -}}
+    {{- fail "s3.auth.existingSecret suppresses the chart-managed langfuse-s3-auth Secret, but the SeaweedFS sub-chart still mounts it as its IAM config. Also point s3.allInOne.s3.existingConfigSecret at a Secret with a seaweedfs_s3_config key matching your credentials (see examples/minimal-installation), or unset s3.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+
 # Validate auth providers settings
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
 {{- range $providerName, $provider := .Values.langfuse.auth.providers -}}

@@ -632,11 +632,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:
@@ -651,11 +651,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:
@@ -695,11 +695,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:
@@ -714,11 +714,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:
@@ -756,11 +756,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:
@@ -775,11 +775,11 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
   valueFrom:
     secretKeyRef:

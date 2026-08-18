@@ -1,0 +1,60 @@
+suite: test bring-your-own auth secret guards for bundled stores
+templates:
+  - validations.yaml
+  - web/deployment.yaml
+tests:
+  - it: should reject postgresql.auth.existingSecret with a dangling sub-chart secret ref
+    set:
+      postgresql.auth.existingSecret: my-pg
+      postgresql.auth.secretKeys.userPasswordKey: password
+    asserts:
+      - failedTemplate:
+          errorPattern: "postgresql.settings.existingSecret"
+        template: validations.yaml
+
+  - it: should reject redis.auth.existingSecret with a dangling sub-chart secret ref
+    set:
+      redis.auth.existingSecret: my-redis
+      redis.auth.existingSecretPasswordKey: password
+    asserts:
+      - failedTemplate:
+          errorPattern: "redis.auth.usersExistingSecret"
+        template: validations.yaml
+
+  - it: should reject s3.auth.existingSecret with a dangling sub-chart secret ref
+    set:
+      s3.auth.existingSecret: my-s3
+      s3.auth.rootUserSecretKey: user
+      s3.auth.rootPasswordSecretKey: password
+    asserts:
+      - failedTemplate:
+          errorPattern: "s3.allInOne.s3.existingConfigSecret"
+        template: validations.yaml
+
+  - it: should accept existingSecrets when the sub-chart refs are rewired
+    set:
+      clickhouse.crdCheck: false
+      postgresql.auth.existingSecret: my-secret
+      postgresql.auth.secretKeys.userPasswordKey: password
+      postgresql.settings.existingSecret: my-secret
+      postgresql.userDatabase.existingSecret: my-secret
+      redis.auth.existingSecret: my-secret
+      redis.auth.existingSecretPasswordKey: password
+      redis.auth.usersExistingSecret: my-secret
+      s3.auth.existingSecret: my-secret
+      s3.auth.rootUserSecretKey: user
+      s3.auth.rootPasswordSecretKey: password
+      s3.allInOne.s3.existingConfigSecret: my-secret
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: validations.yaml
+
+  - it: should require the s3 key names when s3.auth.existingSecret is set
+    set:
+      s3.auth.existingSecret: my-s3
+      s3.allInOne.s3.existingConfigSecret: my-s3
+    asserts:
+      - failedTemplate:
+          errorPattern: "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set"
+        template: web/deployment.yaml
