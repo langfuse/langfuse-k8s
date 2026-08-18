@@ -163,7 +163,7 @@ langfuse:
   web:
     image:
       # -- The image repository to use for the langfuse web pods.
-      repository: langfuse/langfuse
+      repository: docker.langfuse.com/langfuse/langfuse
       # -- The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set.
       tag: Null
       # -- The pull policy to use for the langfuse web pods. Using `langfuse.image.pullPolicy` if not set.
@@ -313,7 +313,7 @@ langfuse:
     hostAliases: []
     image:
       # -- The image repository to use for the langfuse worker pods
-      repository: langfuse/langfuse-worker
+      repository: docker.langfuse.com/langfuse/langfuse-worker
       # -- The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set.
       tag: Null
       # -- The pull policy to use for the langfuse worker pods. Using `langfuse.image.pullPolicy` if not set.
