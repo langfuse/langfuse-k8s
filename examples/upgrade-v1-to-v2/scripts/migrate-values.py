@@ -76,6 +76,7 @@ S3_KEEP = (
     "mediaUpload",
     "defaultBuckets",
 )
+BUNDLED_S3_KEEP = tuple(k for k in S3_KEEP if k not in ("deploy", "endpoint"))
 ROOT_KEEP = ("nameOverride", "fullnameOverride")
 
 # v1 keys that do not copy into a bundled-store overlay. Pass --extra-values
@@ -136,6 +137,17 @@ def pick(src: dict[str, Any] | None, keys: tuple[str, ...]) -> dict[str, Any]:
     return {k: src[k] for k in keys if k in src}
 
 
+def bundled_s3_buckets(s3: dict[str, Any]) -> set[str]:
+    """Effective bucket per upload type, mirroring the chart's coalesce."""
+    default = s3.get("bucket") or s3.get("defaultBuckets") or "langfuse"
+    buckets: set[str] = set()
+    for upload_type in ("eventUpload", "batchExport", "mediaUpload"):
+        cfg = s3.get(upload_type)
+        cfg = cfg if isinstance(cfg, dict) else {}
+        buckets.add(cfg.get("bucket") or default)
+    return buckets
+
+
 def nested_get(data: dict[str, Any], path: str) -> Any:
     cur: Any = data
     for part in path.split("."):
@@ -188,18 +200,22 @@ def store_blocks(v1: dict[str, Any]) -> dict[str, Any]:
         v2["postgresql"]["deploy"] = False
 
     ch_src = v1.get("clickhouse") or {}
+    if not isinstance(ch_src, dict):
+        ch_src = {}
     if deploy_enabled(v1, "clickhouse"):
-        cluster: dict[str, Any] = {}
-        if isinstance(ch_src, dict) and ch_src.get("replicaCount") is not None:
-            cluster["replicas"] = ch_src["replicaCount"]
-        v2["clickhouse"] = {"deploy": True}
-        if cluster:
-            v2["clickhouse"]["cluster"] = cluster
+        # v1 defaulted to 3 ClickHouse replicas, v2 defaults to 1 — always pin
+        # the replica count so defaults-relying installs keep their topology.
+        replicas = ch_src.get("replicaCount")
+        cluster: dict[str, Any] = {"replicas": replicas if replicas is not None else 3}
+        if "clusterEnabled" in ch_src:
+            cluster["enabled"] = bool(ch_src["clusterEnabled"])
+        v2["clickhouse"] = {"deploy": True, "cluster": cluster}
     else:
-        v2["clickhouse"] = pick(ch_src if isinstance(ch_src, dict) else {}, CH_KEEP)
+        v2["clickhouse"] = pick(ch_src, CH_KEEP)
         v2["clickhouse"]["deploy"] = False
-        if isinstance(ch_src, dict) and isinstance(ch_src.get("cluster"), dict):
-            v2["clickhouse"]["cluster"] = pick(ch_src["cluster"], ("enabled",))
+        # v1's flat clusterEnabled key moved to cluster.enabled in v2.
+        if "clusterEnabled" in ch_src:
+            v2["clickhouse"]["cluster"] = {"enabled": bool(ch_src["clusterEnabled"])}
 
     if deploy_enabled(v1, "redis"):
         v2["redis"] = {"deploy": True}
@@ -208,7 +224,18 @@ def store_blocks(v1: dict[str, Any]) -> dict[str, Any]:
         v2["redis"]["deploy"] = False
 
     if deploy_enabled(v1, "s3"):
-        v2["s3"] = {"deploy": True}
+        # Keep the Langfuse-facing S3 settings (bucket, region, prefixes,
+        # credentials) — dropping them pointed the migrated release at the
+        # default 'langfuse' bucket while the mirrored data lives under the
+        # v1 bucket name. Only `endpoint` is dropped: v2 auto-discovers the
+        # bundled SeaweedFS, and a copied v1 MinIO endpoint would dangle.
+        v2["s3"] = pick(v1.get("s3"), BUNDLED_S3_KEEP)
+        v2["s3"]["deploy"] = True
+        buckets = bundled_s3_buckets(v2["s3"])
+        if buckets and buckets != {"langfuse"}:
+            v2["s3"].setdefault("allInOne", {}).setdefault("s3", {})[
+                "createBuckets"
+            ] = [{"name": name} for name in sorted(buckets)]
     else:
         v2["s3"] = pick(v1.get("s3"), S3_KEEP)
         v2["s3"]["deploy"] = False
