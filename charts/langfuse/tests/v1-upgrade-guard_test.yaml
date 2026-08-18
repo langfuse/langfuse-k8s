@@ -1,0 +1,61 @@
+suite: test v1 to v2 helm upgrade guard
+templates:
+  - validations.yaml
+tests:
+  - it: should not fail on a fresh install even when allowV1Upgrade is false
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.allowV1Upgrade: false
+      clickhouse.crdCheck: false
+    release:
+      upgrade: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip Bitnami leftover lookups when allowV1Upgrade is true
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.allowV1Upgrade: true
+      clickhouse.crdCheck: false
+    release:
+      upgrade: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not fail on upgrade when no v1 leftovers are present (lookup empty)
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.allowV1Upgrade: false
+      clickhouse.crdCheck: false
+    release:
+      upgrade: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should allow in-place upgrade when leftover stores are deploy false
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.allowV1Upgrade: false
+      clickhouse.crdCheck: false
+      postgresql.deploy: false
+      postgresql.host: external-postgres
+      postgresql.auth.existingSecret: langfuse-postgresql
+      clickhouse.deploy: false
+      clickhouse.host: external-clickhouse
+      redis.deploy: false
+      redis.host: external-redis
+      s3.deploy: false
+      s3.bucket: langfuse
+      s3.endpoint: https://s3.example.com
+    release:
+      upgrade: true
+    asserts:
+      - hasDocuments:
+          count: 0

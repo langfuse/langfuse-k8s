@@ -1,0 +1,18 @@
+# Bring your own S3-compatible blob store (AWS S3, GCS via S3 API, Azure via S3 gateway, etc.).
+# Overlay on top of minimal-installation/values.yaml.
+s3:
+  deploy: false
+  bucket: langfuse
+  region: eu-west-1
+  endpoint: "https://s3.eu-west-1.amazonaws.com"
+  forcePathStyle: false
+  accessKeyId:
+    value: "replace-me"
+  secretAccessKey:
+    value: "replace-me"
+  eventUpload:
+    prefix: "events/"
+  batchExport:
+    prefix: "exports/"
+  mediaUpload:
+    prefix: "media/"

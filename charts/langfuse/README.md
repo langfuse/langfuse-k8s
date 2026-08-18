@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 1.5.41](https://img.shields.io/badge/Version-1.5.41-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.224.1](https://img.shields.io/badge/AppVersion-3.224.1-informational?style=flat-square)
+![Version: 2.0.0](https://img.shields.io/badge/Version-2.0.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.4.0](https://img.shields.io/badge/AppVersion-4.4.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -21,45 +21,62 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 
 | Repository | Name | Version |
 |------------|------|---------|
-| oci://registry-1.docker.io/bitnamicharts | clickhouse | 8.0.5 |
-| oci://registry-1.docker.io/bitnamicharts | common | 2.30.0 |
-| oci://registry-1.docker.io/bitnamicharts | s3(minio) | 14.10.5 |
-| oci://registry-1.docker.io/bitnamicharts | postgresql | 16.4.9 |
-| oci://registry-1.docker.io/bitnamicharts | redis(valkey) | 2.2.4 |
+| https://groundhog2k.github.io/helm-charts/ | postgresql(postgres) | 1.6.3 |
+| https://seaweedfs.github.io/seaweedfs/helm | s3(seaweedfs) | 4.23.0 |
+| https://valkey-io.github.io/valkey-helm | redis(valkey) | 0.9.4 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| clickhouse.auth.existingSecret | string | `""` | If you want to use an existing secret for the ClickHouse password, set the name of the secret here. (`clickhouse.auth.password` will be ignored and picked up from this secret). |
-| clickhouse.auth.existingSecretKey | string | `""` | The key in the existing secret that contains the password. |
-| clickhouse.auth.password | string | `""` | Password for the ClickHouse user. |
-| clickhouse.auth.username | string | `"default"` | Username for the ClickHouse user. |
-| clickhouse.clusterEnabled | bool | `true` | Whether to run ClickHouse commands ON CLUSTER. Controls CLICKHOUSE_CLUSTER_ENABLED setting. |
-| clickhouse.database | string | `"default"` | ClickHouse database to use. |
-| clickhouse.deploy | bool | `true` | Enable ClickHouse deployment (via Bitnami Helm Chart). If you want to use an external Clickhouse server (or a managed one), set this to false |
-| clickhouse.host | string | `""` | ClickHouse host to connect to. If clickhouse.deploy is true, this will be set automatically based on the release name. |
-| clickhouse.httpPort | int | `8123` | ClickHouse HTTP port to connect to. |
-| clickhouse.image.repository | string | `"bitnamilegacy/clickhouse"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
-| clickhouse.migration.autoMigrate | bool | `true` | Whether to run automatic ClickHouse migrations on startup |
-| clickhouse.migration.ssl | bool | `false` | Set to true to establish SSL connection for migration |
-| clickhouse.migration.url | string | `""` | Migration URL (TCP protocol) for clickhouse |
-| clickhouse.nativePort | int | `9000` | ClickHouse native port to connect to. |
-| clickhouse.replicaCount | int | `3` | Number of replicas to use for the ClickHouse cluster. 1 corresponds to a single, non-HA deployment. |
-| clickhouse.resourcesPreset | string | `"2xlarge"` | The resources preset to use for the ClickHouse cluster. |
-| clickhouse.shards | int | `1` | Subchart specific settings |
-| clickhouse.zookeeper.image.repository | string | `"bitnamilegacy/zookeeper"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| clickhouse.auth.existingSecret | string | `""` | Existing Secret holding the ClickHouse password. When set, auth.password is ignored. |
+| clickhouse.auth.existingSecretKey | string | `""` | Key within existingSecret that contains the ClickHouse password. |
+| clickhouse.auth.password | string | `""` | Password Langfuse uses to authenticate to ClickHouse. Leave empty to have the chart generate one. |
+| clickhouse.auth.username | string | `"default"` | Username Langfuse uses to authenticate to ClickHouse. |
+| clickhouse.cluster.affinity | object | `{}` | Affinity rules for ClickHouse pods. |
+| clickhouse.cluster.enabled | bool | `true` | Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse. |
+| clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
+| clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
+| clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
+| clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
+| clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
+| clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
+| clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
+| clickhouse.cluster.tolerations | list | `[]` | Tolerations for ClickHouse pods. |
+| clickhouse.crdCheck | bool | `true` | Require ClickHouse operator CRDs when deploy is true. Disable for offline helm template/GitOps diffs (or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`). |
+| clickhouse.database | string | `"default"` | ClickHouse database name Langfuse connects to. |
+| clickhouse.deploy | bool | `true` | Deploy ClickHouse (ClickHouseCluster + KeeperCluster CRs) via the operator. Disable to use an external or self-managed ClickHouse. |
+| clickhouse.host | string | `""` | ClickHouse hostname Langfuse connects to. Auto-set from the cluster Service when deploy is true; set explicitly for external ClickHouse. |
+| clickhouse.httpPort | int | `8123` | HTTP port Langfuse uses to talk to ClickHouse. |
+| clickhouse.keeper.affinity | object | `{}` | Affinity rules for Keeper pods. |
+| clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
+| clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
+| clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
+| clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
+| clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
+| clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| clickhouse.keeper.storage.className | string | `""` | StorageClass for Keeper PVCs. Leave empty to use the cluster default. |
+| clickhouse.keeper.storage.size | string | `"20Gi"` | Persistent volume size for each Keeper pod. |
+| clickhouse.keeper.tolerations | list | `[]` | Tolerations for Keeper pods. |
+| clickhouse.migration.autoMigrate | bool | `true` | Run ClickHouse schema migrations automatically when Langfuse starts. |
+| clickhouse.migration.ssl | bool | `false` | Use SSL for ClickHouse schema migrations. |
+| clickhouse.migration.url | string | `""` | ClickHouse migration URL (native TCP). Leave empty to derive from host/port when deploy is true. |
+| clickhouse.nativePort | int | `9000` | Native TCP port Langfuse uses to talk to ClickHouse. |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
-| global.security.allowInsecureImages | bool | `true` | Allow insecure images to use bitnami legacy repository. Can be set to false if secure images are being used (Paid). |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
+| langfuse.allowV1Upgrade | bool | `false` | Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release). |
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |
 | langfuse.deployment.strategy | object | `{}` | Deployment strategy for all langfuse deployments (can be overridden by individual deployments) |
 | langfuse.dnsConfig | object | `{}` | DNS configuration for all langfuse deployments |
-| langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt sensitive data. Must be 256 bits (64 string characters in hex format). Generate via `openssl rand -hex 32`. |
+| langfuse.encryptionKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Encryption key for sensitive data (256 bits / 64 hex chars). Leave empty to auto-generate on first install (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl rand -hex 32`. |
 | langfuse.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse deployments |
 | langfuse.extraInitContainers | list | `[]` | Allows additional init containers to be added to all langfuse deployments |
 | langfuse.extraLifecycle | object | `{}` | Allows additional lifecycle hooks to be added to all langfuse deployments |
@@ -81,7 +98,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.licenseKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Langfuse EE license key. |
 | langfuse.logging.format | string | `"text"` | Set the log format for the application (text or json) |
 | langfuse.logging.level | string | `"info"` | Set the log level for the application (trace, debug, info, warn, error, fatal) |
-| langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to encrypt the NextAuth.js JWT, and to hash email verification tokens. Can be configured by value or existing secret reference. |
+| langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | NextAuth secret for JWT encryption and email token hashing. Leave empty to auto-generate on first install (persisted in `<release>-app`); override with value/secretKeyRef to pin. |
 | langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
@@ -92,7 +109,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments |
-| langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Used to hash API keys. Can be configured by value or existing secret reference. To generate a new salt, run `openssl rand -base64 32`. |
+| langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Salt used to hash API keys. Leave empty to auto-generate on first install (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
 | langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |
@@ -112,7 +129,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse web pods |
 | langfuse.web.image.pullPolicy | string | `nil` | The pull policy to use for the langfuse web pods. Using `langfuse.image.pullPolicy` if not set. |
 | langfuse.web.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set. |
-| langfuse.web.image.repository | string | `"langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
+| langfuse.web.image.repository | string | `"docker.langfuse.com/langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
 | langfuse.web.image.tag | string | `nil` | The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set. |
 | langfuse.web.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
 | langfuse.web.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse web pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
@@ -171,7 +188,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse worker pods |
 | langfuse.worker.image.pullPolicy | string | `nil` | The pull policy to use for the langfuse worker pods. Using `langfuse.image.pullPolicy` if not set. |
 | langfuse.worker.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set. |
-| langfuse.worker.image.repository | string | `"langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
+| langfuse.worker.image.repository | string | `"docker.langfuse.com/langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
 | langfuse.worker.image.tag | string | `nil` | The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set. |
 | langfuse.worker.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
 | langfuse.worker.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
@@ -207,35 +224,68 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.vpa.minAllowed | object | `{}` | The minimum allowed resources for the langfuse worker pods |
 | langfuse.worker.vpa.updatePolicy.updateMode | string | `"Auto"` | The update policy mode for the langfuse worker pods |
 | nameOverride | string | `""` | Override the name for the selector labels, defaults to the chart name |
-| postgresql.architecture | string | `"standalone"` |  |
+| postgresql.affinity | object | `{}` |  |
 | postgresql.args | string | `""` | Additional database connection arguments |
 | postgresql.auth.args | string | `""` | Additional database connection arguments |
-| postgresql.auth.database | string | `"postgres_langfuse"` | Database name to use for Langfuse. |
+| postgresql.auth.database | string | `"langfuse"` | Database name Langfuse uses. Created automatically by the sub-chart when deploy is true. |
 | postgresql.auth.existingSecret | string | `""` | If you want to use an existing secret for the postgres password, set the name of the secret here. (`postgresql.auth.password` will be ignored and picked up from this secret). |
-| postgresql.auth.password | string | `""` | Password to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the password will be set automatically. |
-| postgresql.auth.secretKeys | object | `{"adminPasswordKey":"password","userPasswordKey":"password"}` | The keys in the existing secret that contain the passwords. If using the default `postgres` user, both `userPasswordKey` and `adminPasswordKey` must be provided. |
-| postgresql.auth.username | string | `"postgres"` | Username to use to connect to the postgres database deployed with Langfuse. In case `postgresql.deploy` is set to `true`, the user will be created automatically. |
-| postgresql.deploy | bool | `true` | Enable PostgreSQL deployment (via Bitnami Helm Chart). If you want to use an external Postgres server (or a managed one), set this to false |
+| postgresql.auth.password | string | `""` | Password Langfuse uses to connect to PostgreSQL. Leave empty to have the chart generate one (stored in a release-managed Secret). |
+| postgresql.auth.secretKeys | object | `{"adminPasswordKey":"postgres-password","userPasswordKey":"password"}` | Keys in existingSecret: userPasswordKey for Langfuse; adminPasswordKey for the Postgres superuser when deploy is true. |
+| postgresql.auth.username | string | `"langfuse"` | Username Langfuse uses to connect to PostgreSQL. Created automatically by the sub-chart when deploy is true. |
+| postgresql.deploy | bool | `true` | Deploy PostgreSQL via the bundled groundhog2k/postgres sub-chart. Disable to use an external or managed Postgres. |
 | postgresql.directUrl | string | `""` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. |
 | postgresql.host | string | `""` | PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name. |
-| postgresql.image.repository | string | `"bitnamilegacy/postgresql"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| postgresql.image.pullPolicy | string | `"IfNotPresent"` |  |
+| postgresql.image.repository | string | `"postgres"` | Postgres image. Defaults to the upstream Docker Hub image (Apache 2.0 / PostgreSQL license). |
+| postgresql.image.tag | string | `"18"` |  |
+| postgresql.livenessProbe | object | `{}` | Liveness / readiness probe customisations (see groundhog2k/postgres docs). |
 | postgresql.migration.autoMigrate | bool | `true` | Whether to run automatic migrations on startup |
+| postgresql.nodeSelector | object | `{}` | Node selector / tolerations / affinity for the Postgres pod. |
+| postgresql.podSecurityContext | object | `{"fsGroup":999}` | Pod security context. |
 | postgresql.port | string | `nil` | Port of the postgres server to use. Defaults to 5432. |
-| postgresql.primary.service.ports.postgresql | int | `5432` |  |
+| postgresql.readinessProbe | object | `{}` |  |
+| postgresql.replicaCount | int | `1` | Number of replicas for the Postgres StatefulSet. Single-instance only — set to 0 to suspend. |
+| postgresql.resources | object | `{}` | Resource limits/requests for the Postgres pod. Tune for your workload. |
+| postgresql.securityContext | object | `{"runAsGroup":999,"runAsUser":999}` | Container security context. |
+| postgresql.service.port | int | `5432` | Port the Postgres Service exposes. Must match `postgresql.port` (or the langfuse default 5432). |
+| postgresql.service.type | string | `"ClusterIP"` |  |
+| postgresql.settings | object | `{"existingSecret":"langfuse-postgresql-auth","superuserPassword":{}}` | Pass-through Postgres settings for the groundhog2k sub-chart. Usually left alone; helpers wire the chart-managed Secret automatically. |
+| postgresql.settings.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for the superuser password (keys: POSTGRES_USER, POSTGRES_PASSWORD). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override it (together with userDatabase.existingSecret) when running two releases in one namespace. |
+| postgresql.settings.superuserPassword | object | `{}` | Postgres superuser password. Auto-derived from the chart-managed Secret unless existingSecret is set. |
 | postgresql.shadowDatabaseUrl | string | `""` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. |
-| redis.architecture | string | `"standalone"` |  |
+| postgresql.startupProbe | object | `{}` |  |
+| postgresql.storage | object | `{"className":"","persistentVolumeClaimRetentionPolicy":{"whenDeleted":"Retain","whenScaled":"Retain"},"requestedSize":"20Gi"}` | PVC settings for the Postgres data volume. |
+| postgresql.storage.className | string | `""` | StorageClass name. Leave empty to use the cluster's default. |
+| postgresql.storage.persistentVolumeClaimRetentionPolicy | object | `{"whenDeleted":"Retain","whenScaled":"Retain"}` | Keep the PVC after the release is uninstalled. |
+| postgresql.tolerations | list | `[]` |  |
+| postgresql.userDatabase | object | `{"existingSecret":"langfuse-postgresql-auth","name":{},"password":{},"user":{}}` | Bootstrap the Langfuse database/user on first start. Empty name/user/password maps use defaults from auth.* via the chart-managed Secret. |
+| postgresql.userDatabase.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for userDatabase credentials (keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB). Must match settings.existingSecret when the chart manages the Secret (validated at render time). |
+| redis.auth.aclConfig | string | `""` | Pass-through to valkey-helm: extra inline ACL config appended after `aclUsers`. |
+| redis.auth.aclUsers | object | `{"default":{"permissions":"~* &* +@all"}}` | Valkey ACL users to create. Must include "default" when auth.enabled is true; `~* &* +@all` grants full access. |
 | redis.auth.database | int | `0` |  |
-| redis.auth.existingSecret | string | `""` | If you want to use an existing secret for the redis password, set the name of the secret here. (`redis.auth.password` will be ignored and picked up from this secret). |
+| redis.auth.enabled | bool | `true` | Enable ACL-based authentication on the bundled Valkey sub-chart. |
+| redis.auth.existingSecret | string | `""` | Existing Secret holding the Redis password. When set, auth.password is ignored and the chart-managed Secret is not created. |
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
-| redis.auth.password | string | `""` | Password for Redis authentication. Set to null to disable authentication (for passwordless Redis like AWS ElastiCache without auth). Use URL-encoded passwords or avoid special characters in the password. |
-| redis.auth.username | string | `"default"` | Username for Redis authentication. Set to null to omit username from connection string entirely. In case `redis.deploy` is set to `true`, the user will be created automatically. |
+| redis.auth.password | string | `""` | Redis password Langfuse authenticates with. Leave empty to auto-generate; set null to disable auth. URL-encode special characters. |
+| redis.auth.username | string | `"default"` | Redis username Langfuse authenticates with. Set null to omit from the connection string; created as an ACL user when deploy is true. |
+| redis.auth.usersExistingSecret | string | `"langfuse-redis-auth"` | Valkey ACL users Secret (one key per username). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override when running two releases in one namespace. |
 | redis.cluster.enabled | bool | `false` | Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes. |
 | redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
-| redis.deploy | bool | `true` | Enable valkey deployment (via Bitnami Helm Chart). If you want to use a Redis or Valkey server already deployed, set to false. |
+| redis.dataStorage | object | `{"accessModes":["ReadWriteOnce"],"className":"","enabled":true,"keepPvc":false,"requestedSize":"8Gi"}` | Persistence for the primary node. |
+| redis.deploy | bool | `true` | Deploy Valkey via the bundled valkey-io/valkey sub-chart. Disable to use an external Redis or Valkey. |
 | redis.host | string | `""` | Redis host to connect to. If redis.deploy is true, this will be set automatically based on the release name. |
-| redis.image.repository | string | `"bitnamilegacy/valkey"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| redis.image.pullPolicy | string | `"IfNotPresent"` |  |
+| redis.image.registry | string | `"docker.io"` |  |
+| redis.image.repository | string | `"valkey/valkey"` |  |
+| redis.image.tag | string | `"8.0"` |  |
+| redis.metrics.enabled | bool | `false` | Enable the bundled Valkey Prometheus exporter sidecar. |
+| redis.podSecurityContext.fsGroup | int | `1000` |  |
+| redis.podSecurityContext.runAsGroup | int | `1000` |  |
+| redis.podSecurityContext.runAsUser | int | `1000` |  |
+| redis.podSecurityContext.seccompProfile.type | string | `"RuntimeDefault"` |  |
 | redis.port | int | `6379` | Redis port to connect to. |
-| redis.primary.extraFlags | list | `["--maxmemory-policy noeviction"]` | Extra flags for the valkey deployment. Must include `--maxmemory-policy noeviction`. |
+| redis.replica | object | `{"enabled":false,"persistence":{"accessModes":["ReadWriteOnce"],"size":"8Gi","storageClass":""},"replicas":0,"service":{"enabled":true,"port":6379,"type":"ClusterIP"}}` | Valkey replication. Default standalone; set enabled and replicas for primary/replica (Langfuse always targets the primary). |
+| redis.resources | object | `{}` | Resource limits/requests for the Valkey pods. |
 | redis.sentinel.enabled | bool | `false` | Set to `true` to enable Redis Sentinel mode. Cannot be enabled simultaneously with cluster mode. When enabled, you must set `redis.deploy` to `false`. |
 | redis.sentinel.existingSecret | string | `""` | If you want to use an existing secret for the sentinel password, set the name of the secret here. (`redis.sentinel.password` will be ignored and picked up from this secret). |
 | redis.sentinel.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the sentinel password. |
@@ -243,53 +293,80 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.sentinel.nodes | string | `""` | Comma-separated list of Redis Sentinel nodes in the format "host:port". Example: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379". Required when `redis.sentinel.enabled` is `true`. |
 | redis.sentinel.password | string | `""` | Password for Redis Sentinel authentication (optional). |
 | redis.sentinel.username | string | `""` | Username for Redis Sentinel authentication (optional). |
-| redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification |
-| redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication |
-| redis.tls.enabled | bool | `false` | Set to `true` to enable TLS/SSL encrypted connection to the Redis server |
-| redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication |
+| redis.service.port | int | `6379` | Port the primary Valkey Service exposes. |
+| redis.service.type | string | `"ClusterIP"` |  |
+| redis.tls.caPath | string | `""` | Path to the CA certificate file for TLS verification (mounted into Langfuse pods). |
+| redis.tls.certPath | string | `""` | Path to the client certificate file for mutual TLS authentication. |
+| redis.tls.enabled | bool | `false` | Enable TLS for Langfuse↔Redis. When deploy is true, also enables TLS on the Valkey sub-chart. |
+| redis.tls.keyPath | string | `""` | Path to the client private key file for mutual TLS authentication. |
+| redis.valkeyConfig | string | `"maxmemory-policy noeviction\n"` | Pass-through to valkey-helm: contents of valkey.conf. This is the sub-chart's only config mechanism (it consumes no command-line flag values). Langfuse requires `maxmemory-policy noeviction` to avoid losing job data — validated at render time. |
 | s3.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for all uploads. Can be overridden per upload type. |
-| s3.auth.existingSecret | string | `""` | If you want to use an existing secret for the root user password, set the name of the secret here. (`s3.auth.rootPassword` will be ignored and picked up from this secret). |
-| s3.auth.rootPassword | string | `""` | Password for MinIO root user |
-| s3.auth.rootPasswordSecretKey | string | `""` | Key where the Minio root user password is being stored inside the existing secret `s3.auth.existingSecret` |
-| s3.auth.rootUser | string | `"minio"` | root username |
-| s3.auth.rootUserSecretKey | string | `""` | Key where the Minio root user is being stored inside the existing secret `s3.auth.existingSecret` |
+| s3.allInOne.data.accessModes[0] | string | `"ReadWriteOnce"` |  |
+| s3.allInOne.data.size | string | `"50Gi"` |  |
+| s3.allInOne.data.storageClass | string | `""` |  |
+| s3.allInOne.data.type | string | `"persistentVolumeClaim"` | Persistence for the SeaweedFS data directory. |
+| s3.allInOne.enabled | bool | `true` |  |
+| s3.allInOne.image.pullPolicy | string | `"IfNotPresent"` |  |
+| s3.allInOne.image.registry | string | `"docker.io"` |  |
+| s3.allInOne.image.repository | string | `"chrislusf/seaweedfs"` |  |
+| s3.allInOne.image.tag | string | `"3.95"` |  |
+| s3.allInOne.resources.limits.cpu | int | `2` |  |
+| s3.allInOne.resources.limits.memory | string | `"2Gi"` |  |
+| s3.allInOne.resources.requests.cpu | string | `"500m"` |  |
+| s3.allInOne.resources.requests.memory | string | `"1Gi"` |  |
+| s3.allInOne.s3.createBuckets | list | `[{"name":"langfuse"}]` | Buckets to create by the SeaweedFS post-install/post-upgrade hook. Must include every bucket Langfuse uses (`s3.bucket` and any per-upload-type overrides) — validated at render time. |
+| s3.allInOne.s3.createBucketsHook.resources | object | `{}` |  |
+| s3.allInOne.s3.enableAuth | bool | `true` |  |
+| s3.allInOne.s3.enabled | bool | `true` |  |
+| s3.allInOne.s3.existingConfigSecret | string | `"langfuse-s3-auth"` | SeaweedFS IAM config Secret. Single source of truth for the chart-managed Secret's name — the chart creates the Secret (from s3.auth) under this exact name, so any release name works. Override when running two releases in one namespace. |
+| s3.allInOne.s3.port | int | `8333` |  |
+| s3.allInOne.service.internalTrafficPolicy | string | `"Cluster"` |  |
+| s3.allInOne.service.type | string | `"ClusterIP"` |  |
+| s3.auth.existingSecret | string | `""` | Existing Secret for S3 access/secret keys (via rootUserSecretKey / rootPasswordSecretKey). |
+| s3.auth.rootPassword | string | `""` | S3 secret access key Langfuse uses against the SeaweedFS gateway. Leave empty to have the chart generate one. |
+| s3.auth.rootPasswordSecretKey | string | `""` | Key in the existing secret that contains the S3 secret access key. |
+| s3.auth.rootUser | string | `"langfuse"` | Access key ID Langfuse uses to authenticate against the SeaweedFS S3 gateway. |
+| s3.auth.rootUserSecretKey | string | `""` | Key in the existing secret that contains the S3 access key ID. |
 | s3.batchExport.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for batch exports. |
 | s3.batchExport.bucket | string | `""` | S3 bucket to use for batch exports. |
 | s3.batchExport.enabled | bool | `true` | Enable batch export. |
 | s3.batchExport.endpoint | string | `""` | S3 endpoint to use for batch exports. |
-| s3.batchExport.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
+| s3.batchExport.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for SeaweedFS / MinIO. |
 | s3.batchExport.prefix | string | `""` | Prefix to use for batch exports within the bucket. |
 | s3.batchExport.region | string | `""` | S3 region to use for batch exports. |
 | s3.batchExport.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for batch exports. |
-| s3.bucket | string | `""` | S3 bucket to use for all uploads. Can be overridden per upload type. |
+| s3.bucket | string | `"langfuse"` | Default S3 bucket for uploads (overridable per upload type). Auto-created on SeaweedFS when deploy is true. |
 | s3.concurrency.reads | int | `50` | Maximum number of concurrent read operations to S3. Defaults to 50. |
 | s3.concurrency.writes | int | `50` | Maximum number of concurrent write operations to S3. Defaults to 50. |
-| s3.defaultBuckets | string | `"langfuse"` |  |
-| s3.deploy | bool | `true` | Enable MinIO deployment (via Bitnami Helm Chart). If you want to use a custom BlobStorage, e.g. S3, set to false. |
-| s3.endpoint | string | `""` | S3 endpoint to use for all uploads. Can be overridden per upload type. |
+| s3.defaultBuckets | string | `"langfuse"` | Legacy default bucket list; first entry is used when neither s3.bucket nor a per-upload bucket is set. |
+| s3.deploy | bool | `true` | Deploy SeaweedFS via the bundled seaweedfs sub-chart. Disable to use external S3-compatible storage. |
+| s3.endpoint | string | `""` | S3 endpoint for uploads (overridable per upload type). Auto-set to the SeaweedFS Service when deploy is true. |
 | s3.eventUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for event uploads. |
 | s3.eventUpload.bucket | string | `""` | S3 bucket to use for event uploads. |
 | s3.eventUpload.endpoint | string | `""` | S3 endpoint to use for event uploads. |
-| s3.eventUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
+| s3.eventUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for SeaweedFS / MinIO. |
 | s3.eventUpload.prefix | string | `""` | Prefix to use for event uploads within the bucket. |
 | s3.eventUpload.region | string | `""` | S3 region to use for event uploads. |
 | s3.eventUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for event uploads. |
-| s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for MinIO. Can be overridden per upload type. |
-| s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Example: Set value to the JSON service account key content, or use secretKeyRef to reference a secret |
-| s3.image.repository | string | `"bitnamilegacy/minio"` | Overwrite default repository of helm chart to point to non-paid bitnami images. |
+| s3.filer.enabled | bool | `false` |  |
+| s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for SeaweedFS / MinIO. Can be overridden per upload type. |
+| s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | GCS credentials JSON (or secretKeyRef). Falls back to the pod's environment/service account credentials if unset. |
+| s3.master.enabled | bool | `false` |  |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
 | s3.mediaUpload.bucket | string | `""` | S3 bucket to use for media uploads. |
 | s3.mediaUpload.downloadUrlExpirySeconds | int | `3600` | Expiry time for download URLs. Defaults to 1 hour. |
 | s3.mediaUpload.enabled | bool | `true` | Enable media uploads. |
 | s3.mediaUpload.endpoint | string | `""` | S3 endpoint to use for media uploads. |
-| s3.mediaUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for MinIO. |
+| s3.mediaUpload.forcePathStyle | string | `nil` | Whether to force path style on requests. Required for SeaweedFS / MinIO. |
 | s3.mediaUpload.maxContentLength | int | `1000000000` | Maximum content length for media uploads. Defaults to 1GB. |
 | s3.mediaUpload.prefix | string | `""` | Prefix to use for media uploads within the bucket. |
 | s3.mediaUpload.region | string | `""` | S3 region to use for media uploads. |
 | s3.mediaUpload.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for media uploads. |
-| s3.region | string | `"auto"` | S3 region to use for all uploads. Can be overridden per upload type. |
+| s3.region | string | `"auto"` | S3 region for uploads (overridable per upload type). |
+| s3.s3.enabled | bool | `false` |  |
 | s3.secretAccessKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 secretAccessKey to use for all uploads. Can be overridden per upload type. |
-| s3.storageProvider | string | `"s3"` | When set to 's3', uses S3-compatible interface (default behavior) |
+| s3.storageProvider | string | `"s3"` | Object storage provider for Langfuse uploads: s3 (default), azure, or gcs. |
+| s3.volume.enabled | bool | `false` |  |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.14.2](https://github.com/norwoodj/helm-docs/releases/v1.14.2)

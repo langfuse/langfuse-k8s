@@ -1,0 +1,46 @@
+# v2.0 cutover overlay — enable after v1 Ingress is deleted so the same
+# hosts land on Service langfuse-v2-web.
+#   kubectl -n langfuse delete ingress langfuse
+#   helm upgrade langfuse-v2 ... -n langfuse -f v2-app-values.yaml
+#
+# Copy hosts / TLS from your v1 values. The TLS secret name should stay the
+# same so the certificate is reused.
+langfuse:
+  ingress:
+    enabled: true
+    # className: nginx
+    # hosts:
+    #   - host: langfuse.example.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    # tls:
+    #   enabled: true
+    #   secretName: langfuse-tls
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+postgresql:
+  deploy: true
+
+clickhouse:
+  deploy: true
+  cluster:
+    replicas: 1
+
+redis:
+  deploy: true
+
+s3:
+  deploy: true

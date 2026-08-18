@@ -6,6 +6,83 @@
     {{- fail "langfuse.logging.format must be one of: text, json" -}}
 {{- end -}}
 
+{{/*
+Block a helm upgrade from a v1 (Bitnami) install that would still *deploy*
+Postgres, ClickHouse, or MinIO. That replaces immutable workloads and orphans
+data. All three require a data migration before the original release can move
+to chart v2.
+
+Detection (release-prefixed names; Postgres STS name collides with v2, so we
+key off the Bitnami PVC naming instead):
+  - ClickHouse: StatefulSet <release>-clickhouse-shard0
+  - Postgres:   PersistentVolumeClaim data-<release>-postgresql-0
+                (v2 groundhog2k uses postgres-data-<release>-postgresql-0)
+  - MinIO:      Deployment <release>-s3
+                (v2 SeaweedFS uses <release>-s3-all-in-one)
+
+The supported paths (examples/upgrade-v1-to-v2):
+  - all stores already external (deploy: false): in-place helm upgrade
+  - at least one bundled store: sibling v2 release + data copy + traffic shift
+
+A raw `helm upgrade` that would *replace* a leftover store with empty volumes
+is blocked. Override with langfuse.allowV1Upgrade=true only if you know
+what you are doing.
+*/}}
+{{- if and .Release.IsUpgrade (not .Values.langfuse.allowV1Upgrade) -}}
+{{- $fullname := include "langfuse.fullname" . -}}
+{{- $found := list -}}
+{{- if and .Values.clickhouse.deploy (lookup "apps/v1" "StatefulSet" .Release.Namespace (printf "%s-clickhouse-shard0" $fullname)) -}}
+  {{- $found = append $found (printf "StatefulSet/%s-clickhouse-shard0 (Bitnami ClickHouse)" $fullname) -}}
+{{- end -}}
+{{- if and .Values.postgresql.deploy (lookup "v1" "PersistentVolumeClaim" .Release.Namespace (printf "data-%s-postgresql-0" $fullname)) -}}
+  {{- $found = append $found (printf "PersistentVolumeClaim/data-%s-postgresql-0 (Bitnami PostgreSQL)" $fullname) -}}
+{{- end -}}
+{{- if and .Values.s3.deploy (lookup "apps/v1" "Deployment" .Release.Namespace (printf "%s-s3" $fullname)) -}}
+  {{- $found = append $found (printf "Deployment/%s-s3 (Bitnami MinIO)" $fullname) -}}
+{{- end -}}
+{{- if gt (len $found) 0 -}}
+    {{- fail (printf "Refusing to helm upgrade: found v1 Bitnami resources in namespace %q that this release would replace with empty v2 volumes: %s. Follow examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise install a sibling v2 release). To override this guard (unsafe), set langfuse.allowV1Upgrade=true." .Release.Namespace (join ", " $found)) -}}
+{{- end -}}
+{{- end -}}
+
+# Reject configurations the bundled stores cannot provision.
+{{- if and .Values.clickhouse.deploy (ne .Values.clickhouse.auth.username "default") -}}
+    {{- fail "clickhouse.auth.username must be \"default\" when clickhouse.deploy is true: the operator CR only provisions a password for the built-in default user, so any other name renders into CLICKHOUSE_USER but never exists in the cluster. Use a custom user only with an external ClickHouse (clickhouse.deploy=false)." -}}
+{{- end -}}
+{{- if and .Values.redis.deploy (ne .Values.redis.auth.username "default") (not (hasKey (default dict .Values.redis.auth.aclUsers) .Values.redis.auth.username)) -}}
+    {{- fail (printf "redis.auth.username %q is not defined in redis.auth.aclUsers, so the bundled Valkey never creates it. Add it to redis.auth.aclUsers (with its password key in the ACL users Secret) or keep redis.auth.username=default." .Values.redis.auth.username) -}}
+{{- end -}}
+{{- if .Values.s3.deploy -}}
+{{- $createNames := list -}}
+{{- range (((.Values.s3.allInOne).s3).createBuckets | default list) -}}
+  {{- $createNames = append $createNames .name -}}
+{{- end -}}
+{{- range $type := list "eventUpload" "batchExport" "mediaUpload" -}}
+{{- $cfg := index $.Values.s3 $type -}}
+{{- if or (eq $type "eventUpload") (eq $type "mediaUpload") $cfg.enabled -}}
+{{- $bucket := coalesce $cfg.bucket $.Values.s3.bucket $.Values.s3.defaultBuckets -}}
+{{- if and $bucket (not (has $bucket $createNames)) -}}
+    {{- fail (printf "s3.%s uses bucket %q, but the bundled SeaweedFS only creates the buckets listed in s3.allInOne.s3.createBuckets (%v). Add it there so uploads do not fail with NoSuchBucket at runtime." $type $bucket $createNames) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+# Validate bring-your-own auth Secrets against the bundled stores.
+# Setting <store>.auth.existingSecret suppresses the chart-managed Secret,
+# but the sub-charts keep mounting whatever name their pass-through values
+# hold — left at the default, that Secret would no longer exist and the
+# store pods fail at start with no render-time hint.
+{{- if and .Values.postgresql.deploy .Values.postgresql.auth.existingSecret (eq (include "langfuse.postgresql.authSecretName" .) "langfuse-postgresql-auth") (ne .Values.postgresql.auth.existingSecret "langfuse-postgresql-auth") -}}
+    {{- fail "postgresql.auth.existingSecret suppresses the chart-managed langfuse-postgresql-auth Secret, but the Postgres sub-chart still mounts it. Also point postgresql.settings.existingSecret and postgresql.userDatabase.existingSecret at a Secret with POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB/USERDB_USER/USERDB_PASSWORD keys (see examples/minimal-installation), or unset postgresql.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+{{- if and .Values.redis.deploy .Values.redis.auth.existingSecret (eq (include "langfuse.redis.authSecretName" .) "langfuse-redis-auth") (ne .Values.redis.auth.existingSecret "langfuse-redis-auth") -}}
+    {{- fail "redis.auth.existingSecret suppresses the chart-managed langfuse-redis-auth Secret, but the Valkey sub-chart still mounts it for ACL users. Also point redis.auth.usersExistingSecret at a Secret holding one key per ACL username (see examples/minimal-installation), or unset redis.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+{{- if and .Values.s3.deploy .Values.s3.auth.existingSecret (eq (include "langfuse.s3.authSecretName" .) "langfuse-s3-auth") (ne .Values.s3.auth.existingSecret "langfuse-s3-auth") -}}
+    {{- fail "s3.auth.existingSecret suppresses the chart-managed langfuse-s3-auth Secret, but the SeaweedFS sub-chart still mounts it as its IAM config. Also point s3.allInOne.s3.existingConfigSecret at a Secret with a seaweedfs_s3_config key matching your credentials (see examples/minimal-installation), or unset s3.auth.existingSecret to let the chart manage credentials." -}}
+{{- end -}}
+
 # Validate auth providers settings
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "providers") }}
 {{- range $providerName, $provider := .Values.langfuse.auth.providers -}}
@@ -16,17 +93,27 @@
 {{- end -}}
 
 # Validate ClickHouse settings
-{{- if ne ($.Values.clickhouse.shards | int) 1 -}}
-    {{- fail "Langfuse does not support ClickHouse with multiple shards. Set clickhouse.shards to 1 to continue." -}}
-{{- end -}}
-
 {{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL"))) -}}
     {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}
 {{- end -}}
+{{- if and $.Values.clickhouse.deploy (lt (int $.Values.clickhouse.cluster.replicas) 1) -}}
+    {{- fail "clickhouse.cluster.replicas must be >= 1 when clickhouse.deploy is true." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.deploy (not $.Values.clickhouse.keeper.enabled) -}}
+    {{- fail "clickhouse.keeper.enabled must be true when clickhouse.deploy is true: the ClickHouseCluster CRD requires spec.keeperClusterRef, so the operator cannot run a keeper-less cluster (even with a single replica). To run ClickHouse without Keeper, host it outside the chart and set clickhouse.deploy=false with clickhouse.host." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.deploy $.Values.clickhouse.crdCheck -}}
+{{- if not ($.Capabilities.APIVersions.Has "clickhouse.com/v1alpha1/ClickHouseCluster") -}}
+    {{- fail "ClickHouse operator CRDs not found (clickhouse.com/v1alpha1/ClickHouseCluster). Install the ClickHouse operator (and its cert-manager prerequisite) before installing this chart — see the Prerequisites section of the chart README. To skip this check for offline rendering (helm template / GitOps diff), set clickhouse.crdCheck=false or pass --api-versions clickhouse.com/v1alpha1/ClickHouseCluster." -}}
+{{- end -}}
+{{- if and $.Values.clickhouse.keeper.enabled (not ($.Capabilities.APIVersions.Has "clickhouse.com/v1alpha1/KeeperCluster")) -}}
+    {{- fail "ClickHouse operator KeeperCluster CRD not found (clickhouse.com/v1alpha1/KeeperCluster). Install/upgrade the ClickHouse operator to a version that provides KeeperCluster before installing this chart. To skip this check for offline rendering, set clickhouse.crdCheck=false." -}}
+{{- end -}}
+{{- end -}}
 
 # Validate Redis settings
-{{- if and $.Values.redis.deploy (not (has "--maxmemory-policy noeviction" $.Values.redis.primary.extraFlags)) -}}
-    {{- fail "Langfuse requires valkey to be deployed with the `--maxmemory-policy noeviction` flag. Set redis.primary.extraFlags to include this flag to continue." -}}
+{{- if and $.Values.redis.deploy (not (contains "maxmemory-policy noeviction" (default "" $.Values.redis.valkeyConfig))) -}}
+    {{- fail "Langfuse requires the bundled Valkey to run with `maxmemory-policy noeviction` (jobs are lost under eviction). Keep `maxmemory-policy noeviction` in redis.valkeyConfig — valkey.conf is the sub-chart's only config mechanism. (redis.extraFlags from earlier 2.0.0 pre-releases was never applied and has been removed.)" -}}
 {{- end -}}
 
 {{- if and (not $.Values.redis.deploy) (not $.Values.redis.host) (not $.Values.redis.cluster.enabled) (not $.Values.redis.sentinel.enabled) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "REDIS_CONNECTION_STRING"))) -}}
@@ -79,7 +166,7 @@
 
 #   Event Upload
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.eventUpload.bucket)) -}}
@@ -89,7 +176,7 @@
 #   Batch Export
 {{- if $.Values.s3.batchExport.enabled -}}
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.batchExport.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.batchExport.bucket)) -}}
@@ -100,7 +187,7 @@
 #   Media Upload
 {{- if $.Values.s3.mediaUpload.enabled -}}
 {{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.mediaUpload.forcePathStyle)) -}}
-    {{- fail "MinIO requires s3 to be deployed with a forcePathStyle. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to continue." -}}
+    {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
 {{- if and (not $.Values.s3.deploy) (not (or $.Values.s3.bucket $.Values.s3.mediaUpload.bucket)) -}}

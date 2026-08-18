@@ -1,0 +1,43 @@
+# v2.0 sibling overlay — new release next to live v1.
+#   helm install langfuse-v2 ... -n langfuse -f v2-values.yaml
+#
+# Ingress stays off so v1 keeps the domain until cutover.
+# Reuse the same Langfuse app Secret as v1.
+langfuse:
+  ingress:
+    enabled: false
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+  nextauth:
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+postgresql:
+  deploy: true
+
+clickhouse:
+  deploy: true
+  cluster:
+    replicas: 1
+    resources:
+      requests:
+        cpu: "1"
+        memory: "4Gi"
+      limits:
+        memory: "8Gi"
+  keeper:
+    replicas: 3
+
+redis:
+  deploy: true
+
+s3:
+  deploy: true

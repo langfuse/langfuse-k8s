@@ -1,0 +1,56 @@
+suite: test clickhouse operator CRD preflight
+templates:
+  - validations.yaml
+tests:
+  - it: should fail when CRDs are absent and crdCheck is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: true
+      clickhouse.crdCheck: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "ClickHouse operator CRDs not found"
+
+  - it: should pass when the operator CRDs are registered
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: true
+      clickhouse.crdCheck: true
+    capabilities:
+      apiVersions:
+        - clickhouse.com/v1alpha1/ClickHouseCluster
+        - clickhouse.com/v1alpha1/KeeperCluster
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip the check when crdCheck is disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: true
+      clickhouse.crdCheck: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip the check when clickhouse.deploy is false
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.deploy: false
+      clickhouse.crdCheck: true
+      clickhouse.host: "external-clickhouse.example.com"
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should reject a keeper-less operator deploy (CRD requires keeperClusterRef)
+    set:
+      clickhouse.deploy: true
+      clickhouse.keeper.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "keeper.enabled must be true when clickhouse.deploy is true"

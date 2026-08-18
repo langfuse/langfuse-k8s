@@ -1,6 +1,11 @@
 Chart.lock
 charts/*/charts/*
 
+# Artifacts written by the v1->v2 migration tooling and helm-unittest
+examples/upgrade-v1-to-v2/scripts/*.generated.yaml
+examples/upgrade-v1-to-v2/scripts/.ch-sync-state/
+charts/langfuse/tests/__snapshot__/
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudiocode,intellij+all,helm
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudiocode,intellij+all,helm
 

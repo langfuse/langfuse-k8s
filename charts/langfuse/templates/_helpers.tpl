@@ -62,13 +62,57 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Fullname of an aliased sub-chart, computed the way the sub-chart's own
+fullname helper does (postgres, valkey, and seaweedfs all share the standard
+pattern, with the dependency alias as the chart name). This is what the
+sub-chart names its Service, so hostname helpers must use it — the parent's
+own fullname prefix only coincides with it when the release is named
+"langfuse". Takes (list $ "<alias>").
+*/}}
+{{- define "langfuse.subchart.fullname" -}}
+{{- $ctx := index . 0 -}}
+{{- $alias := index . 1 -}}
+{{- $vals := index $ctx.Values $alias -}}
+{{- if $vals.fullnameOverride -}}
+{{- $vals.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default $alias $vals.nameOverride -}}
+{{- if contains $name $ctx.Release.Name -}}
+{{- $ctx.Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" $ctx.Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Names of the chart-managed auth Secrets for the bundled stores. The
+sub-charts read these names from plain values (Helm cannot template
+sub-chart values), so the values keys are the single source of truth and
+the Secret templates create whatever name they hold. Note: because the
+default names are static, two releases of this chart in one namespace need
+these keys overridden to disambiguate.
+*/}}
+{{- define "langfuse.postgresql.authSecretName" -}}
+{{- .Values.postgresql.settings.existingSecret | default "langfuse-postgresql-auth" -}}
+{{- end -}}
+
+{{- define "langfuse.redis.authSecretName" -}}
+{{- .Values.redis.auth.usersExistingSecret | default "langfuse-redis-auth" -}}
+{{- end -}}
+
+{{- define "langfuse.s3.authSecretName" -}}
+{{- (((.Values.s3.allInOne).s3).existingConfigSecret) | default "langfuse-s3-auth" -}}
+{{- end -}}
+
+{{/*
 Return PostgreSQL hostname
 */}}
 {{- define "langfuse.postgresql.hostname" -}}
 {{- if .Values.postgresql.host }}
 {{- .Values.postgresql.host }}
 {{- else if .Values.postgresql.deploy }}
-{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- include "langfuse.subchart.fullname" (list . "postgresql") -}}
 {{- end }}
 {{- end }}
 
@@ -79,7 +123,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-%s-primary" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
+{{- include "langfuse.subchart.fullname" (list . "redis") -}}
 {{- end }}
 {{- end }}
 
@@ -96,7 +140,7 @@ Return ClickHouse hostname (without protocol)
 {{- .Values.clickhouse.host -}}
 {{- end -}}
 {{- else if .Values.clickhouse.deploy }}
-{{- printf "%s-clickhouse" (include "langfuse.fullname" .) -}}
+{{- printf "%s-clickhouse-headless" (include "langfuse.fullname" .) -}}
 {{- end }}
 {{- end }}
 
@@ -107,7 +151,9 @@ Return S3/MinIO endpoint -- if not set uses auto-discovery
 {{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
 {{- .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint }}
 {{- else if .Values.s3.deploy }}
-{{- printf "http://%s-%s:9000" (include "langfuse.fullname" .) (default "s3" .Values.s3.nameOverride) -}}
+{{- /* seaweedfs names the Service <fullname trunc 52>-all-in-one and serves S3 on allInOne.s3.port */ -}}
+{{- $swFullname := include "langfuse.subchart.fullname" (list . "s3") | trunc 52 | trimSuffix "-" -}}
+{{- printf "http://%s-all-in-one:%v" $swFullname ((((.Values.s3.allInOne).s3).port) | default 8333) -}}
 {{- else }}
 {{- end }}
 {{- end }}
@@ -164,6 +210,29 @@ value: {{ .value.value | quote }}
 {{- end -}}
 
 {{/*
+Name of the chart-managed Langfuse application Secret (salt / encryption-key / nextauth-secret).
+*/}}
+{{- define "langfuse.appSecretName" -}}
+{{- printf "%s-app" (include "langfuse.fullname" .) -}}
+{{- end -}}
+
+{{/*
+Resolve a Langfuse app credential: prefer explicit value / secretKeyRef / fieldRef,
+otherwise fall back to the chart-managed `<release>-app` Secret.
+*/}}
+{{- define "langfuse.getAppSecretValue" -}}
+{{- $resolved := include "langfuse.getValueOrSecret" (dict "key" .key "value" .value) -}}
+{{- if $resolved -}}
+{{- $resolved -}}
+{{- else -}}
+valueFrom:
+  secretKeyRef:
+    name: {{ include "langfuse.appSecretName" .root }}
+    key: {{ .secretKey | quote }}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Get value of a specific environment variable from additionalEnv if it exists
 */}}
 {{- define "langfuse.getEnvVar" -}}
@@ -201,6 +270,11 @@ Get value of a specific environment variable from additionalEnv if it exists
     secretKeyRef:
       name: {{ .Values.postgresql.auth.existingSecret }}
       key: {{ required "postgresql.auth.secretKeys.userPasswordKey is required when using an existing secret" .Values.postgresql.auth.secretKeys.userPasswordKey }}
+{{- else if .Values.postgresql.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.postgresql.authSecretName" . | quote }}
+      key: USERDB_PASSWORD
 {{- else }}
   value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
 {{- end }}
@@ -236,14 +310,10 @@ Get value of a specific environment variable from additionalEnv if it exists
   value: {{ .Values.langfuse.logging.level | quote }}
 - name: LANGFUSE_LOG_FORMAT
   value: {{ .Values.langfuse.logging.format | quote }}
-{{- with (include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.salt" "value" .Values.langfuse.salt) ) }}
 - name: SALT
-  {{- . | nindent 2 }}
-{{- end }}
-{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey) ) }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.salt" "value" .Values.langfuse.salt "secretKey" "salt") | nindent 2 }}
 - name: ENCRYPTION_KEY
-  {{- . | nindent 2 }}
-{{- end }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.encryptionKey" "value" .Values.langfuse.encryptionKey "secretKey" "encryption-key") | nindent 2 }}
 {{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.licenseKey" "value" .Values.langfuse.licenseKey)) }}
 - name: LANGFUSE_EE_LICENSE_KEY
   {{- . | nindent 2 }}
@@ -278,7 +348,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: NEXTAUTH_URL
   value: {{ .Values.langfuse.nextauth.url | quote }}
 - name: NEXTAUTH_SECRET
-  {{- include "langfuse.getRequiredValueOrSecret" (dict "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret) | nindent 2 }}
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret "secretKey" "nextauth-secret") | nindent 2 }}
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
 - name: AUTH_DISABLE_USERNAME_PASSWORD
   value: {{ .Values.langfuse.auth.disableUsernamePassword | quote }}
@@ -302,13 +372,18 @@ Get value of a specific environment variable from additionalEnv if it exists
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
 {{- define "langfuse.redisEnv" -}}
-{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+{{- if or .Values.redis.auth.existingSecret .Values.redis.auth.password .Values.redis.deploy }}
 - name: REDIS_PASSWORD
 {{- if .Values.redis.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.redis.auth.existingSecret }}
       key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" .Values.redis.auth.existingSecretPasswordKey }}
+{{- else if .Values.redis.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.redis.authSecretName" . | quote }}
+      key: {{ .Values.redis.auth.username | quote }}
 {{- else }}
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
 {{- end }}
@@ -389,7 +464,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 - name: REDIS_TLS_ENABLED
   value: {{ .Values.redis.tls.enabled | quote }}
 - name: REDIS_CONNECTION_STRING
-{{- $hasPassword := or .Values.redis.auth.existingSecret .Values.redis.auth.password }}
+{{- $hasPassword := or .Values.redis.auth.existingSecret .Values.redis.auth.password .Values.redis.deploy }}
 {{- $hasUsername := .Values.redis.auth.username }}
 {{- $authPart := "" }}
 {{- if and $hasUsername $hasPassword }}
@@ -484,17 +559,15 @@ Return ClickHouse protocol (http or https)
 {{- else if .Values.clickhouse.auth.password }}
   value: {{ .Values.clickhouse.auth.password | quote }}
 {{- else if .Values.clickhouse.deploy }}
-  value: {{ required "Configuring an existing secret or clickhouse.auth.password is required" .Values.clickhouse.auth.password | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ printf "%s-clickhouse-auth" (include "langfuse.fullname" .) | quote }}
+      key: "password"
 {{- end }}
 {{- end }}
-{{- if not .Values.clickhouse.clusterEnabled }}
-{{/* User explicitly disabled cluster mode */}}
+{{- if or .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_CLUSTER_ENABLED
-  value: "false"
-{{- else if and .Values.clickhouse.deploy ($.Values.clickhouse.replicaCount | int | eq 1) }}
-{{/* Cluster enabled by default, but deploying single-replica ClickHouse */}}
-- name: CLICKHOUSE_CLUSTER_ENABLED
-  value: "false"
+  value: {{ .Values.clickhouse.cluster.enabled | quote }}
 {{- end }}
 {{- if or (hasKey .Values.clickhouse.migration "autoMigrate") .Values.clickhouse.deploy }}
 - name: LANGFUSE_AUTO_CLICKHOUSE_MIGRATION_DISABLED
@@ -559,13 +632,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -575,13 +651,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -616,13 +695,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -632,13 +714,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_BATCH_EXPORT_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -671,13 +756,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootUserSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootUserSecretKey }}
+      key: {{ required "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootUserSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootUser | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: accessKey
   {{- end }}
 {{- end }}
 {{- end }}
@@ -687,13 +775,16 @@ Return ClickHouse protocol (http or https)
 {{- else }}
 {{- if .Values.s3.deploy }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY
-  {{- if and .Values.s3.auth.existingSecret .Values.s3.auth.rootPasswordSecretKey }}
+  {{- if .Values.s3.auth.existingSecret }}
   valueFrom:
     secretKeyRef:
       name: {{ .Values.s3.auth.existingSecret }}
-      key: {{ .Values.s3.auth.rootPasswordSecretKey }}
+      key: {{ required "s3.auth.rootPasswordSecretKey is required when s3.auth.existingSecret is set" .Values.s3.auth.rootPasswordSecretKey }}
   {{- else }}
-  value: {{ .Values.s3.auth.rootPassword | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
+      key: secretKey
   {{- end }}
 {{- end }}
 {{- end }}
