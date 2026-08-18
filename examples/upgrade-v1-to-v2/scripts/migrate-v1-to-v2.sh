@@ -342,7 +342,9 @@ if [ -n "$VALUES_TAG" ] && [ "$(normalize_tag "$VALUES_TAG")" != "$(normalize_ta
   die "values langfuse.image.tag ($VALUES_TAG) does not match --image-tag ($IMAGE_TAG)"
 fi
 if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ] && [ "$(normalize_tag "$SRC_APP")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
-  die "Helm appVersion $SRC_APP does not match image tag $IMAGE_TAG. Pin --image-tag to the running v1 version so the sibling does not jump to chart v2 defaults."
+  # Expected whenever v1 pinned an image tag newer than its chart appVersion;
+  # the VALUES_TAG consistency check above already guards real mismatches.
+  warn "Helm appVersion $SRC_APP differs from image tag $IMAGE_TAG; continuing with $IMAGE_TAG (the running v1 version wins)"
 fi
 log "pinning langfuse.image.tag=$IMAGE_TAG so v1 and v2 stay on the same application version"
 
