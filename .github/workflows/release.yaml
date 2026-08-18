@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - "charts/*/Chart.yaml"
+  # Manual re-release: publishes whatever version main's Chart.yaml holds.
+  # Safe to re-run — the OCI push is idempotent and chart-releaser skips
+  # versions that already have a tag/release.
+  workflow_dispatch: {}
 
 permissions: {}
 
@@ -34,6 +38,16 @@ jobs:
 
       - name: Install Helm
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      - name: Add chart dependency repositories
+        # cr package resolves HTTPS chart dependencies through the local Helm
+        # repo config — unlike the previous OCI dependencies, they must be
+        # registered explicitly or chart-releaser fails with
+        # "no repository definition for <url>".
+        run: |
+          helm repo add groundhog2k https://groundhog2k.github.io/helm-charts/
+          helm repo add valkey https://valkey-io.github.io/valkey-helm
+          helm repo add seaweedfs https://seaweedfs.github.io/seaweedfs/helm
 
       - name: Update dependencies
         run: helm dependency update charts/langfuse/
