@@ -2,6 +2,64 @@
 
 In this guide, we collect common issues and solution approaches to address problems you might encounter while the Langfuse Helm chart.
 
+## OpenShift / OKD: Bitnami pods fail due to Security Context Constraints (SCC)
+
+### Symptom
+
+Pods for the bundled PostgreSQL or Valkey/Redis sub-charts are stuck in
+`CreateContainerConfigError` or `CrashLoopBackOff` with an error similar to:
+
+```
+Error: container has runAsNonRoot and image will run as root
+```
+
+or
+
+```
+unable to validate against any security context constraint: [spec.containers[0].securityContext.runAsUser: Invalid value: 1001: must be in the ranges: [1000700000, 1000799999]]
+```
+
+### Why it happens
+
+Bitnami images are built to run as a fixed UID (`1001`). OpenShift's default
+`restricted-v2` SCC enforces a namespace-allocated UID range and rejects
+fixed UIDs that fall outside that range.
+
+### Fix A — Grant `anyuid` SCC (dev/demo clusters)
+
+```bash
+oc adm policy add-scc-to-user anyuid \
+  -z <release-name> \
+  -n <namespace>
+```
+
+Replace `<release-name>` with your Helm release name (the service account
+has the same name by default).
+
+### Fix B — Use an external PostgreSQL (recommended for production)
+
+Provision PostgreSQL via the [CrunchyData PGO operator][pgo] or a managed
+service and disable the bundled sub-chart:
+
+```yaml
+postgresql:
+  deploy: false
+  host: <external-postgres-host>
+  auth:
+    username: langfuse
+    existingSecret: langfuse
+    secretKeys:
+      userPasswordKey: postgresql-password
+```
+
+This removes the Bitnami dependency entirely and eliminates the SCC issue
+for the database pod.
+
+See the full [OpenShift deployment example](examples/openshift/README.md) for
+step-by-step instructions.
+
+[pgo]: https://access.crunchydata.com/documentation/postgres-operator/latest/
+
 ## Invalid ClickHouse Password - Avoid special characters
 
 If you encounter an error like
