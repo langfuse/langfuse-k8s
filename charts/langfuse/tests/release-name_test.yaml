@@ -1,0 +1,90 @@
+suite: test chart works with any release name
+templates:
+  - web/deployment.yaml
+  - postgresql-secret.yaml
+  - redis-secret.yaml
+  - s3/secret.yaml
+release:
+  name: myrel
+tests:
+  - it: should create store auth Secrets under the names the sub-charts mount
+    asserts:
+      # These names must stay in sync with the sub-chart pass-through values
+      # (postgresql.settings.existingSecret, redis.auth.usersExistingSecret,
+      # s3.allInOne.s3.existingConfigSecret) — the sub-charts mount them as
+      # plain strings, so they cannot contain the release name.
+      - equal:
+          path: metadata.name
+          value: langfuse-postgresql-auth
+        template: postgresql-secret.yaml
+      - equal:
+          path: metadata.name
+          value: langfuse-redis-auth
+        template: redis-secret.yaml
+      - equal:
+          path: metadata.name
+          value: langfuse-s3-auth
+        template: s3/secret.yaml
+
+  - it: should point app env at the sub-chart Service names and managed Secrets
+    asserts:
+      # Sub-chart Services are named <release>-<alias> (standard fullname
+      # helper with the alias as chart name), not <parent fullname>-<alias>.
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_HOST
+            value: "myrel-postgresql"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://default:$(REDIS_PASSWORD)@myrel-redis:6379/0"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT
+            value: "http://myrel-s3-all-in-one:8333"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: langfuse-postgresql-auth
+                key: USERDB_PASSWORD
+        template: web/deployment.yaml
+
+  - it: should honor overridden secret names and sub-chart fullnameOverride
+    set:
+      postgresql:
+        settings:
+          existingSecret: my-pg-auth
+        userDatabase:
+          existingSecret: my-pg-auth
+      redis:
+        fullnameOverride: my-valkey
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-pg-auth
+        template: postgresql-secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: REDIS_CONNECTION_STRING
+            value: "redis://default:$(REDIS_PASSWORD)@my-valkey:6379/0"
+        template: web/deployment.yaml
+
+  - it: should fail when the two postgres secret refs diverge under chart-managed credentials
+    set:
+      postgresql:
+        userDatabase:
+          existingSecret: something-else
+    asserts:
+      - failedTemplate:
+          errorPattern: "must point at the same Secret"
+        template: postgresql-secret.yaml

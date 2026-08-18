@@ -62,13 +62,57 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+Fullname of an aliased sub-chart, computed the way the sub-chart's own
+fullname helper does (postgres, valkey, and seaweedfs all share the standard
+pattern, with the dependency alias as the chart name). This is what the
+sub-chart names its Service, so hostname helpers must use it — the parent's
+own fullname prefix only coincides with it when the release is named
+"langfuse". Takes (list $ "<alias>").
+*/}}
+{{- define "langfuse.subchart.fullname" -}}
+{{- $ctx := index . 0 -}}
+{{- $alias := index . 1 -}}
+{{- $vals := index $ctx.Values $alias -}}
+{{- if $vals.fullnameOverride -}}
+{{- $vals.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default $alias $vals.nameOverride -}}
+{{- if contains $name $ctx.Release.Name -}}
+{{- $ctx.Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" $ctx.Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Names of the chart-managed auth Secrets for the bundled stores. The
+sub-charts read these names from plain values (Helm cannot template
+sub-chart values), so the values keys are the single source of truth and
+the Secret templates create whatever name they hold. Note: because the
+default names are static, two releases of this chart in one namespace need
+these keys overridden to disambiguate.
+*/}}
+{{- define "langfuse.postgresql.authSecretName" -}}
+{{- .Values.postgresql.settings.existingSecret | default "langfuse-postgresql-auth" -}}
+{{- end -}}
+
+{{- define "langfuse.redis.authSecretName" -}}
+{{- .Values.redis.auth.usersExistingSecret | default "langfuse-redis-auth" -}}
+{{- end -}}
+
+{{- define "langfuse.s3.authSecretName" -}}
+{{- (((.Values.s3.allInOne).s3).existingConfigSecret) | default "langfuse-s3-auth" -}}
+{{- end -}}
+
+{{/*
 Return PostgreSQL hostname
 */}}
 {{- define "langfuse.postgresql.hostname" -}}
 {{- if .Values.postgresql.host }}
 {{- .Values.postgresql.host }}
 {{- else if .Values.postgresql.deploy }}
-{{- printf "%s-postgresql" (include "langfuse.fullname" .) -}}
+{{- include "langfuse.subchart.fullname" (list . "postgresql") -}}
 {{- end }}
 {{- end }}
 
@@ -79,7 +123,7 @@ Return Redis hostname
 {{- if .Values.redis.host }}
 {{- .Values.redis.host }}
 {{- else if .Values.redis.deploy }}
-{{- printf "%s-%s" (include "langfuse.fullname" .) (default "redis" .Values.redis.nameOverride) -}}
+{{- include "langfuse.subchart.fullname" (list . "redis") -}}
 {{- end }}
 {{- end }}
 
@@ -107,7 +151,9 @@ Return S3/MinIO endpoint -- if not set uses auto-discovery
 {{- if or .Values.s3.eventUpload.endpoint .Values.s3.endpoint }}
 {{- .Values.s3.eventUpload.endpoint | default .Values.s3.endpoint }}
 {{- else if .Values.s3.deploy }}
-{{- printf "http://%s-%s-all-in-one:8333" (include "langfuse.fullname" .) (default "s3" .Values.s3.nameOverride) -}}
+{{- /* seaweedfs names the Service <fullname trunc 52>-all-in-one and serves S3 on allInOne.s3.port */ -}}
+{{- $swFullname := include "langfuse.subchart.fullname" (list . "s3") | trunc 52 | trimSuffix "-" -}}
+{{- printf "http://%s-all-in-one:%v" $swFullname ((((.Values.s3.allInOne).s3).port) | default 8333) -}}
 {{- else }}
 {{- end }}
 {{- end }}
@@ -227,7 +273,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else if .Values.postgresql.deploy }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-postgresql-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.postgresql.authSecretName" . | quote }}
       key: USERDB_PASSWORD
 {{- else }}
   value: {{ required "Using an existing secret or postgresql.auth.password is required" .Values.postgresql.auth.password | quote }}
@@ -336,7 +382,7 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- else if .Values.redis.deploy }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-redis-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.redis.authSecretName" . | quote }}
       key: {{ .Values.redis.auth.username | quote }}
 {{- else }}
   value: {{ required "Using an existing secret or redis.auth.password is required" .Values.redis.auth.password | quote }}
@@ -594,7 +640,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: accessKey
   {{- end }}
 {{- end }}
@@ -613,7 +659,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: secretKey
   {{- end }}
 {{- end }}
@@ -657,7 +703,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: accessKey
   {{- end }}
 {{- end }}
@@ -676,7 +722,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: secretKey
   {{- end }}
 {{- end }}
@@ -718,7 +764,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: accessKey
   {{- end }}
 {{- end }}
@@ -737,7 +783,7 @@ Return ClickHouse protocol (http or https)
   {{- else }}
   valueFrom:
     secretKeyRef:
-      name: {{ printf "%s-s3-auth" (include "langfuse.fullname" .) | quote }}
+      name: {{ include "langfuse.s3.authSecretName" . | quote }}
       key: secretKey
   {{- end }}
 {{- end }}

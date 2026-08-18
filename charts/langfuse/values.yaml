@@ -512,7 +512,7 @@ postgresql:
   settings:
     # -- Postgres superuser password. Auto-derived from the chart-managed Secret unless existingSecret is set.
     superuserPassword: {}
-    # -- Existing Secret for the superuser password (keys: POSTGRES_USER, POSTGRES_PASSWORD). Defaults to `<release>-postgresql-auth` (assumes fullname "langfuse").
+    # -- Existing Secret for the superuser password (keys: POSTGRES_USER, POSTGRES_PASSWORD). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override it (together with userDatabase.existingSecret) when running two releases in one namespace.
     existingSecret: "langfuse-postgresql-auth"
 
   # -- Bootstrap the Langfuse database/user on first start. Empty name/user/password maps use defaults from auth.* via the chart-managed Secret.
@@ -520,7 +520,7 @@ postgresql:
     name: {}
     user: {}
     password: {}
-    # -- Existing Secret for userDatabase credentials (keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB). Defaults to `<release>-postgresql-auth` (assumes fullname "langfuse").
+    # -- Existing Secret for userDatabase credentials (keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB). Must match settings.existingSecret when the chart manages the Secret (validated at render time).
     existingSecret: "langfuse-postgresql-auth"
 
   # -- Resource limits/requests for the Postgres pod. Tune for your workload.
@@ -596,7 +596,7 @@ redis:
 
     database: 0
 
-    # -- Valkey ACL users Secret (one key per username). Defaults to `<release>-redis-auth` (assumes fullname "langfuse").
+    # -- Valkey ACL users Secret (one key per username). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override when running two releases in one namespace.
     usersExistingSecret: "langfuse-redis-auth"
     # -- Valkey ACL users to create. Must include "default" when auth.enabled is true; `~* &* +@all` grants full access.
     aclUsers:
@@ -960,7 +960,7 @@ s3:
       enabled: true
       port: 8333
       enableAuth: true
-      # -- SeaweedFS IAM config Secret. Auto-generated as `<release>-s3-auth` from s3.auth when deploy is true (assumes fullname "langfuse").
+      # -- SeaweedFS IAM config Secret. Single source of truth for the chart-managed Secret's name — the chart creates the Secret (from s3.auth) under this exact name, so any release name works. Override when running two releases in one namespace.
       existingConfigSecret: "langfuse-s3-auth"
       # -- Buckets to create on first start. The chart appends `s3.bucket` automatically.
       createBuckets:

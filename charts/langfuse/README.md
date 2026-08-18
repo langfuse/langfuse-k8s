@@ -250,7 +250,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.service.port | int | `5432` | Port the Postgres Service exposes. Must match `postgresql.port` (or the langfuse default 5432). |
 | postgresql.service.type | string | `"ClusterIP"` |  |
 | postgresql.settings | object | `{"existingSecret":"langfuse-postgresql-auth","superuserPassword":{}}` | Pass-through Postgres settings for the groundhog2k sub-chart. Usually left alone; helpers wire the chart-managed Secret automatically. |
-| postgresql.settings.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for the superuser password (keys: POSTGRES_USER, POSTGRES_PASSWORD). Defaults to `<release>-postgresql-auth` (assumes fullname "langfuse"). |
+| postgresql.settings.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for the superuser password (keys: POSTGRES_USER, POSTGRES_PASSWORD). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override it (together with userDatabase.existingSecret) when running two releases in one namespace. |
 | postgresql.settings.superuserPassword | object | `{}` | Postgres superuser password. Auto-derived from the chart-managed Secret unless existingSecret is set. |
 | postgresql.shadowDatabaseUrl | string | `""` | If your database user lacks the CREATE DATABASE permission, you must create a shadow database and configure the "SHADOW_DATABASE_URL". This is often the case if you use a Cloud database. Refer to the Prisma docs for detailed instructions. |
 | postgresql.startupProbe | object | `{}` |  |
@@ -259,7 +259,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.storage.persistentVolumeClaimRetentionPolicy | object | `{"whenDeleted":"Retain","whenScaled":"Retain"}` | Keep the PVC after the release is uninstalled. |
 | postgresql.tolerations | list | `[]` |  |
 | postgresql.userDatabase | object | `{"existingSecret":"langfuse-postgresql-auth","name":{},"password":{},"user":{}}` | Bootstrap the Langfuse database/user on first start. Empty name/user/password maps use defaults from auth.* via the chart-managed Secret. |
-| postgresql.userDatabase.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for userDatabase credentials (keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB). Defaults to `<release>-postgresql-auth` (assumes fullname "langfuse"). |
+| postgresql.userDatabase.existingSecret | string | `"langfuse-postgresql-auth"` | Existing Secret for userDatabase credentials (keys: USERDB_USER, USERDB_PASSWORD, POSTGRES_DB). Must match settings.existingSecret when the chart manages the Secret (validated at render time). |
 | redis.auth.aclConfig | string | `""` | Pass-through to valkey-helm: extra inline ACL config appended after `aclUsers`. |
 | redis.auth.aclUsers | object | `{"default":{"permissions":"~* &* +@all"}}` | Valkey ACL users to create. Must include "default" when auth.enabled is true; `~* &* +@all` grants full access. |
 | redis.auth.database | int | `0` |  |
@@ -268,7 +268,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | redis.auth.existingSecretPasswordKey | string | `""` | The key in the existing secret that contains the password. |
 | redis.auth.password | string | `""` | Redis password Langfuse authenticates with. Leave empty to auto-generate; set null to disable auth. URL-encode special characters. |
 | redis.auth.username | string | `"default"` | Redis username Langfuse authenticates with. Set null to omit from the connection string; created as an ACL user when deploy is true. |
-| redis.auth.usersExistingSecret | string | `"langfuse-redis-auth"` | Valkey ACL users Secret (one key per username). Defaults to `<release>-redis-auth` (assumes fullname "langfuse"). |
+| redis.auth.usersExistingSecret | string | `"langfuse-redis-auth"` | Valkey ACL users Secret (one key per username). Single source of truth for the chart-managed Secret's name — the chart creates the Secret under this exact name, so any release name works. Override when running two releases in one namespace. |
 | redis.cluster.enabled | bool | `false` | Set to `true` to enable Redis Cluster mode. When enabled, you must set `redis.deploy` to `false` and provide cluster nodes. |
 | redis.cluster.nodes | list | `[]` | List of Redis cluster nodes in the format "host:port". Example: ["redis-1:6379", "redis-2:6379", "redis-3:6379"] |
 | redis.dataStorage | object | `{"accessModes":["ReadWriteOnce"],"className":"","enabled":true,"keepPvc":false,"requestedSize":"8Gi"}` | Persistence for the primary node. |
@@ -318,7 +318,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.allInOne.s3.createBucketsHook.resources | object | `{}` |  |
 | s3.allInOne.s3.enableAuth | bool | `true` |  |
 | s3.allInOne.s3.enabled | bool | `true` |  |
-| s3.allInOne.s3.existingConfigSecret | string | `"langfuse-s3-auth"` | SeaweedFS IAM config Secret. Auto-generated as `<release>-s3-auth` from s3.auth when deploy is true (assumes fullname "langfuse"). |
+| s3.allInOne.s3.existingConfigSecret | string | `"langfuse-s3-auth"` | SeaweedFS IAM config Secret. Single source of truth for the chart-managed Secret's name — the chart creates the Secret (from s3.auth) under this exact name, so any release name works. Override when running two releases in one namespace. |
 | s3.allInOne.s3.port | int | `8333` |  |
 | s3.allInOne.service.internalTrafficPolicy | string | `"Cluster"` |  |
 | s3.allInOne.service.type | string | `"ClusterIP"` |  |
