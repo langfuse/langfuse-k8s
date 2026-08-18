@@ -621,6 +621,10 @@ fi
 [ "$S3_ON" -eq 1 ] && wait_deploy "${TGT_FULLNAME}-s3-all-in-one"
 if [ "$CH_ON" -eq 1 ]; then
   log "waiting for ClickHouse pod ${TGT_FULLNAME}-clickhouse-0-0-0"
+  # The operator only creates the server pod after the Keeper quorum is up;
+  # `kubectl wait` fails immediately on a not-yet-created pod, so poll for
+  # existence first (up to 5 minutes).
+  for _ in $(seq 1 60); do kx -n "$NAMESPACE" get pod "${TGT_FULLNAME}-clickhouse-0-0-0" >/dev/null 2>&1 && break; sleep 5; done
   kx -n "$NAMESPACE" wait pod "${TGT_FULLNAME}-clickhouse-0-0-0" --for=condition=Ready --timeout=600s
 fi
 V2_WEB_REPLICAS=$(kx -n "$NAMESPACE" get deploy "$V2_WEB" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)
