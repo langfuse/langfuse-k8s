@@ -58,3 +58,38 @@ tests:
       - failedTemplate:
           errorPattern: "s3.auth.rootUserSecretKey is required when s3.auth.existingSecret is set"
         template: web/deployment.yaml
+
+  - it: should reject a custom clickhouse username with the bundled operator deploy
+    set:
+      clickhouse.auth.username: langfuse
+    asserts:
+      - failedTemplate:
+          errorPattern: "clickhouse.auth.username must be \"default\""
+        template: validations.yaml
+
+  - it: should reject a custom redis username missing from aclUsers
+    set:
+      redis.auth.username: langfuse
+    asserts:
+      - failedTemplate:
+          errorPattern: "not defined in redis.auth.aclUsers"
+        template: validations.yaml
+
+  - it: should reject a custom s3 bucket that SeaweedFS will not create
+    set:
+      s3.bucket: my-traces
+    asserts:
+      - failedTemplate:
+          errorPattern: "s3.allInOne.s3.createBuckets"
+        template: validations.yaml
+
+  - it: should accept a custom s3 bucket listed in createBuckets
+    set:
+      clickhouse.crdCheck: false
+      s3.bucket: my-traces
+      s3.allInOne.s3.createBuckets:
+        - name: my-traces
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: validations.yaml

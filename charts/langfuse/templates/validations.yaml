@@ -45,6 +45,29 @@ what you are doing.
 {{- end -}}
 {{- end -}}
 
+# Reject configurations the bundled stores cannot provision.
+{{- if and .Values.clickhouse.deploy (ne .Values.clickhouse.auth.username "default") -}}
+    {{- fail "clickhouse.auth.username must be \"default\" when clickhouse.deploy is true: the operator CR only provisions a password for the built-in default user, so any other name renders into CLICKHOUSE_USER but never exists in the cluster. Use a custom user only with an external ClickHouse (clickhouse.deploy=false)." -}}
+{{- end -}}
+{{- if and .Values.redis.deploy (ne .Values.redis.auth.username "default") (not (hasKey (default dict .Values.redis.auth.aclUsers) .Values.redis.auth.username)) -}}
+    {{- fail (printf "redis.auth.username %q is not defined in redis.auth.aclUsers, so the bundled Valkey never creates it. Add it to redis.auth.aclUsers (with its password key in the ACL users Secret) or keep redis.auth.username=default." .Values.redis.auth.username) -}}
+{{- end -}}
+{{- if .Values.s3.deploy -}}
+{{- $createNames := list -}}
+{{- range (((.Values.s3.allInOne).s3).createBuckets | default list) -}}
+  {{- $createNames = append $createNames .name -}}
+{{- end -}}
+{{- range $type := list "eventUpload" "batchExport" "mediaUpload" -}}
+{{- $cfg := index $.Values.s3 $type -}}
+{{- if or (eq $type "eventUpload") (eq $type "mediaUpload") $cfg.enabled -}}
+{{- $bucket := coalesce $cfg.bucket $.Values.s3.bucket $.Values.s3.defaultBuckets -}}
+{{- if and $bucket (not (has $bucket $createNames)) -}}
+    {{- fail (printf "s3.%s uses bucket %q, but the bundled SeaweedFS only creates the buckets listed in s3.allInOne.s3.createBuckets (%v). Add it there so uploads do not fail with NoSuchBucket at runtime." $type $bucket $createNames) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 # Validate bring-your-own auth Secrets against the bundled stores.
 # Setting <store>.auth.existingSecret suppresses the chart-managed Secret,
 # but the sub-charts keep mounting whatever name their pass-through values

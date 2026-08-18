@@ -962,7 +962,7 @@ s3:
       enableAuth: true
       # -- SeaweedFS IAM config Secret. Single source of truth for the chart-managed Secret's name — the chart creates the Secret (from s3.auth) under this exact name, so any release name works. Override when running two releases in one namespace.
       existingConfigSecret: "langfuse-s3-auth"
-      # -- Buckets to create on first start. The chart appends `s3.bucket` automatically.
+      # -- Buckets to create by the SeaweedFS post-install/post-upgrade hook. Must include every bucket Langfuse uses (`s3.bucket` and any per-upload-type overrides) — validated at render time.
       createBuckets:
         - name: langfuse
       createBucketsHook:

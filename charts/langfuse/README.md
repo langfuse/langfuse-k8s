@@ -52,7 +52,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.host | string | `""` | ClickHouse hostname Langfuse connects to. Auto-set from the cluster Service when deploy is true; set explicitly for external ClickHouse. |
 | clickhouse.httpPort | int | `8123` | HTTP port Langfuse uses to talk to ClickHouse. |
 | clickhouse.keeper.affinity | object | `{}` | Affinity rules for Keeper pods. |
-| clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Required for multi-replica ClickHouse. |
+| clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
@@ -314,7 +314,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.allInOne.resources.limits.memory | string | `"2Gi"` |  |
 | s3.allInOne.resources.requests.cpu | string | `"500m"` |  |
 | s3.allInOne.resources.requests.memory | string | `"1Gi"` |  |
-| s3.allInOne.s3.createBuckets | list | `[{"name":"langfuse"}]` | Buckets to create on first start. The chart appends `s3.bucket` automatically. |
+| s3.allInOne.s3.createBuckets | list | `[{"name":"langfuse"}]` | Buckets to create by the SeaweedFS post-install/post-upgrade hook. Must include every bucket Langfuse uses (`s3.bucket` and any per-upload-type overrides) — validated at render time. |
 | s3.allInOne.s3.createBucketsHook.resources | object | `{}` |  |
 | s3.allInOne.s3.enableAuth | bool | `true` |  |
 | s3.allInOne.s3.enabled | bool | `true` |  |
