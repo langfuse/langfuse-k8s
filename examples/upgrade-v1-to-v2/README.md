@@ -137,7 +137,7 @@ does.
 ### All stores external — in-place upgrade
 
 ```bash
-helm upgrade langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm upgrade langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 -n langfuse -f v2-inplace-values.yaml
 ```
 
@@ -148,7 +148,7 @@ Keep `*.deploy: false` and the existing host/auth fields. Service / Ingress name
 #### 1. Stand up v2 (no downtime)
 
 ```bash
-helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 -n langfuse -f v2-values.yaml
 kubectl -n langfuse rollout status deploy/langfuse-v2-web --timeout=600s
 # Schema migrations are done; keep v1 as the only writer
@@ -234,7 +234,7 @@ kubectl -n langfuse rollout status deploy/langfuse-v2-web --timeout=300s
 
 ```bash
 kubectl -n langfuse delete ingress langfuse
-helm upgrade langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm upgrade langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 -n langfuse -f v2-app-values.yaml
 ```
 

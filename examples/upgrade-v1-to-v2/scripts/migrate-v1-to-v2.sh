@@ -282,7 +282,7 @@ if [ -z "$CHART" ]; then
   if [ -f "$REPO_ROOT/charts/langfuse/Chart.yaml" ]; then
     CHART="$REPO_ROOT/charts/langfuse"
   else
-    CHART="oci://ghcr.io/langfuse/langfuse-k8s/langfuse"
+    CHART="oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse"
   fi
 fi
 
