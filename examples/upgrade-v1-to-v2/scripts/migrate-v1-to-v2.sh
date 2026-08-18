@@ -813,7 +813,10 @@ if [ "$PG_ON" -eq 1 ]; then
   log "waiting for Postgres lag_bytes=0"
   SU_PW=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_PASSWORD)
   for i in $(seq 1 60); do
-    LAG=$(pg_exec_v1 -tAc "SELECT COALESCE(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn),0) FROM pg_stat_replication;" | tr -d '[:space:]' || echo 999)
+    # Scope to the lf_sub walsender (logical replication uses the subscription
+  # name as application_name) and SUM: an unscoped query returns one row per
+  # walsender, and squashed multi-row output like '00' never equals '0'.
+  LAG=$(pg_exec_v1 -tAc "SELECT COALESCE(SUM(pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn)),0) FROM pg_stat_replication WHERE application_name = 'lf_sub';" | tr -d '[:space:]' || echo 999)
     [ "${LAG:-999}" = "0" ] && break
     sleep 2
   done
