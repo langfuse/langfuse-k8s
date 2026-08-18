@@ -88,7 +88,7 @@ kubectl create namespace langfuse
 # Edit examples/minimal-installation/secret.yaml, then:
 kubectl apply -f examples/minimal-installation/secret.yaml -n langfuse
 
-helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 \
   --namespace langfuse \
   -f examples/minimal-installation/values.yaml
