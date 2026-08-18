@@ -50,13 +50,13 @@ kubectl apply -f secret.yaml -n langfuse
 2. Install the chart using the base values file and optional ingress configuration:
 ```bash
 # Basic installation
-helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 \
   --namespace langfuse \
   -f values.yaml
 
 # Or with ingress enabled
-helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/langfuse \
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 \
   --namespace langfuse \
   -f values.yaml -f with-ingress.yaml
