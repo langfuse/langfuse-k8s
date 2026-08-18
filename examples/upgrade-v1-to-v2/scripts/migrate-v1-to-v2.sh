@@ -435,7 +435,10 @@ write_values() {
   if [ "$mode" != "inplace" ]; then
     extra+=(--target-fullname "$TGT_FULLNAME")
   fi
-  python3 "$VALUES_MIGRATE" --mode "$mode" --input "$VALUES_FILE" --output "$dest.tmp" --image-tag "$IMAGE_TAG" "${extra[@]+"${extra[@]}"}"
+  # Feed the JSON converted by yaml_to_json (like the --plan call) so the
+  # yq/PyYAML/Ruby fallback chain holds — migrate-values.py itself can only
+  # parse YAML when PyYAML is installed.
+  printf '%s' "$V1_JSON" | python3 "$VALUES_MIGRATE" --mode "$mode" --input - --output "$dest.tmp" --image-tag "$IMAGE_TAG" "${extra[@]+"${extra[@]}"}"
   if [ "$(head -c 1 "$dest.tmp")" = "{" ]; then
     json_to_yaml < "$dest.tmp" > "$dest.body"
     rm -f "$dest.tmp"
