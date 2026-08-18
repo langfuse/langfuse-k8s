@@ -61,15 +61,15 @@ what you are doing.
 {{- if and $.Values.clickhouse.deploy (lt (int $.Values.clickhouse.cluster.replicas) 1) -}}
     {{- fail "clickhouse.cluster.replicas must be >= 1 when clickhouse.deploy is true." -}}
 {{- end -}}
-{{- if and $.Values.clickhouse.deploy (gt (int $.Values.clickhouse.cluster.replicas) 1) (not $.Values.clickhouse.keeper.enabled) -}}
-    {{- fail "clickhouse.keeper.enabled must be true when clickhouse.cluster.replicas > 1. The upstream ClickHouse operator requires Keeper for replicated mode." -}}
+{{- if and $.Values.clickhouse.deploy (not $.Values.clickhouse.keeper.enabled) -}}
+    {{- fail "clickhouse.keeper.enabled must be true when clickhouse.deploy is true: the ClickHouseCluster CRD requires spec.keeperClusterRef, so the operator cannot run a keeper-less cluster (even with a single replica). To run ClickHouse without Keeper, host it outside the chart and set clickhouse.deploy=false with clickhouse.host." -}}
 {{- end -}}
 {{- if and $.Values.clickhouse.deploy $.Values.clickhouse.crdCheck -}}
 {{- if not ($.Capabilities.APIVersions.Has "clickhouse.com/v1alpha1/ClickHouseCluster") -}}
     {{- fail "ClickHouse operator CRDs not found (clickhouse.com/v1alpha1/ClickHouseCluster). Install the ClickHouse operator (and its cert-manager prerequisite) before installing this chart — see the Prerequisites section of the chart README. To skip this check for offline rendering (helm template / GitOps diff), set clickhouse.crdCheck=false or pass --api-versions clickhouse.com/v1alpha1/ClickHouseCluster." -}}
 {{- end -}}
 {{- if and $.Values.clickhouse.keeper.enabled (not ($.Capabilities.APIVersions.Has "clickhouse.com/v1alpha1/KeeperCluster")) -}}
-    {{- fail "ClickHouse operator KeeperCluster CRD not found (clickhouse.com/v1alpha1/KeeperCluster). Install/upgrade the ClickHouse operator to a version that provides KeeperCluster before installing this chart, or set clickhouse.keeper.enabled=false for a single-node cluster. To skip this check for offline rendering, set clickhouse.crdCheck=false." -}}
+    {{- fail "ClickHouse operator KeeperCluster CRD not found (clickhouse.com/v1alpha1/KeeperCluster). Install/upgrade the ClickHouse operator to a version that provides KeeperCluster before installing this chart. To skip this check for offline rendering, set clickhouse.crdCheck=false." -}}
 {{- end -}}
 {{- end -}}
 

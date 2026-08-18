@@ -46,3 +46,11 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: should reject a keeper-less operator deploy (CRD requires keeperClusterRef)
+    set:
+      clickhouse.deploy: true
+      clickhouse.keeper.enabled: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "keeper.enabled must be true when clickhouse.deploy is true"

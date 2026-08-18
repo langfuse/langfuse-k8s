@@ -9,10 +9,9 @@ metadata:
 spec:
   replicas: {{ .Values.clickhouse.cluster.replicas }}
   shards: 1
-  {{- if .Values.clickhouse.keeper.enabled }}
+  {{- /* Required by the CRD — a keeper-less deploy is rejected in validations.yaml */}}
   keeperClusterRef:
     name: {{ include "langfuse.fullname" . }}
-  {{- end }}
   dataVolumeClaimSpec:
     accessModes:
       {{- toYaml .Values.clickhouse.cluster.storage.accessModes | nindent 6 }}

@@ -52,3 +52,12 @@ tests:
           path: spec.containerTemplate.resources.limits.memory
           value: 16Gi
         template: clickhouse/cluster.yaml
+
+  - it: should always emit the CRD-required keeperClusterRef on the ClickHouseCluster
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.keeperClusterRef.name
+          value: RELEASE-NAME-langfuse
+        template: clickhouse/cluster.yaml

@@ -761,7 +761,7 @@ clickhouse:
     profileSettings: {}
 
   keeper:
-    # -- Deploy a KeeperCluster alongside ClickHouse. Required for multi-replica ClickHouse.
+    # -- Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper.
     enabled: true
     # -- Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA.
     replicas: 3
