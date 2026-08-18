@@ -41,7 +41,10 @@ v2.0.0 replaces the Bitnami sub-charts with OSS-licensed alternatives and deploy
 | Redis | `bitnami/valkey` | [`valkey-io/valkey`](https://github.com/valkey-io/valkey-helm) |
 | Object storage | `bitnami/minio` | [`seaweedfs/seaweedfs`](https://github.com/seaweedfs/seaweedfs) (allInOne) |
 
-On first install the chart auto-generates credential Secrets for Postgres, ClickHouse, Valkey, SeaweedFS, **and** the three Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`), persisted across upgrades via `lookup`. You can still pin any of them with `value` / `secretKeyRef` when needed (e.g. migrations).
+On first install the chart auto-generates credential Secrets for Postgres, ClickHouse, Valkey, SeaweedFS, **and** the three Langfuse application secrets (`salt`, `encryptionKey`, `nextauth.secret`), persisted across upgrades via `lookup`. You can still pin any of them with `value` / `secretKeyRef` when needed (e.g. migrations). The generated Secrets carry `helm.sh/resource-policy: keep`, so they survive `helm uninstall` — delete them manually if you really want a clean slate.
+
+> [!WARNING]
+> **GitOps / ArgoCD:** tools that render with `helm template` (ArgoCD, `helm template | kubectl apply` pipelines) cannot use `lookup`, so auto-generated credentials would be **regenerated on every sync** — rotating `salt` breaks all hashed API keys and rotating `encryptionKey` makes previously encrypted data unreadable. In those pipelines, pin **all** credentials explicitly (`value` / `secretKeyRef` / `existingSecret`). Flux's helm-controller performs real Helm installs and is not affected.
 
 **Do not `helm upgrade` v1 → v2 onto empty v2 volumes.** That would replace Bitnami data. The supported path is [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/): in-place upgrade when every store is already external (`*.deploy: false`); otherwise stand up a sibling v2 release, copy data, then shift traffic. The chart blocks an upgrade that would replace leftover Bitnami ClickHouse (`<release>-clickhouse-shard0`), Postgres (`data-<release>-postgresql-0`), or MinIO (`<release>-s3`) with empty volumes. Only set `langfuse.allowV1Upgrade=true` if you intentionally need to override that guard.
 
