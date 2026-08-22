@@ -64,11 +64,13 @@ Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<s
 `--output-values`, `--output-cutover-values`, `--extra-values` (repeatable), `--context`,
 `--image-tag` (defaults to the v1 Helm `appVersion` / values tag), `--skip-prereqs`,
 `--worker-drain-seconds` (max wait for v1 Redis queues after web scale-down), `--force`
-(continue after lag / readiness / queue-drain failures). Helm **≥ 3.17** is required.
+(continue after lag / readiness / queue-drain failures), `--postgres-mode` (`logical`
+default, or `reuse-volume` to attach the Bitnami Postgres PVC to the sibling). Helm
+**≥ 3.17** is required.
 
 | `*.deploy` | Action |
 |------------|--------|
-| `postgresql.deploy: true` | Enable logical replication on v1, subscribe the sibling, drop subscription at freeze |
+| `postgresql.deploy: true` | **logical** (default): enable logical replication on v1, subscribe the sibling, drop subscription at freeze. **reuse-volume**: scale v1 Postgres to 0 and mount `data-<release>-postgresql-0` on the sibling (see below) |
 | `clickhouse.deploy: true` | Incremental `remote()` copy via [`ch-online-sync.sh`](./scripts/ch-online-sync.sh) |
 | `s3.deploy: true` | `mc mirror` MinIO → SeaweedFS (in-cluster `minio/mc` pod) |
 | `redis.deploy: true` | Stand up empty Valkey on the sibling (queue/cache; no data copy) |
@@ -85,13 +87,42 @@ Generated overlays:
 
 | Store | Online (v1 live) | Freeze delta |
 |-------|------------------|--------------|
-| **Postgres** | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
+| **Postgres** (logical) | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
+| **Postgres** (`reuse-volume`) | Sibling pod Pending on the Bitnami PVC | Scale v1 Postgres to 0, sibling attaches the same disk |
 | **Object storage (MinIO → SeaweedFS)** | `mc mirror` / `mc mirror --watch` | Final `mc mirror` (new blobs only) |
 | **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass (no `OPTIMIZE FINAL` by default) |
 | **Redis / Valkey** | — (ephemeral queue/cache) | — |
 
 Downtime ≈ freeze writers + drain v1 worker queue + final deltas + traffic shift.
 The multi-hour bulk copy runs **outside** the freeze window.
+
+### Postgres `--postgres-mode reuse-volume`
+
+Opt-in alternative to logical replication when you prefer to keep the Bitnami disk
+instead of copying it. The sibling is installed with
+`postgresql.storage.persistentVolumeClaimName` pointing at `data-<source>-postgresql-0`.
+The v2 pod stays **Pending** on that RWO volume until freeze, when v1 Postgres is scaled
+to 0 and the sibling starts from the same files.
+
+```bash
+./migrate-v1-to-v2.sh --values /path/to/your-v1-values.yaml --postgres-mode reuse-volume
+```
+
+The script pins `postgresql.image.tag` to `<major>-bookworm` (Bitnami 1.5.x is
+Postgres 17 on Debian 12; `postgres:17` is currently Debian 13 and would warn about
+a glibc collation version mismatch). It sets `settings.pgDir=data` (Bitnami PGDATA
+is `<volume>/data`, not groundhog2k's `pg/`), copies the v1 password / database /
+username, runs as the Bitnami UID (usually 1001), and writes `postgresql.conf` /
+`pg_hba.conf` into PGDATA on first start — Bitnami keeps those files in the image,
+not on the PVC. Generated overlays set `langfuse.allowV1Upgrade: true` because the
+chart's v1 guard keys off the Bitnami PVC name (`data-<release>-postgresql-0`) vs
+the empty v2 claim (`postgres-data-<release>-postgresql-0`), and reuse-volume keeps
+the former. Rollback is scale v2 Postgres to 0, then v1 Postgres back to 1 — do
+**not** delete the PVC.
+
+Trade-offs vs logical replication: no online copy and no extra disk, but Postgres is
+unavailable for the freeze window, majors cannot be jumped, and the sibling keeps using
+the v1 PVC name (`helm uninstall` of v1 must retain it).
 
 ## Naming (sibling path)
 
