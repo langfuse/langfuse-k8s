@@ -88,7 +88,7 @@ Generated overlays:
 | Store | Online (v1 live) | Freeze delta |
 |-------|------------------|--------------|
 | **Postgres** (logical) | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
-| **Postgres** (`reuse-volume`) | Sibling pod Pending on the Bitnami PVC | Scale v1 Postgres to 0, sibling attaches the same disk |
+| **Postgres** (`reuse-volume`) | Sibling unschedulable (anti-affinity vs v1 Postgres pod) | Scale v1 Postgres to 0, sibling attaches the same disk |
 | **Object storage (MinIO → SeaweedFS)** | `mc mirror` / `mc mirror --watch` | Final `mc mirror` (new blobs only) |
 | **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass (no `OPTIMIZE FINAL` by default) |
 | **Redis / Valkey** | — (ephemeral queue/cache) | — |
@@ -101,8 +101,15 @@ The multi-hour bulk copy runs **outside** the freeze window.
 Opt-in alternative to logical replication when you prefer to keep the Bitnami disk
 instead of copying it. The sibling is installed with
 `postgresql.storage.persistentVolumeClaimName` pointing at `data-<source>-postgresql-0`.
-The v2 pod stays **Pending** on that RWO volume until freeze, when v1 Postgres is scaled
-to 0 and the sibling starts from the same files.
+`ReadWriteOnce` is per-node, not per-pod, so the overlay also sets a **required**
+pod anti-affinity against the v1 Postgres pod (`statefulset.kubernetes.io/pod-name`).
+That keeps the sibling off the node that still holds the volume until freeze scales
+v1 Postgres to 0. The existing PVC access mode is left unchanged (`ReadWriteOncePod`
+cannot be patched onto a bound claim).
+
+If the sibling release was already installed with logical replication (its own
+`volumeClaimTemplates` volume), uninstall it and re-run — Helm cannot switch an
+existing StatefulSet onto the Bitnami PVC.
 
 ```bash
 ./migrate-v1-to-v2.sh --values /path/to/your-v1-values.yaml --postgres-mode reuse-volume
@@ -171,7 +178,7 @@ does.
      kubectl -n langfuse exec langfuse-postgresql-0 -- printenv PGDATA
      ```
 
-     Bitnami 1.5.x is typically Postgres **17**, UID **1001**, `PGDATA=/bitnami/postgresql/data` (so `settings.pgDir=data`). Pin `postgresql.image.tag` to `<major>-bookworm` (not `18`, and not plain `postgres:17`, which is Debian 13).
+     Bitnami 1.5.x is typically Postgres **17**, UID **1001**, `PGDATA=/bitnami/postgresql/data` (so `settings.pgDir=data`). Pin `postgresql.image.tag` to `<major>-bookworm` (not `18`, and not plain `postgres:17`, which is Debian 13). If `PGDATA` is empty or not under the `data` volume mount, stop — do not guess `pgDir`.
 3. Point the sibling at the **same** Langfuse app Secret as v1 (see [`v2-values.yaml`](./v2-values.yaml)).
    If that Secret is Helm-owned by v1, protect it: `kubectl annotate secret <name> helm.sh/resource-policy=keep`.
 4. Size `clickhouse.cluster.resources` in the sibling overlay for your data volume.
@@ -201,7 +208,7 @@ kubectl -n langfuse scale deploy/langfuse-v2-web deploy/langfuse-v2-worker --rep
 
 v1 keeps serving. Leave `langfuse.ingress.enabled: false` on the sibling so v1 keeps the domain.
 
-**Volume reuse** — do not create a new Postgres disk. Merge the overlay below with [`v2-values.yaml`](./v2-values.yaml) (set `auth.password` to the v1 superuser password, keep web/worker at 0). The sibling Postgres pod stays **Pending** on the RWO PVC until freeze. Skip waiting for `langfuse-v2-web` / `langfuse-v2-postgresql`. `langfuse.allowV1Upgrade` is required: the chart guard keys off the Bitnami PVC name and would otherwise refuse a deploy that still sees `data-langfuse-postgresql-0`.
+**Volume reuse** — do not create a new Postgres disk. Merge the overlay below with [`v2-values.yaml`](./v2-values.yaml) (set `auth.password` to the v1 superuser password, keep web/worker at 0). Required anti-affinity against `langfuse-postgresql-0` keeps the sibling **Pending** until freeze (ReadWriteOnce is per-node; do not change the PVC to ReadWriteOncePod). Skip waiting for `langfuse-v2-web` / `langfuse-v2-postgresql`. `langfuse.allowV1Upgrade` is required: the chart guard keys off the Bitnami PVC name and would otherwise refuse a deploy that still sees `data-langfuse-postgresql-0`. If a sibling from logical replication already exists, `helm uninstall langfuse-v2` first — the STS cannot switch from `volumeClaimTemplates` to this PVC.
 
 ```yaml
 # postgres-reuse overlay (helm install ... -f v2-values.yaml -f this)
@@ -233,6 +240,13 @@ postgresql:
     runAsUser: 1001
     runAsGroup: 1001
     runAsNonRoot: true
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              statefulset.kubernetes.io/pod-name: langfuse-postgresql-0
+          topologyKey: kubernetes.io/hostname
   extraInitContainers:
     - name: bitnami-pgconf
       image: docker.io/postgres:17-bookworm
@@ -248,7 +262,10 @@ postgresql:
         - |
           set -e
           DATA="/var/lib/postgresql/data/data"
-          if [ ! -f "$DATA/PG_VERSION" ]; then exit 0; fi
+          if [ ! -f "$DATA/PG_VERSION" ]; then
+            echo "bitnami-pgconf: no PG_VERSION in $DATA (wrong pgDir? refusing to initdb an empty cluster)"
+            exit 1
+          fi
           if [ ! -f "$DATA/postgresql.conf" ]; then
             printf '%s\n' "listen_addresses = '*'" "port = 5432" \
               "unix_socket_directories = '/tmp'" "password_encryption = scram-sha-256" \
@@ -296,7 +313,7 @@ helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 -n langfuse -f v2-values.yaml -f postgres-reuse.yaml
 ```
 
-The init container writes `postgresql.conf` / `pg_hba.conf` into PGDATA — Bitnami keeps those files in the image, not on the PVC. Probes use `-U postgres` because UID 1001 has no passwd entry in the official image.
+The init container writes `postgresql.conf` / `pg_hba.conf` into PGDATA — Bitnami keeps those files in the image, not on the PVC. A missing `PG_VERSION` is fatal so the official entrypoint cannot `initdb` an empty cluster. Probes use `-U postgres` because UID 1001 has no passwd entry in the official image.
 
 #### 2. Online sync (no downtime)
 

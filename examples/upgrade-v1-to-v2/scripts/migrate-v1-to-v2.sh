@@ -34,6 +34,7 @@ PG_REUSE_PVC=""
 PG_REUSE_IMAGE_TAG=""
 PG_REUSE_UID=1001
 PG_REUSE_PGDIR="data"
+PG_REUSE_SOURCE_POD=""
 
 usage() {
   cat <<'EOF'
@@ -395,10 +396,17 @@ v1_pg_super() {
 
 detect_postgres_reuse() {
   local pod="${SRC_FULLNAME}-postgresql-0"
-  local ver pgdata mount rel uid
+  local ver pgdata mount rel uid modes
   PG_REUSE_PVC="data-${SRC_FULLNAME}-postgresql-0"
+  PG_REUSE_SOURCE_POD=$pod
   kx -n "$NAMESPACE" get pvc "$PG_REUSE_PVC" >/dev/null \
     || die "reuse-volume: PVC $PG_REUSE_PVC not found"
+  modes=$(kx -n "$NAMESPACE" get pvc "$PG_REUSE_PVC" -o jsonpath='{.spec.accessModes[*]}')
+  case " $modes " in
+    *" ReadWriteMany "*) die "reuse-volume: PVC $PG_REUSE_PVC is ReadWriteMany; refusing to attach a live Postgres data dir to a second pod" ;;
+  esac
+  printf '%s' " $modes " | grep -q ' ReadWriteOnce' \
+    || die "reuse-volume: PVC $PG_REUSE_PVC accessModes ($modes) must include ReadWriteOnce"
   kx -n "$NAMESPACE" get pod "$pod" >/dev/null \
     || die "reuse-volume: pod $pod not found (v1 Postgres must be running so we can read version/UID/PGDATA)"
   ver=$(v1_pg_super -d postgres -tAc "SHOW server_version;" | tr -d '[:space:]')
@@ -411,16 +419,17 @@ detect_postgres_reuse() {
   [ -n "$uid" ] || uid=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.spec.securityContext.runAsUser}')
   [ -n "$uid" ] || uid=1001
   PG_REUSE_UID=$uid
-  pgdata=$(kx -n "$NAMESPACE" exec "$pod" -- printenv PGDATA | tr -d '[:space:]' || true)
+  pgdata=$(kx -n "$NAMESPACE" exec "$pod" -- printenv PGDATA | tr -d '[:space:]')
+  [ -n "$pgdata" ] || die "reuse-volume: PGDATA is empty on $pod"
   mount=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{range .spec.containers[0].volumeMounts[*]}{.name}{"\t"}{.mountPath}{"\n"}{end}' \
     | awk -F'\t' '$1=="data"{print $2; exit}')
-  if [ -n "$pgdata" ] && [ -n "$mount" ]; then
-    rel=${pgdata#"$mount"/}
-    if [ "$rel" != "$pgdata" ] && [ -n "$rel" ]; then
-      PG_REUSE_PGDIR=$rel
-    fi
+  [ -n "$mount" ] || die "reuse-volume: could not find the 'data' volume mount on $pod"
+  rel=${pgdata#"$mount"/}
+  if [ "$rel" = "$pgdata" ] || [ -z "$rel" ]; then
+    die "reuse-volume: PGDATA $pgdata is not under the data volume mount $mount"
   fi
-  log "postgres volume reuse: pvc=$PG_REUSE_PVC  image=postgres:$PG_REUSE_IMAGE_TAG  uid=$PG_REUSE_UID  pgDir=$PG_REUSE_PGDIR  (v1 server_version=$ver)"
+  PG_REUSE_PGDIR=$rel
+  log "postgres volume reuse: pvc=$PG_REUSE_PVC  image=postgres:$PG_REUSE_IMAGE_TAG  uid=$PG_REUSE_UID  pgDir=$PG_REUSE_PGDIR  sourcePod=$PG_REUSE_SOURCE_POD  (v1 server_version=$ver)"
 }
 
 retain_postgres_volume() {
@@ -512,6 +521,7 @@ write_values() {
       --postgres-database "$V1_PG_DB"
       --postgres-run-as-user "$PG_REUSE_UID"
       --postgres-pg-dir "$PG_REUSE_PGDIR"
+      --postgres-source-pod "$PG_REUSE_SOURCE_POD"
     )
   fi
   # Feed the JSON converted by yaml_to_json (like the --plan call) so the
@@ -679,13 +689,52 @@ require_sibling_store() {
     || die "resume failed: $kind/$name is missing on $TARGET_RELEASE. helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run."
 }
 
+require_postgres_reuse_mount() {
+  local sts="${TGT_FULLNAME}-postgresql"
+  local claim vct
+  kx -n "$NAMESPACE" get sts "$sts" >/dev/null \
+    || die "reuse-volume: StatefulSet/$sts not found on $TARGET_RELEASE"
+  vct=$(kx -n "$NAMESPACE" get sts "$sts" -o jsonpath='{.spec.volumeClaimTemplates[*].metadata.name}')
+  claim=$(kx -n "$NAMESPACE" get sts "$sts" -o jsonpath='{range .spec.template.spec.volumes[*]}{.persistentVolumeClaim.claimName}{"\n"}{end}' | awk 'NF' | head -1)
+  if [ -n "$vct" ]; then
+    die "reuse-volume: StatefulSet/$sts still uses volumeClaimTemplates ($vct) instead of PVC $PG_REUSE_PVC. Switching a sibling from logical replication to reuse-volume is a forbidden STS update. helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run with --postgres-mode reuse-volume."
+  fi
+  if [ "$claim" != "$PG_REUSE_PVC" ]; then
+    die "reuse-volume: StatefulSet/$sts does not mount PVC $PG_REUSE_PVC (got '${claim:-none}'). helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run."
+  fi
+}
+
+refuse_reuse_comount() {
+  local pod="${TGT_FULLNAME}-postgresql-0"
+  local phase
+  phase=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+  if [ "$phase" = "Running" ]; then
+    die "reuse-volume: $pod is Running while v1 Postgres still holds the volume — possible ReadWriteOnce co-mount on the same node. Aborting."
+  fi
+}
+
+scale_deploy_if_present() {
+  local name=$1 replicas=$2
+  if kx -n "$NAMESPACE" get deploy "$name" >/dev/null 2>&1; then
+    kx -n "$NAMESPACE" scale "deploy/$name" --replicas="$replicas"
+  else
+    log "Deployment/$name not found — skipping scale to $replicas"
+  fi
+}
+
 if ! hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
   confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime; ingress stays on v1)?"
   helm_apply "$TARGET_RELEASE" -f "$OUTPUT_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
+  if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+    require_postgres_reuse_mount
+  fi
 else
   RESUME_TARGET=1
   confirm "Resume against existing release $TARGET_RELEASE? Stores must already match the generated overlay."
   [ "$PG_ON" -eq 1 ] && require_sibling_store sts "${TGT_FULLNAME}-postgresql"
+  if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+    require_postgres_reuse_mount
+  fi
   [ "$S3_ON" -eq 1 ] && require_sibling_store deploy "${TGT_FULLNAME}-s3-all-in-one"
   [ "$CH_ON" -eq 1 ] && require_sibling_store pod "${TGT_FULLNAME}-clickhouse-0-0-0"
   require_sibling_store deploy "$V2_WEB"
@@ -693,7 +742,8 @@ fi
 
 [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" != "reuse-volume" ] && wait_sts "${TGT_FULLNAME}-postgresql"
 if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
-  log "postgres volume reuse: sibling STS ${TGT_FULLNAME}-postgresql will stay Pending until v1 releases PVC $PG_REUSE_PVC"
+  log "postgres volume reuse: sibling STS ${TGT_FULLNAME}-postgresql stays unschedulable until v1 Postgres leaves the node (required anti-affinity on $PG_REUSE_SOURCE_POD)"
+  refuse_reuse_comount
 fi
 [ "$REDIS_ON" -eq 1 ] && {
   if kx -n "$NAMESPACE" get sts "${TGT_FULLNAME}-redis" >/dev/null 2>&1; then
@@ -910,14 +960,18 @@ if [ "$V1_WEB_HAD_REPLICAS" -eq 1 ]; then
 else
   log "v1 web was already at 0 replicas — skipping queue drain"
 fi
-kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-worker" --replicas=0 >/dev/null 2>&1 || true
+scale_deploy_if_present "${SRC_FULLNAME}-worker" 0
 
 if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
   confirm "Detach Bitnami Postgres from PVC $PG_REUSE_PVC and start sibling Postgres on that volume?"
+  refuse_reuse_comount
   retain_postgres_volume
   log "scaling ${SRC_FULLNAME}-postgresql to 0 (releases the RWO volume)"
   kx -n "$NAMESPACE" scale "sts/${SRC_FULLNAME}-postgresql" --replicas=0
-  kx -n "$NAMESPACE" wait pod "${SRC_FULLNAME}-postgresql-0" --for=delete --timeout=180s || true
+  if kx -n "$NAMESPACE" get pod "${SRC_FULLNAME}-postgresql-0" >/dev/null 2>&1; then
+    kx -n "$NAMESPACE" wait pod "${SRC_FULLNAME}-postgresql-0" --for=delete --timeout=180s \
+      || die "reuse-volume: v1 Postgres pod did not terminate; refusing to attach the volume"
+  fi
   wait_sts "${TGT_FULLNAME}-postgresql"
 elif [ "$PG_ON" -eq 1 ]; then
   log "waiting for Postgres lag_bytes=0"
@@ -945,12 +999,9 @@ if [ "$CH_ON" -eq 1 ]; then
 fi
 
 # --- 8. Bring v2 writers up, then shift traffic -----------------------------
-if [ "$V1_WEB_HAD_REPLICAS" -eq 0 ]; then
-  log "v1 web was at 0 replicas — leaving $V2_WEB scaled down (stores migrated; no traffic shift)"
-else
 log "scaling $V2_WEB / $V2_WORKER up"
 kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=1
-kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=1 >/dev/null 2>&1 || true
+scale_deploy_if_present "$V2_WORKER" 1
 wait_deploy "$V2_WEB"
 
 if [ "$INGRESS_ON" -eq 1 ]; then
@@ -981,7 +1032,6 @@ READY=$(kx -n "$NAMESPACE" run "${TGT_FULLNAME}-ready-check" --rm -i --restart=N
   curl -sf "http://${V2_WEB}.${NAMESPACE}.svc.cluster.local:3000/api/public/ready" || true)
 log "v2 readiness: ${READY:-<empty>}"
 [ -n "$READY" ] || fail_or_force "v2 readiness check failed for Service/$V2_WEB"
-fi
 
 cat <<EOF
 

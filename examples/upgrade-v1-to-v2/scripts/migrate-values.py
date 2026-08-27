@@ -288,15 +288,17 @@ def apply_postgres_volume_reuse(
     password: str | None,
     run_as_user: int,
     pg_dir: str,
+    source_pod: str | None = None,
 ) -> None:
     """Mount the Bitnami PVC on groundhog2k/postgres instead of creating a new volume.
 
     Bitnami stores PGDATA in a `data/` subdirectory of the volume and runs as UID
     1001. Official postgres (groundhog2k) defaults to `/var/lib/postgresql/data/pg`
     and UID 999 — both must be overridden or the existing files are invisible /
-    unreadable. The sibling overlay keeps replicaCount at the sub-chart default
-    (1); the migration script leaves v1 Postgres running until freeze so the v2
-    pod stays Pending on the RWO volume, then scales v1 to 0.
+    unreadable. ReadWriteOnce is per-node, not per-pod, so a required anti-affinity
+    against the v1 Postgres pod keeps the sibling off that node (and therefore
+    unable to attach) until freeze scales v1 to 0. The existing PVC access mode is
+    left unchanged: ReadWriteOncePod cannot be patched onto a bound claim.
     """
     uid = int(run_as_user)
     # The chart blocks a helm upgrade that still deploys Postgres when the
@@ -349,7 +351,7 @@ def apply_postgres_volume_reuse(
                 (
                     "set -e\n"
                     f'DATA="{data_dir}"\n'
-                    'if [ ! -f "$DATA/PG_VERSION" ]; then echo "bitnami-pgconf: no PG_VERSION in $DATA"; exit 0; fi\n'
+                    'if [ ! -f "$DATA/PG_VERSION" ]; then echo "bitnami-pgconf: no PG_VERSION in $DATA (wrong pgDir? refusing to initdb an empty cluster)"; exit 1; fi\n'
                     'if [ ! -f "$DATA/postgresql.conf" ]; then\n'
                     '  printf "%s\\n" "listen_addresses = \'*\'" "port = 5432" '
                     '"unix_socket_directories = \'/tmp\'" "password_encryption = scram-sha-256" '
@@ -384,6 +386,21 @@ def apply_postgres_volume_reuse(
     pg["customStartupProbe"] = {**probe_exec, "failureThreshold": 30}
     pg["customLivenessProbe"] = {**probe_exec, "failureThreshold": 3}
     pg["customReadinessProbe"] = {**probe_exec, "failureThreshold": 3}
+    if source_pod:
+        pg["affinity"] = {
+            "podAntiAffinity": {
+                "requiredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "statefulset.kubernetes.io/pod-name": source_pod,
+                            }
+                        },
+                        "topologyKey": "kubernetes.io/hostname",
+                    }
+                ]
+            }
+        }
 
 
 def migrate_sibling(
@@ -470,6 +487,10 @@ def main() -> int:
     )
     p.add_argument("--postgres-run-as-user", type=int, default=1001, help="UID/GID of the Bitnami data files (default 1001)")
     p.add_argument("--postgres-pg-dir", default="data", help="PGDATA directory on the Bitnami volume (default data)")
+    p.add_argument(
+        "--postgres-source-pod",
+        help="v1 Postgres pod name for required anti-affinity (reuse-volume). Prevents RWO co-mount on the same node",
+    )
     args = p.parse_args()
 
     v1 = load(None if args.input == "-" else args.input)
@@ -495,6 +516,12 @@ def main() -> int:
         if not args.postgres_pvc or not args.postgres_image_tag:
             sys.stderr.write("error: --postgres-pvc and --postgres-image-tag are required for reuse-volume\n")
             return 2
+        if not args.postgres_source_pod:
+            sys.stderr.write(
+                "error: --postgres-source-pod is required for reuse-volume "
+                "(required anti-affinity against the v1 Postgres pod; ReadWriteOnce is per-node)\n"
+            )
+            return 2
         pg_src = v1.get("postgresql") or {}
         auth_src = pg_src.get("auth") if isinstance(pg_src, dict) else {}
         if not isinstance(auth_src, dict):
@@ -513,6 +540,7 @@ def main() -> int:
             "password": password,
             "run_as_user": args.postgres_run_as_user,
             "pg_dir": args.postgres_pg_dir,
+            "source_pod": args.postgres_source_pod,
         }
 
     if mode in ("sibling", "cutover"):
