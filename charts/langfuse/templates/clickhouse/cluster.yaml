@@ -29,7 +29,7 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity }}
+  {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName }}
   podTemplate:
     {{- with .Values.clickhouse.cluster.nodeSelector }}
     nodeSelector:
@@ -42,6 +42,9 @@ spec:
     {{- with .Values.clickhouse.cluster.affinity }}
     affinity:
       {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.priorityClassName }}
+    priorityClassName: {{ . | quote }}
     {{- end }}
   {{- end }}
   settings:

@@ -128,6 +128,9 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with (coalesce .Values.langfuse.worker.pod.priorityClassName .Values.langfuse.priorityClassName) }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
       {{- with .Values.langfuse.dnsConfig }}
       dnsConfig:
         {{- toYaml . | nindent 8 }}
