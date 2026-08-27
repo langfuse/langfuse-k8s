@@ -163,22 +163,9 @@ Run Postgres, object storage, and ClickHouse syncs in parallel.
 
 ##### 2a. PostgreSQL — logical replication
 
-```bash
-kubectl -n langfuse exec langfuse-postgresql-0 -- \
-  psql -U postgres -d postgres_langfuse -c "CREATE PUBLICATION lf_pub FOR ALL TABLES;"
-
-SU_PW=$(kubectl -n langfuse get secret langfuse-v2-postgresql-auth -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
-kubectl -n langfuse exec langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse -tAc \
-  "SELECT 'TRUNCATE TABLE '||string_agg(format('%I.%I',schemaname,tablename),', ')||' CASCADE;' \
-   FROM pg_tables WHERE schemaname='public';" | \
-  kubectl -n langfuse exec -i langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse
-
-V1_PW=$(kubectl -n langfuse get secret langfuse-postgresql -o jsonpath='{.data.postgres-password}' | base64 -d)
-kubectl -n langfuse exec langfuse-v2-postgresql-0 -- env PGPASSWORD="$SU_PW" psql -U postgres -d langfuse -c \
-  "CREATE SUBSCRIPTION lf_sub \
-   CONNECTION 'host=langfuse-postgresql port=5432 dbname=postgres_langfuse user=postgres password=${V1_PW}' \
-   PUBLICATION lf_pub;"
-```
+Use `scripts/migrate-v1-to-v2.sh`. It reads both PostgreSQL passwords from the
+cluster Secrets and carries them to `psql` over stdin. Do not place passwords in
+`kubectl exec` arguments or inline SQL passed with `psql -c`.
 
 Watch catch-up (`lag_bytes=0`):
 
@@ -189,17 +176,9 @@ kubectl -n langfuse exec langfuse-postgresql-0 -- psql -U postgres -d postgres_l
 
 ##### 2b. Object storage — MinIO → SeaweedFS
 
-```bash
-V1_KEY=$(kubectl -n langfuse get secret langfuse-s3 -o jsonpath='{.data.root-user}' | base64 -d)
-V1_SECRET=$(kubectl -n langfuse get secret langfuse-s3 -o jsonpath='{.data.root-password}' | base64 -d)
-V2_KEY=$(kubectl -n langfuse get secret langfuse-v2-s3-auth -o jsonpath='{.data.accessKey}' | base64 -d)
-V2_SECRET=$(kubectl -n langfuse get secret langfuse-v2-s3-auth -o jsonpath='{.data.secretKey}' | base64 -d)
-
-mc alias set v1 http://langfuse-s3.langfuse.svc.cluster.local:9000 "$V1_KEY" "$V1_SECRET"
-mc alias set v2 http://langfuse-v2-s3-all-in-one.langfuse.svc.cluster.local:8333 "$V2_KEY" "$V2_SECRET"
-mc mb --ignore-existing v2/langfuse
-mc mirror --overwrite --watch v1/langfuse v2/langfuse
-```
+Use `scripts/migrate-v1-to-v2.sh`. It imports both `mc` aliases from JSON over
+stdin before starting the mirror. Do not pass access keys or secret keys to
+`mc alias set` as command arguments.
 
 ##### 2c. ClickHouse — `remote()` watermark loop
 
