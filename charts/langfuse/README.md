@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.0.3](https://img.shields.io/badge/Version-2.0.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.24.0](https://img.shields.io/badge/AppVersion-4.24.0-informational?style=flat-square)
+![Version: 2.1.0](https://img.shields.io/badge/Version-2.1.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.17.0](https://img.shields.io/badge/AppVersion-4.17.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -73,6 +73,23 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
+| langfuse.aiFeatures | object | `{"apiKey":{"secretKeyRef":{"key":"","name":""},"value":""},"baseUrl":"","bedrockRegion":"","extraHeaders":"","inAppAgent":{"enabled":false,"mcp":{"useInternalWebUrl":false},"sandbox":{"egressNetworkConnectorArn":"","executionRoleArn":"","imageIdentifier":"","provider":"","region":""}},"model":"","projectId":"","provider":"","smallModel":"","useResponsesApi":false}` | Langfuse AI features: the in-app agent and Ask AI. One instance-wide Langfuse AI model powers both. Requires application version >= 4.24. Helm does not create AWS Lambda MicroVM resources; pass ARNs from Terraform or a manual AWS setup. See https://langfuse.com/self-hosting/configuration/langfuse-assistant |
+| langfuse.aiFeatures.apiKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_API_KEY (anthropic and openai). Prefer secretKeyRef. |
+| langfuse.aiFeatures.baseUrl | string | `""` | LANGFUSE_AI_BASE_URL. For openai, include `/v1`. |
+| langfuse.aiFeatures.bedrockRegion | string | `""` | LANGFUSE_AI_AWS_BEDROCK_REGION |
+| langfuse.aiFeatures.extraHeaders | string | `""` | LANGFUSE_AI_EXTRA_HEADERS as a JSON object string |
+| langfuse.aiFeatures.inAppAgent.enabled | bool | `false` | Set to `true` to set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker |
+| langfuse.aiFeatures.inAppAgent.mcp.useInternalWebUrl | bool | `false` | Point the worker's MCP calls at the in-cluster web Service and allow that Host on web. Sets LANGFUSE_MCP_BASE_URL, so the externally resolvable NEXTAUTH_URL is left alone; the worker also builds email and Slack links from it. Requires a Langfuse version that supports LANGFUSE_MCP_BASE_URL. |
+| langfuse.aiFeatures.inAppAgent.sandbox.egressNetworkConnectorArn | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN. Required with the lambda-microvm provider: without it AWS attaches its default INTERNET_EGRESS connector and sandboxed code reaches the public internet. |
+| langfuse.aiFeatures.inAppAgent.sandbox.executionRoleArn | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN |
+| langfuse.aiFeatures.inAppAgent.sandbox.imageIdentifier | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER |
+| langfuse.aiFeatures.inAppAgent.sandbox.provider | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. Use `lambda-microvm` on AWS. Leave empty for Langfuse tools only. |
+| langfuse.aiFeatures.inAppAgent.sandbox.region | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION |
+| langfuse.aiFeatures.model | string | `""` | LANGFUSE_AI_MODEL. Required whenever provider is set. |
+| langfuse.aiFeatures.projectId | string | `""` | LANGFUSE_AI_FEATURES_PROJECT_ID for tracing AI feature runs on this instance |
+| langfuse.aiFeatures.provider | string | `""` | LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default. |
+| langfuse.aiFeatures.smallModel | string | `""` | LANGFUSE_AI_SMALL_MODEL for supplementary calls such as conversation titles |
+| langfuse.aiFeatures.useResponsesApi | bool | `false` | Set LANGFUSE_AI_USE_RESPONSES_API=true for the OpenAI Responses API |
 | langfuse.allowV1Upgrade | bool | `false` | Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release). |
 | langfuse.allowedOrganizationCreators | list | `[]` | EE: Langfuse allowed organization creators. See [documentation](https://langfuse.com/self-hosting/organization-creators) |
 | langfuse.deployment.annotations | object | `{}` | Annotations for all langfuse deployments |

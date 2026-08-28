@@ -252,6 +252,36 @@ s3:
 
 See the [Helm README](https://github.com/langfuse/langfuse-k8s/blob/main/charts/langfuse/README.md) for a full list of all configuration options.
 
+#### Langfuse AI features
+
+The AI features — the in-app agent and Ask AI — run on one instance-wide Langfuse AI model. Requires Langfuse `>= 4.24` (`langfuse.image.tag`). Set `langfuse.aiFeatures.provider` and `langfuse.aiFeatures.model`.
+
+Helm does not create AWS Lambda MicroVM resources for the agent's code execution sandbox — either let [langfuse-terraform-aws](https://github.com/langfuse/langfuse-terraform-aws) create them, or create them by hand and pass the ARNs into `langfuse.aiFeatures.inAppAgent.sandbox`. See the [self-hosted docs](https://langfuse.com/self-hosting/configuration/langfuse-assistant).
+
+```yaml
+langfuse:
+  image:
+    tag: "4.24.0" # or newer
+  aiFeatures:
+    provider: bedrock
+    model: eu.anthropic.claude-opus-5
+    bedrockRegion: eu-west-1
+    inAppAgent:
+      enabled: true
+      mcp:
+        useInternalWebUrl: true
+      sandbox:
+        provider: lambda-microvm
+        imageIdentifier: arn:aws:lambda:eu-west-1:123456789012:microvm-image:langfuse-in-app-agent-sandbox
+        executionRoleArn: arn:aws:iam::123456789012:role/langfuse-agent-sandbox-execution
+        region: eu-west-1
+        egressNetworkConnectorArn: arn:aws:lambda:eu-west-1:123456789012:network-connector:langfuse-agent-sandbox-egress
+```
+
+`egressNetworkConnectorArn` is required with the `lambda-microvm` provider: without it AWS attaches its default `INTERNET_EGRESS` connector and sandboxed code reaches the public internet.
+
+`mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications.
+
 #### Storage Provider Options
 
 Langfuse supports multiple blob storage providers through the `s3.storageProvider` configuration:

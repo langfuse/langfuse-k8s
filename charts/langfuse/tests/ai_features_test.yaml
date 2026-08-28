@@ -1,0 +1,160 @@
+suite: Langfuse AI features values
+templates:
+  - validations.yaml
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: does not set AI feature env when unconfigured
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_IN_APP_AGENT_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
+            value: "lambda-microvm"
+        template: worker/deployment.yaml
+
+  - it: sets the model on web and worker and the sandbox only on worker
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: bedrock
+          model: eu.anthropic.claude-opus-5
+          bedrockRegion: eu-west-1
+          inAppAgent:
+            enabled: true
+            sandbox:
+              provider: lambda-microvm
+              imageIdentifier: arn:aws:lambda:eu-west-1:123456789012:microvm-image:langfuse-in-app-agent-sandbox
+              executionRoleArn: arn:aws:iam::123456789012:role/sandbox-execution
+              region: eu-west-1
+              egressNetworkConnectorArn: arn:aws:lambda:eu-west-1:123456789012:network-connector:deny-all
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_IN_APP_AGENT_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_MODEL
+            value: eu.anthropic.claude-opus-5
+        template: worker/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
+            value: lambda-microvm
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
+            value: lambda-microvm
+        template: web/deployment.yaml
+
+  # NEXTAUTH_URL also builds user-facing email and Slack links, so the in-cluster
+  # MCP overlay must not touch it.
+  - it: points only the worker's MCP calls at the in-cluster web Service
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        nextauth:
+          url: https://langfuse.example.com
+        aiFeatures:
+          inAppAgent:
+            mcp:
+              useInternalWebUrl: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_MCP_ALLOWED_HOSTS
+            value: RELEASE-NAME-langfuse-web
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_MCP_BASE_URL
+            value: http://RELEASE-NAME-langfuse-web:3000
+        template: worker/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NEXTAUTH_URL
+            value: https://langfuse.example.com
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NEXTAUTH_URL
+            value: http://RELEASE-NAME-langfuse-web:3000
+        template: worker/deployment.yaml
+
+  - it: fails when the sandbox has no egress connector, which would give it internet access
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          inAppAgent:
+            sandbox:
+              provider: lambda-microvm
+              imageIdentifier: arn:aws:lambda:eu-west-1:123456789012:microvm-image:img
+              executionRoleArn: arn:aws:iam::123456789012:role/sandbox-execution
+              region: eu-west-1
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.inAppAgent.sandbox.egressNetworkConnectorArn is required when sandbox.provider is lambda-microvm. Without it AWS attaches its default INTERNET_EGRESS connector and sandboxed code reaches the public internet. Set it to a VPC egress connector with a deny-all security group."
+        template: validations.yaml
+
+  - it: fails when the sandbox provider is set without the required ARNs
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          inAppAgent:
+            sandbox:
+              provider: lambda-microvm
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.inAppAgent.sandbox.imageIdentifier, executionRoleArn, and region are required when sandbox.provider is lambda-microvm"
+        template: validations.yaml
+
+  - it: fails when the in-app agent is enabled without a model
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          inAppAgent:
+            enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.provider and langfuse.aiFeatures.model are required when langfuse.aiFeatures.inAppAgent.enabled is true"
+        template: validations.yaml
+
+  - it: fails when a provider is set without a model
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: bedrock
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.model is required when langfuse.aiFeatures.provider is set"
+        template: validations.yaml

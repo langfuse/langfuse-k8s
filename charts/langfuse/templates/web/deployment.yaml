@@ -84,6 +84,7 @@ spec:
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- include "langfuse.aiFeaturesMcpWebEnv" . | nindent 12 }}
           {{- $additionalEnvFrom := concat (.Values.langfuse.additionalEnvFrom | default list ) (.Values.langfuse.web.pod.additionalEnvFrom | default list )}}
           {{- with $additionalEnvFrom }}
           envFrom:

@@ -74,6 +74,7 @@ spec:
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
+            {{- include "langfuse.agentSandboxEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.worker.pod.additionalEnv | default list )}}
             {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
             - name: HOSTNAME
@@ -82,6 +83,7 @@ spec:
             {{- with $additionalEnv }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+            {{- include "langfuse.aiFeaturesMcpWorkerEnv" . | nindent 12 }}
           {{- $additionalEnvFrom := concat (.Values.langfuse.additionalEnvFrom | default list ) (.Values.langfuse.worker.pod.additionalEnvFrom | default list )}}
           {{- with $additionalEnvFrom }}
           envFrom:

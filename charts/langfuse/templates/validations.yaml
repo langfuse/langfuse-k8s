@@ -354,3 +354,21 @@ what you are doing.
 {{- if and $workerPdb.create $workerMinAvailableSet $workerMaxUnavailableSet -}}
     {{- fail "Pod Disruption Budget for worker component cannot have both minAvailable and maxUnavailable values" -}}
 {{- end -}}
+
+{{- $aiFeatures := .Values.langfuse.aiFeatures | default dict -}}
+{{- $inAppAgent := $aiFeatures.inAppAgent | default dict -}}
+{{- if and $aiFeatures.provider (not $aiFeatures.model) -}}
+    {{- fail "langfuse.aiFeatures.model is required when langfuse.aiFeatures.provider is set" -}}
+{{- end -}}
+{{- if and $inAppAgent.enabled (not $aiFeatures.model) -}}
+    {{- fail "langfuse.aiFeatures.provider and langfuse.aiFeatures.model are required when langfuse.aiFeatures.inAppAgent.enabled is true" -}}
+{{- end -}}
+{{- $sandbox := $inAppAgent.sandbox | default dict -}}
+{{- if eq ($sandbox.provider | default "") "lambda-microvm" -}}
+{{- if or (not $sandbox.imageIdentifier) (not $sandbox.executionRoleArn) (not $sandbox.region) -}}
+    {{- fail "langfuse.aiFeatures.inAppAgent.sandbox.imageIdentifier, executionRoleArn, and region are required when sandbox.provider is lambda-microvm" -}}
+{{- end -}}
+{{- if not $sandbox.egressNetworkConnectorArn -}}
+    {{- fail "langfuse.aiFeatures.inAppAgent.sandbox.egressNetworkConnectorArn is required when sandbox.provider is lambda-microvm. Without it AWS attaches its default INTERNET_EGRESS connector and sandboxed code reaches the public internet. Set it to a VPC egress connector with a deny-all security group." -}}
+{{- end -}}
+{{- end -}}
