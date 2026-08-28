@@ -1,0 +1,71 @@
+suite: test priorityClassName
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should not set priorityClassName by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.priorityClassName
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.priorityClassName
+        template: worker/deployment.yaml
+      - notExists:
+          path: spec.podTemplate
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.podTemplate
+        template: clickhouse/keeper.yaml
+
+  - it: should apply the global priorityClassName to the web and worker pods
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.priorityClassName: app-critical
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: app-critical
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: app-critical
+        template: worker/deployment.yaml
+
+  - it: should let the per-deployment priorityClassName override the global one
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.priorityClassName: app-critical
+      langfuse.web.pod.priorityClassName: app-web-critical
+      langfuse.worker.pod.priorityClassName: app-non-critical
+    asserts:
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: app-web-critical
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: app-non-critical
+        template: worker/deployment.yaml
+
+  - it: should set priorityClassName on the ClickHouseCluster and KeeperCluster pod templates
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.priorityClassName: clickhouse-critical
+      clickhouse.keeper.priorityClassName: keeper-critical
+    asserts:
+      - equal:
+          path: spec.podTemplate.priorityClassName
+          value: clickhouse-critical
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.podTemplate.priorityClassName
+          value: keeper-critical
+        template: clickhouse/keeper.yaml

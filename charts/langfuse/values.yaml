@@ -115,6 +115,8 @@ langfuse:
   tolerations: []
   # -- Affinity for all langfuse deployments
   affinity: {}
+  # -- PriorityClass for all langfuse deployments
+  priorityClassName: ""
   # -- DNS configuration for all langfuse deployments
   dnsConfig: {}
   pod:
@@ -190,6 +192,8 @@ langfuse:
       affinity: null
       # -- Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- PriorityClass for the web pods. Overrides the global priorityClassName
+      priorityClassName: null
       # -- Allows additional containers to be added to all langfuse web pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
@@ -340,6 +344,8 @@ langfuse:
       affinity: null
       # -- Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
+      # -- PriorityClass for the worker pods. Overrides the global priorityClassName
+      priorityClassName: null
       # -- Allows additional containers to be added to all langfuse worker pods
       extraContainers: []
       # -- List of additional environment variables to be added to all langfuse worker pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
@@ -754,6 +760,8 @@ clickhouse:
     tolerations: []
     # -- Affinity rules for ClickHouse pods.
     affinity: {}
+    # -- PriorityClass for ClickHouse pods.
+    priorityClassName: ""
     # -- Extra ClickHouse server settings applied under the `<clickhouse>` config section.
     settings: {}
     # -- Extra ClickHouse user profile settings mounted into users.xml.
@@ -789,6 +797,8 @@ clickhouse:
     tolerations: []
     # -- Affinity rules for Keeper pods.
     affinity: {}
+    # -- PriorityClass for Keeper pods.
+    priorityClassName: ""
 
 # S3 / Object Storage Configuration
 # Deploys SeaweedFS in allInOne mode via the seaweedfs/seaweedfs sub-chart (image `chrislusf/seaweedfs`).
