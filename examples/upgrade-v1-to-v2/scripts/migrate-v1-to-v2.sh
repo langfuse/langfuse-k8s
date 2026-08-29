@@ -79,6 +79,42 @@ need_cmd() {
 kx() { "$KUBECTL" ${KCTX:+--context "$KCTX"} "$@"; }
 hx() { "$HELM" ${KCTX:+--kube-context "$KCTX"} "$@"; }
 
+kx_exec_with_secret_env() {
+  local forward_stdin=0
+  if [ "${1:-}" = "--forward-stdin" ]; then
+    forward_stdin=1
+    shift
+  fi
+  local namespace=$1 pod=$2 env_name=$3 secret=$4
+  shift 4
+  local secret_length
+  secret_length=$(LC_ALL=C printf '%s' "$secret" | wc -c | tr -d '[:space:]')
+  if [ "$forward_stdin" -eq 1 ]; then
+    {
+      printf '%s' "$secret"
+      cat
+    } | kx -n "$namespace" exec -i "$pod" -- sh -c '
+      secret_length=$1
+      env_name=$2
+      shift 2
+      secret=$({ dd bs=1 count="$secret_length" 2>/dev/null; printf .; })
+      secret=${secret%?}
+      export "$env_name=$secret"
+      exec "$@"
+    ' sh "$secret_length" "$env_name" "$@"
+  else
+    printf '%s' "$secret" | kx -n "$namespace" exec -i "$pod" -- sh -c '
+      secret_length=$1
+      env_name=$2
+      shift 2
+      secret=$({ dd bs=1 count="$secret_length" 2>/dev/null; printf .; })
+      secret=${secret%?}
+      export "$env_name=$secret"
+      exec "$@"
+    ' sh "$secret_length" "$env_name" "$@"
+  fi
+}
+
 confirm() {
   local msg=$1
   if [ "$YES" -eq 1 ]; then
@@ -376,7 +412,8 @@ V2_S3_SECRET="${TGT_FULLNAME}-s3-auth"
 v1_pg_super() {
   local pw
   pw=$(secret_data "$NAMESPACE" "$V1_PG_SECRET" "$V1_PG_PW_KEY")
-  kx -n "$NAMESPACE" exec "${SRC_FULLNAME}-postgresql-0" -- env PGPASSWORD="$pw" psql -U postgres "$@"
+  kx_exec_with_secret_env "$NAMESPACE" "${SRC_FULLNAME}-postgresql-0" \
+    PGPASSWORD "$pw" psql -U postgres "$@"
 }
 
 # Chart Ingress is swapped automatically when values enable it, or when the
@@ -654,7 +691,15 @@ fi
 
 pg_exec_v2() {
   local su_pw=$1; shift
-  kx -n "$NAMESPACE" exec -i "${TGT_FULLNAME}-postgresql-0" -- env PGPASSWORD="$su_pw" psql -U postgres -d "$V2_PG_DB" "$@"
+  kx_exec_with_secret_env "$NAMESPACE" "${TGT_FULLNAME}-postgresql-0" \
+    PGPASSWORD "$su_pw" psql -U postgres -d "$V2_PG_DB" "$@"
+}
+
+pg_exec_v2_stdin() {
+  local su_pw=$1; shift
+  kx_exec_with_secret_env --forward-stdin "$NAMESPACE" \
+    "${TGT_FULLNAME}-postgresql-0" PGPASSWORD "$su_pw" \
+    psql -U postgres -d "$V2_PG_DB" "$@"
 }
 
 if [ "$PG_ON" -eq 1 ]; then
@@ -677,7 +722,7 @@ if [ "$PG_ON" -eq 1 ]; then
     # Password goes on stdin so it is not in the kubectl/psql argv.
     printf '%s\n' \
       "CREATE SUBSCRIPTION lf_sub CONNECTION 'host=${SRC_FULLNAME}-postgresql port=5432 dbname=${V1_PG_DB} user=postgres password=${V1_PW}' PUBLICATION lf_pub;" \
-      | pg_exec_v2 "$SU_PW"
+      | pg_exec_v2_stdin "$SU_PW"
   fi
   log "watching replication lag (Ctrl-C only stops the watch; re-run the script to continue)"
   for i in 1 2 3 4 5 6 7 8 9 10; do
@@ -694,6 +739,19 @@ ensure_mc_pod() {
   kx -n "$NAMESPACE" wait pod "$MC_POD" --for=condition=Ready --timeout=180s
 }
 
+mc_import_alias() {
+  local alias=$1 endpoint=$2 access_key=$3 secret_key=$4
+  printf '%s\0' "$endpoint" "$access_key" "$secret_key" \
+    | jq -Rs 'split("\u0000") | {
+        url: .[0],
+        accessKey: .[1],
+        secretKey: .[2],
+        api: "S3v4",
+        path: "auto"
+      }' \
+    | kx -n "$NAMESPACE" exec -i "$MC_POD" -- mc alias import "$alias"
+}
+
 mc_mirror() {
   local watch=$1
   local v1_key v1_secret v2_key v2_secret extra
@@ -704,8 +762,8 @@ mc_mirror() {
   extra=""
   [ "$watch" = "watch" ] && extra="--watch"
   ensure_mc_pod
-  kx -n "$NAMESPACE" exec "$MC_POD" -- mc alias set v1 "http://${V1_S3_SVC}" "$v1_key" "$v1_secret"
-  kx -n "$NAMESPACE" exec "$MC_POD" -- mc alias set v2 "http://${V2_S3_SVC}" "$v2_key" "$v2_secret"
+  mc_import_alias v1 "http://${V1_S3_SVC}" "$v1_key" "$v1_secret"
+  mc_import_alias v2 "http://${V2_S3_SVC}" "$v2_key" "$v2_secret"
   kx -n "$NAMESPACE" exec "$MC_POD" -- mc mb --ignore-existing "v2/${S3_BUCKET}"
   log "mc mirror v1/${S3_BUCKET} → v2/${S3_BUCKET} ${extra}"
   kx -n "$NAMESPACE" exec "$MC_POD" -- mc mirror --overwrite $extra "v1/${S3_BUCKET}" "v2/${S3_BUCKET}"
@@ -763,19 +821,18 @@ v1_redis_pod() {
 
 v1_queue_depth() {
   local pod=$1 pw=$2
-  kx -n "$NAMESPACE" exec "$pod" -- sh -c "
-    export REDISCLI_AUTH=$(printf '%q' "$pw")
+  kx_exec_with_secret_env "$NAMESPACE" "$pod" REDISCLI_AUTH "$pw" sh -c '
     depth=0
-    for k in \$(redis-cli --no-auth-warning --scan --pattern 'bull:*:wait' ; redis-cli --no-auth-warning --scan --pattern 'bull:*:active'); do
-      n=\$(redis-cli --no-auth-warning LLEN \"\$k\" 2>/dev/null || echo 0)
-      depth=\$((depth + \${n:-0}))
+    for k in $(redis-cli --no-auth-warning --scan --pattern "bull:*:wait"; redis-cli --no-auth-warning --scan --pattern "bull:*:active"); do
+      n=$(redis-cli --no-auth-warning LLEN "$k" 2>/dev/null || echo 0)
+      depth=$((depth + ${n:-0}))
     done
-    for k in \$(redis-cli --no-auth-warning --scan --pattern 'bull:*:delayed'); do
-      n=\$(redis-cli --no-auth-warning ZCARD \"\$k\" 2>/dev/null || echo 0)
-      depth=\$((depth + \${n:-0}))
+    for k in $(redis-cli --no-auth-warning --scan --pattern "bull:*:delayed"); do
+      n=$(redis-cli --no-auth-warning ZCARD "$k" 2>/dev/null || echo 0)
+      depth=$((depth + ${n:-0}))
     done
-    echo \$depth
-  " | tr -d '[:space:]'
+    echo "$depth"
+  ' | tr -d '[:space:]'
 }
 
 drain_v1_queues() {
