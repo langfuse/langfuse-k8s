@@ -38,6 +38,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
+| clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
@@ -56,6 +57,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
+| clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
 | clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
@@ -106,6 +108,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.pod.labels | object | `{}` | Labels for all langfuse pods |
 | langfuse.pod.topologySpreadConstraints | list | `[]` | Topology spread constraints for all langfuse pods |
 | langfuse.podSecurityContext | object | `{}` | Pod security context for all langfuse deployments |
+| langfuse.priorityClassName | string | `""` | PriorityClass for all langfuse deployments |
 | langfuse.replicas | int | `1` | Number of replicas to use for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.resources | object | `{}` | Resources for all langfuse deployments. Can be overridden by the individual deployments |
 | langfuse.revisionHistoryLimit | int | `10` | Number of old ReplicaSets to retain to allow rollback. Can be overridden by the individual deployments |
@@ -155,6 +158,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse web pods |
 | langfuse.web.pod.labels | object | `{}` | Labels for the web pods |
 | langfuse.web.pod.nodeSelector | string | `nil` | Node selector for the web pods. Overrides the global nodeSelector |
+| langfuse.web.pod.priorityClassName | string | `nil` | PriorityClass for the web pods. Overrides the global priorityClassName |
 | langfuse.web.pod.tolerations | string | `nil` | Tolerations for the web pods. Overrides the global tolerations |
 | langfuse.web.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the web pods. Overrides the global topologySpreadConstraints |
 | langfuse.web.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
@@ -213,6 +217,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse worker pods |
 | langfuse.worker.pod.labels | object | `{}` | Labels for the worker pods |
 | langfuse.worker.pod.nodeSelector | string | `nil` | Node selector for the worker pods. Overrides the global nodeSelector |
+| langfuse.worker.pod.priorityClassName | string | `nil` | PriorityClass for the worker pods. Overrides the global priorityClassName |
 | langfuse.worker.pod.tolerations | string | `nil` | Tolerations for the worker pods. Overrides the global tolerations |
 | langfuse.worker.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the worker pods. Overrides the global topologySpreadConstraints |
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
