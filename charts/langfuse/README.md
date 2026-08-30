@@ -87,6 +87,14 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.features.experimentalFeaturesEnabled | bool | `false` | Enable experimental features |
 | langfuse.features.signUpDisabled | bool | `false` | Disable public sign up |
 | langfuse.features.telemetryEnabled | bool | `true` | Whether or not to report basic usage statistics to a centralized server. |
+| langfuse.httpRoute.additionalLabels | object | `{}` | Additional labels for the HTTPRoute resource |
+| langfuse.httpRoute.annotations | object | `{}` | Annotations for the HTTPRoute resource |
+| langfuse.httpRoute.apiVersion | string | `""` | API version of the HTTPRoute resource. Auto-detected from the cluster when empty |
+| langfuse.httpRoute.crdCheck | bool | `true` | Set to `false` to skip the Gateway API CRD preflight check (offline rendering, GitOps diff) |
+| langfuse.httpRoute.enabled | bool | `false` | Set to `true` to enable the Gateway API HTTPRoute resource |
+| langfuse.httpRoute.hostnames | list | `[]` | The hostnames matched by this route |
+| langfuse.httpRoute.parentRefs | list | `[]` | The Gateways this route attaches to. Required when `enabled` is `true` |
+| langfuse.httpRoute.rules | list | `[]` | Routing rules. Rules without `backendRefs` are pointed at the langfuse web service. Defaults to a single `/` prefix rule when empty |
 | langfuse.image.pullPolicy | string | `"Always"` | The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.pullSecrets | list | `[]` | The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.tag | string | `nil` | The image tag to use for all langfuse deployments. Can be overridden by the individual deployments. Falls back to appVersion if not set. |

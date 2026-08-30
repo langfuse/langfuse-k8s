@@ -576,6 +576,54 @@ langfuse:
               number: 8080
 ```
 
+##### Enable the Gateway API (HTTPRoute)
+
+As an alternative to `langfuse.ingress`, the chart can render a Gateway API `HTTPRoute`. This requires the [Gateway API CRDs](https://gateway-api.sigs.k8s.io/guides/) and a Gateway controller, plus an existing `Gateway` for the route to attach to.
+
+```yaml
+[...]
+langfuse:
+  httpRoute:
+    enabled: true
+    parentRefs:
+      - name: my-gateway
+        namespace: gateway-system
+        sectionName: https
+    hostnames:
+      - langfuse.your-host.com
+```
+
+When `rules` is omitted, all traffic on the listed hostnames is routed to the Langfuse web service. Provide `rules` for advanced routing — any rule without `backendRefs` still falls back to the Langfuse web service:
+
+```yaml
+[...]
+langfuse:
+  httpRoute:
+    enabled: true
+    parentRefs:
+      - name: my-gateway
+    hostnames:
+      - langfuse.example.com
+    rules:
+      # Custom backend for a specific path
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api/webhook
+        backendRefs:
+          - name: webhook-service
+            port: 8080
+      # Everything else goes to the Langfuse web service
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+        timeouts:
+          request: 60s
+```
+
+Set `langfuse.httpRoute.apiVersion` to pin `gateway.networking.k8s.io/v1beta1` on older clusters; otherwise the version is detected from the cluster. Set `langfuse.httpRoute.crdCheck: false` to skip the CRD preflight when rendering offline (`helm template`, GitOps diffs).
+
 #### Custom Storage Class Definition
 
 The Langfuse chart supports configuring storage classes for all persistent volumes in the deployment. You can configure storage classes in two ways:
