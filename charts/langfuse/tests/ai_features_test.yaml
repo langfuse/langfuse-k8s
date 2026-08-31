@@ -114,7 +114,7 @@ tests:
               provider: dangerous-docker
     asserts:
       - failedTemplate:
-          errorMessage: "langfuse.aiFeatures.inAppAgent.sandbox.provider must be lambda-microvm. The application also accepts dangerous-docker, but refuses it unless NODE_ENV=development, so it cannot work in a chart deployment."
+          errorMessage: "langfuse.aiFeatures.inAppAgent.sandbox.provider must be lambda-microvm. dangerous-docker is a development-only provider and is not usable in a deployed instance."
         template: validations.yaml
 
   - it: fails when the sandbox has no egress connector, which would give it internet access

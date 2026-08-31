@@ -192,7 +192,7 @@ langfuse:
         # -- Point the worker's MCP calls at the in-cluster web Service and allow that Host on web. Sets LANGFUSE_MCP_BASE_URL, so the externally resolvable NEXTAUTH_URL is left alone; the worker also builds email and Slack links from it. Requires application version >= 4.25, unlike the rest of this block; on 4.24 the worker ignores it and falls back to NEXTAUTH_URL.
         useInternalWebUrl: false
       sandbox:
-        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. `lambda-microvm` is the only accepted value; leave empty for Langfuse tools only. The application also has a `dangerous-docker` provider, but it refuses to start unless NODE_ENV=development, so it is not usable here.
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. `lambda-microvm` is the only accepted value; leave empty for Langfuse tools only. The application also has a development-only `dangerous-docker` provider, which is not usable in a deployed instance.
         provider: ""
         # -- LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER
         imageIdentifier: ""
