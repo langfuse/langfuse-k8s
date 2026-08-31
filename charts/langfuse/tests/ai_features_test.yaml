@@ -103,6 +103,20 @@ tests:
             value: http://RELEASE-NAME-langfuse-web:3000
         template: worker/deployment.yaml
 
+  - it: rejects a sandbox provider the chart cannot run
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          inAppAgent:
+            sandbox:
+              provider: dangerous-docker
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.inAppAgent.sandbox.provider must be lambda-microvm. The application also accepts dangerous-docker, but refuses it unless NODE_ENV=development, so it cannot work in a chart deployment."
+        template: validations.yaml
+
   - it: fails when the sandbox has no egress connector, which would give it internet access
     values:
       - ../values.lint.yaml

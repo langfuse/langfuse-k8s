@@ -83,7 +83,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.aiFeatures.inAppAgent.sandbox.egressNetworkConnectorArn | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN. Required with the lambda-microvm provider: without it AWS attaches its default INTERNET_EGRESS connector and sandboxed code reaches the public internet. |
 | langfuse.aiFeatures.inAppAgent.sandbox.executionRoleArn | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN |
 | langfuse.aiFeatures.inAppAgent.sandbox.imageIdentifier | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER |
-| langfuse.aiFeatures.inAppAgent.sandbox.provider | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. Use `lambda-microvm` on AWS. Leave empty for Langfuse tools only. |
+| langfuse.aiFeatures.inAppAgent.sandbox.provider | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. `lambda-microvm` is the only accepted value; leave empty for Langfuse tools only. The application also has a `dangerous-docker` provider, but it refuses to start unless NODE_ENV=development, so it is not usable here. |
 | langfuse.aiFeatures.inAppAgent.sandbox.region | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION |
 | langfuse.aiFeatures.model | string | `""` | LANGFUSE_AI_MODEL. Required whenever provider is set. |
 | langfuse.aiFeatures.projectId | string | `""` | LANGFUSE_AI_FEATURES_PROJECT_ID for tracing AI feature runs on this instance |

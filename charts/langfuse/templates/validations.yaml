@@ -379,6 +379,9 @@ what you are doing.
     {{- fail "langfuse.aiFeatures.provider and langfuse.aiFeatures.model are required when langfuse.aiFeatures.inAppAgent.enabled is true" -}}
 {{- end -}}
 {{- $sandbox := $inAppAgent.sandbox | default dict -}}
+{{- if and $sandbox.provider (ne $sandbox.provider "lambda-microvm") -}}
+    {{- fail "langfuse.aiFeatures.inAppAgent.sandbox.provider must be lambda-microvm. The application also accepts dangerous-docker, but refuses it unless NODE_ENV=development, so it cannot work in a chart deployment." -}}
+{{- end -}}
 {{- if eq ($sandbox.provider | default "") "lambda-microvm" -}}
 {{- if or (not $sandbox.imageIdentifier) (not $sandbox.executionRoleArn) (not $sandbox.region) -}}
     {{- fail "langfuse.aiFeatures.inAppAgent.sandbox.imageIdentifier, executionRoleArn, and region are required when sandbox.provider is lambda-microvm" -}}
