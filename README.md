@@ -280,7 +280,7 @@ langfuse:
 
 `egressNetworkConnectorArn` is required with the `lambda-microvm` provider: without it AWS attaches its default `INTERNET_EGRESS` connector and sandboxed code reaches the public internet.
 
-`mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications.
+`mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications. This one value requires Langfuse `>= 4.25`; the rest of the block works on `>= 4.24`.
 
 #### Storage Provider Options
 
