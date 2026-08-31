@@ -74,7 +74,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
 | langfuse.aiFeatures | object | `{"apiKey":{"secretKeyRef":{"key":"","name":""},"value":""},"baseUrl":"","bedrockRegion":"","extraHeaders":"","inAppAgent":{"enabled":false,"mcp":{"useInternalWebUrl":false},"sandbox":{"egressNetworkConnectorArn":"","executionRoleArn":"","imageIdentifier":"","provider":"","region":""}},"model":"","projectId":"","provider":"","smallModel":"","useResponsesApi":false}` | Langfuse AI features: the in-app agent and Ask AI. One instance-wide Langfuse AI model powers both. Requires application version >= 4.24. Helm does not create AWS Lambda MicroVM resources; pass ARNs from Terraform or a manual AWS setup. See https://langfuse.com/self-hosting/configuration/langfuse-assistant |
-| langfuse.aiFeatures.apiKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_API_KEY (anthropic and openai). Prefer secretKeyRef. |
+| langfuse.aiFeatures.apiKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_API_KEY. Required for anthropic and openai; rejected for bedrock, which authenticates through the AWS credential chain. Prefer secretKeyRef. |
 | langfuse.aiFeatures.baseUrl | string | `""` | LANGFUSE_AI_BASE_URL. For openai, include `/v1`. |
 | langfuse.aiFeatures.bedrockRegion | string | `""` | LANGFUSE_AI_AWS_BEDROCK_REGION |
 | langfuse.aiFeatures.extraHeaders | string | `""` | LANGFUSE_AI_EXTRA_HEADERS as a JSON object string |
@@ -87,7 +87,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.aiFeatures.inAppAgent.sandbox.region | string | `""` | LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION |
 | langfuse.aiFeatures.model | string | `""` | LANGFUSE_AI_MODEL. Required whenever provider is set. |
 | langfuse.aiFeatures.projectId | string | `""` | LANGFUSE_AI_FEATURES_PROJECT_ID for tracing AI feature runs on this instance |
-| langfuse.aiFeatures.provider | string | `""` | LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default. |
+| langfuse.aiFeatures.provider | string | `""` | LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default. Must be set together with model. |
 | langfuse.aiFeatures.smallModel | string | `""` | LANGFUSE_AI_SMALL_MODEL for supplementary calls such as conversation titles |
 | langfuse.aiFeatures.useResponsesApi | bool | `false` | Set LANGFUSE_AI_USE_RESPONSES_API=true for the OpenAI Responses API |
 | langfuse.allowV1Upgrade | bool | `false` | Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release). |

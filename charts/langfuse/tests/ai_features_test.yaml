@@ -147,6 +147,82 @@ tests:
           errorMessage: "langfuse.aiFeatures.provider and langfuse.aiFeatures.model are required when langfuse.aiFeatures.inAppAgent.enabled is true"
         template: validations.yaml
 
+  - it: fails when a model is set without a provider, which silently does nothing
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          model: eu.anthropic.claude-opus-5
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.provider is required when langfuse.aiFeatures.model is set. Without it the model is ignored and the AI features report as unconfigured."
+        template: validations.yaml
+
+  - it: fails when anthropic or openai has no API key
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: anthropic
+          model: claude-opus-5
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.apiKey is required for the anthropic and openai providers. Set apiKey.secretKeyRef, or apiKey.value."
+        template: validations.yaml
+
+  - it: fails when bedrock is given an API key it cannot use
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: bedrock
+          model: eu.anthropic.claude-opus-5
+          apiKey:
+            value: sk-unused
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.apiKey is not used by the bedrock provider, which authenticates through the AWS credential chain. Remove it, or switch provider."
+        template: validations.yaml
+
+  - it: fails on an unsupported provider
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: gemini
+          model: gemini-3-pro
+    asserts:
+      - failedTemplate:
+          errorMessage: "langfuse.aiFeatures.provider must be one of bedrock, anthropic, or openai"
+        template: validations.yaml
+
+  - it: renders the API key by reference for anthropic
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse:
+        aiFeatures:
+          provider: anthropic
+          model: claude-opus-5
+          apiKey:
+            secretKeyRef:
+              name: my-secret
+              key: anthropic-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: my-secret
+                key: anthropic-key
+        template: worker/deployment.yaml
+
   - it: fails when a provider is set without a model
     values:
       - ../values.lint.yaml

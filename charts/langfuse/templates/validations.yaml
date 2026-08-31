@@ -357,8 +357,23 @@ what you are doing.
 
 {{- $aiFeatures := .Values.langfuse.aiFeatures | default dict -}}
 {{- $inAppAgent := $aiFeatures.inAppAgent | default dict -}}
+{{- $apiKey := $aiFeatures.apiKey | default dict -}}
+{{- $apiKeyRef := $apiKey.secretKeyRef | default dict -}}
+{{- $apiKeySet := or $apiKey.value $apiKeyRef.name -}}
+{{- if and $aiFeatures.provider (not (has $aiFeatures.provider (list "bedrock" "anthropic" "openai"))) -}}
+    {{- fail "langfuse.aiFeatures.provider must be one of bedrock, anthropic, or openai" -}}
+{{- end -}}
 {{- if and $aiFeatures.provider (not $aiFeatures.model) -}}
     {{- fail "langfuse.aiFeatures.model is required when langfuse.aiFeatures.provider is set" -}}
+{{- end -}}
+{{- if and $aiFeatures.model (not $aiFeatures.provider) -}}
+    {{- fail "langfuse.aiFeatures.provider is required when langfuse.aiFeatures.model is set. Without it the model is ignored and the AI features report as unconfigured." -}}
+{{- end -}}
+{{- if and (has ($aiFeatures.provider | default "") (list "anthropic" "openai")) (not $apiKeySet) -}}
+    {{- fail "langfuse.aiFeatures.apiKey is required for the anthropic and openai providers. Set apiKey.secretKeyRef, or apiKey.value." -}}
+{{- end -}}
+{{- if and (eq ($aiFeatures.provider | default "") "bedrock") $apiKeySet -}}
+    {{- fail "langfuse.aiFeatures.apiKey is not used by the bedrock provider, which authenticates through the AWS credential chain. Remove it, or switch provider." -}}
 {{- end -}}
 {{- if and $inAppAgent.enabled (not $aiFeatures.model) -}}
     {{- fail "langfuse.aiFeatures.provider and langfuse.aiFeatures.model are required when langfuse.aiFeatures.inAppAgent.enabled is true" -}}

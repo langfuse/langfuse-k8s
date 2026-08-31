@@ -163,13 +163,13 @@ langfuse:
 
   # -- Langfuse AI features: the in-app agent and Ask AI. One instance-wide Langfuse AI model powers both. Requires application version >= 4.24. Helm does not create AWS Lambda MicroVM resources; pass ARNs from Terraform or a manual AWS setup. See https://langfuse.com/self-hosting/configuration/langfuse-assistant
   aiFeatures:
-    # -- LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default.
+    # -- LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default. Must be set together with model.
     provider: ""
     # -- LANGFUSE_AI_MODEL. Required whenever provider is set.
     model: ""
     # -- LANGFUSE_AI_SMALL_MODEL for supplementary calls such as conversation titles
     smallModel: ""
-    # -- LANGFUSE_AI_API_KEY (anthropic and openai). Prefer secretKeyRef.
+    # -- LANGFUSE_AI_API_KEY. Required for anthropic and openai; rejected for bedrock, which authenticates through the AWS credential chain. Prefer secretKeyRef.
     apiKey:
       value: ""
       secretKeyRef:
