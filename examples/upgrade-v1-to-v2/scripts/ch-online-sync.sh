@@ -70,8 +70,22 @@ mkdir -p "$STATE_DIR"
 TPW=$(kx -n "$TARGET_NS" get secret "$TARGET_SECRET" -o jsonpath="{.data.$TARGET_SECRET_KEY}" | base64 -d)
 SPW=$(kx -n "$SOURCE_NS" get secret "$SOURCE_SECRET" -o jsonpath="{.data.$SOURCE_SECRET_KEY}" | base64 -d)
 
-# Run a query on the target ClickHouse (stdin-safe).
-chq() { kx -n "$TARGET_NS" exec -i "$TARGET_POD" -- clickhouse-client --password "$TPW" -q "$1"; }
+# Run a query on the target ClickHouse. The target password and query, which can
+# contain the source password in remote(), are both carried over stdin.
+chq() {
+  local password_length
+  password_length=$(LC_ALL=C printf '%s' "$TPW" | wc -c | tr -d '[:space:]')
+  {
+    printf '%s' "$TPW"
+    printf '%s\n' "$1"
+  } | kx -n "$TARGET_NS" exec -i "$TARGET_POD" -- sh -c '
+    password_length=$1
+    CLICKHOUSE_PASSWORD=$({ dd bs=1 count="$password_length" 2>/dev/null; printf .; })
+    CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD%?}
+    export CLICKHOUSE_PASSWORD
+    exec clickhouse-client --multiquery
+  ' sh "$password_length"
+}
 
 remote_expr() { echo "remote('$SOURCE_HOST','$SOURCE_DB.$1','$SOURCE_USER','$SPW')"; }
 

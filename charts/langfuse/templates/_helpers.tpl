@@ -809,6 +809,108 @@ Return ClickHouse protocol (http or https)
 {{- end -}}
 
 {{/*
+Langfuse AI features: the instance-wide model plus the in-app agent switch.
+Applied to web and worker; both call the model, web for Ask AI and conversation
+titles and worker for agent runs. Requires Langfuse >= 4.24. See
+https://langfuse.com/self-hosting/configuration/langfuse-assistant
+*/}}
+{{- define "langfuse.aiFeaturesEnv" -}}
+{{- $ai := .Values.langfuse.aiFeatures | default dict -}}
+{{- $agent := $ai.inAppAgent | default dict -}}
+{{- if $agent.enabled }}
+- name: LANGFUSE_IN_APP_AGENT_ENABLED
+  value: "true"
+{{- end }}
+{{- if $ai.provider }}
+- name: LANGFUSE_AI_PROVIDER
+  value: {{ $ai.provider | quote }}
+{{- end }}
+{{- if $ai.model }}
+- name: LANGFUSE_AI_MODEL
+  value: {{ $ai.model | quote }}
+{{- end }}
+{{- if $ai.smallModel }}
+- name: LANGFUSE_AI_SMALL_MODEL
+  value: {{ $ai.smallModel | quote }}
+{{- end }}
+{{- if $ai.apiKey }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.aiFeatures.apiKey" "value" $ai.apiKey)) }}
+- name: LANGFUSE_AI_API_KEY
+  {{- . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- if $ai.baseUrl }}
+- name: LANGFUSE_AI_BASE_URL
+  value: {{ $ai.baseUrl | quote }}
+{{- end }}
+{{- if $ai.extraHeaders }}
+- name: LANGFUSE_AI_EXTRA_HEADERS
+  value: {{ $ai.extraHeaders | quote }}
+{{- end }}
+{{- if $ai.useResponsesApi }}
+- name: LANGFUSE_AI_USE_RESPONSES_API
+  value: "true"
+{{- end }}
+{{- if $ai.bedrockRegion }}
+- name: LANGFUSE_AI_AWS_BEDROCK_REGION
+  value: {{ $ai.bedrockRegion | quote }}
+{{- end }}
+{{- if $ai.projectId }}
+- name: LANGFUSE_AI_FEATURES_PROJECT_ID
+  value: {{ $ai.projectId | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Worker-only Lambda MicroVM sandbox variables. Helm does not create AWS resources.
+*/}}
+{{- define "langfuse.agentSandboxEnv" -}}
+{{- $s := (((.Values.langfuse.aiFeatures | default dict).inAppAgent | default dict).sandbox | default dict) -}}
+{{- if $s.provider }}
+- name: LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER
+  value: {{ $s.provider | quote }}
+{{- end }}
+{{- if $s.imageIdentifier }}
+- name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER
+  value: {{ $s.imageIdentifier | quote }}
+{{- end }}
+{{- if $s.executionRoleArn }}
+- name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN
+  value: {{ $s.executionRoleArn | quote }}
+{{- end }}
+{{- if $s.region }}
+- name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION
+  value: {{ $s.region | quote }}
+{{- end }}
+{{- if $s.egressNetworkConnectorArn }}
+- name: LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN
+  value: {{ $s.egressNetworkConnectorArn | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+In-cluster MCP: the worker calls the web Service instead of the public URL.
+Scoped to LANGFUSE_MCP_BASE_URL rather than NEXTAUTH_URL, which the worker also
+uses to build links for users in emails and Slack messages and which therefore
+has to stay externally resolvable.
+*/}}
+{{- define "langfuse.aiFeaturesMcpWebEnv" -}}
+{{- $mcp := (((.Values.langfuse.aiFeatures | default dict).inAppAgent | default dict).mcp | default dict) -}}
+{{- if $mcp.useInternalWebUrl }}
+- name: LANGFUSE_MCP_ALLOWED_HOSTS
+  value: {{ printf "%s-web" (include "langfuse.fullname" .) | quote }}
+{{- end }}
+{{- end -}}
+
+{{- define "langfuse.aiFeaturesMcpWorkerEnv" -}}
+{{- $mcp := (((.Values.langfuse.aiFeatures | default dict).inAppAgent | default dict).mcp | default dict) -}}
+{{- if $mcp.useInternalWebUrl }}
+- name: LANGFUSE_MCP_BASE_URL
+  value: {{ printf "http://%s-web:%v" (include "langfuse.fullname" .) (.Values.langfuse.web.service.port) | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Common environment variables for all deployments
 */}}
 {{- define "langfuse.commonEnv" -}}
@@ -818,4 +920,5 @@ Common environment variables for all deployments
 {{ include "langfuse.redisEnv" . }}
 {{ include "langfuse.clickhouseEnv" . }}
 {{ include "langfuse.s3Env" . }}
+{{ include "langfuse.aiFeaturesEnv" . }}
 {{- end -}}
