@@ -161,6 +161,48 @@ langfuse:
   # -- Allows additional lifecycle hooks to be added to all langfuse deployments
   extraLifecycle: {}
 
+  # -- Langfuse AI features: the in-app agent and Ask AI. One instance-wide Langfuse AI model powers both. Requires application version >= 4.24. Helm does not create AWS Lambda MicroVM resources; pass ARNs from Terraform or a manual AWS setup. See https://langfuse.com/self-hosting/configuration/langfuse-assistant
+  aiFeatures:
+    # -- LANGFUSE_AI_PROVIDER: bedrock, anthropic, or openai. Required to enable the AI features; there is no default. Must be set together with model.
+    provider: ""
+    # -- LANGFUSE_AI_MODEL. Required whenever provider is set.
+    model: ""
+    # -- LANGFUSE_AI_SMALL_MODEL for supplementary calls such as conversation titles
+    smallModel: ""
+    # -- LANGFUSE_AI_API_KEY. Required for anthropic and openai; rejected for bedrock, which authenticates through the AWS credential chain. Prefer secretKeyRef.
+    apiKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    # -- LANGFUSE_AI_BASE_URL. For openai, include `/v1`.
+    baseUrl: ""
+    # -- LANGFUSE_AI_EXTRA_HEADERS as a JSON object string
+    extraHeaders: ""
+    # -- Set LANGFUSE_AI_USE_RESPONSES_API=true for the OpenAI Responses API
+    useResponsesApi: false
+    # -- LANGFUSE_AI_AWS_BEDROCK_REGION
+    bedrockRegion: ""
+    # -- LANGFUSE_AI_FEATURES_PROJECT_ID for tracing AI feature runs on this instance
+    projectId: ""
+    inAppAgent:
+      # -- Set to `true` to set LANGFUSE_IN_APP_AGENT_ENABLED on web and worker
+      enabled: false
+      mcp:
+        # -- Point the worker's MCP calls at the in-cluster web Service and allow that Host on web. Sets LANGFUSE_MCP_BASE_URL, so the externally resolvable NEXTAUTH_URL is left alone; the worker also builds email and Slack links from it. Requires application version >= 4.25, unlike the rest of this block; on 4.24 the worker ignores it and falls back to NEXTAUTH_URL.
+        useInternalWebUrl: false
+      sandbox:
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_PROVIDER. `lambda-microvm` is the only accepted value; leave empty for Langfuse tools only. The application also has a development-only `dangerous-docker` provider, which is not usable in a deployed instance.
+        provider: ""
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_IMAGE_IDENTIFIER
+        imageIdentifier: ""
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EXECUTION_ROLE_ARN
+        executionRoleArn: ""
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_REGION
+        region: ""
+        # -- LANGFUSE_IN_APP_AGENT_SANDBOX_AWS_LAMBDA_MICROVM_EGRESS_NETWORK_CONNECTOR_ARN. Required with the lambda-microvm provider: without it AWS attaches its default INTERNET_EGRESS connector and sandboxed code reaches the public internet.
+        egressNetworkConnectorArn: ""
+
   # Web deployment configuration
   web:
     image:
