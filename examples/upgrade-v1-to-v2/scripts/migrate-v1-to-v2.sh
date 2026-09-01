@@ -29,6 +29,12 @@ MC_IMAGE="${MC_IMAGE:-minio/mc:latest}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 MC_POD=""
 RESUME_TARGET=0
+PG_MODE="${PG_MODE:-logical}"
+PG_REUSE_PVC=""
+PG_REUSE_IMAGE_TAG=""
+PG_REUSE_UID=1001
+PG_REUSE_PGDIR="data"
+PG_REUSE_SOURCE_POD=""
 
 usage() {
   cat <<'EOF'
@@ -61,6 +67,9 @@ Options:
       --dry-run             Preflight + plan + generate values; do not change the cluster
       --skip-prereqs        Do not install cert-manager / ClickHouse operator
       --worker-drain-seconds N  Max seconds to wait for v1 Redis queues after scaling web down (default: 60)
+      --postgres-mode MODE  logical (default): replicate into a new volume.
+                            reuse-volume: scale down Bitnami Postgres and mount
+                            its PVC on the sibling groundhog2k Postgres
   -h, --help                Show this help
 
 Environment: KUBECTL, HELM, KCTX, NAMESPACE, WORKER_DRAIN_SECONDS, MC_IMAGE, IMAGE_TAG
@@ -277,6 +286,7 @@ while [ $# -gt 0 ]; do
     --worker-drain-seconds) WORKER_DRAIN_SECONDS=$2; shift 2 ;;
     --image-tag) IMAGE_TAG=$2; shift 2 ;;
     --force) FORCE=1; shift ;;
+    --postgres-mode) PG_MODE=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
@@ -284,6 +294,10 @@ done
 
 [ -n "$VALUES_FILE" ] || { usage >&2; die "--values is required"; }
 [ -f "$VALUES_FILE" ] || die "values file not found: $VALUES_FILE"
+case "$PG_MODE" in
+  logical|reuse-volume) ;;
+  *) die "--postgres-mode must be 'logical' or 'reuse-volume' (got $PG_MODE)" ;;
+esac
 OUTPUT_VALUES=${OUTPUT_VALUES:-$PWD/v2-values.generated.yaml}
 OUTPUT_CUTOVER_VALUES=${OUTPUT_CUTOVER_VALUES:-$PWD/v2-cutover-values.generated.yaml}
 
@@ -323,7 +337,7 @@ if [ -z "$CHART" ]; then
 fi
 
 V1_JSON=$(yaml_to_json "$VALUES_FILE")
-PLAN_JSON=$(printf '%s' "$V1_JSON" | python3 "$VALUES_MIGRATE" --plan --input -)
+PLAN_JSON=$(printf '%s' "$V1_JSON" | python3 "$VALUES_MIGRATE" --plan --input - --postgres-mode "$PG_MODE")
 PG_ON=0; CH_ON=0; REDIS_ON=0; S3_ON=0; INGRESS_VALUES=0
 printf '%s' "$PLAN_JSON" | jq -e '.postgresql == true' >/dev/null && PG_ON=1
 printf '%s' "$PLAN_JSON" | jq -e '.clickhouse == true' >/dev/null && CH_ON=1
@@ -392,6 +406,7 @@ V2_WORKER="${TGT_FULLNAME}-worker"
 V1_INGRESS="$SRC_FULLNAME"
 
 V1_PG_DB=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.database // "postgres_langfuse"')
+V1_PG_USER=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.username // "postgres"')
 V1_PG_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.existingSecret // empty')
 V1_PG_SECRET=${V1_PG_SECRET:-${SRC_FULLNAME}-postgresql}
 V1_PG_PW_KEY=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.secretKeys.adminPasswordKey // .postgresql.auth.secretKeys.userPasswordKey // "postgres-password"')
@@ -416,6 +431,56 @@ v1_pg_super() {
     PGPASSWORD "$pw" psql -U postgres "$@"
 }
 
+detect_postgres_reuse() {
+  local pod="${SRC_FULLNAME}-postgresql-0"
+  local ver pgdata mount rel uid modes
+  PG_REUSE_PVC="data-${SRC_FULLNAME}-postgresql-0"
+  PG_REUSE_SOURCE_POD=$pod
+  kx -n "$NAMESPACE" get pvc "$PG_REUSE_PVC" >/dev/null \
+    || die "reuse-volume: PVC $PG_REUSE_PVC not found"
+  modes=$(kx -n "$NAMESPACE" get pvc "$PG_REUSE_PVC" -o jsonpath='{.spec.accessModes[*]}')
+  case " $modes " in
+    *" ReadWriteMany "*) die "reuse-volume: PVC $PG_REUSE_PVC is ReadWriteMany; refusing to attach a live Postgres data dir to a second pod" ;;
+  esac
+  printf '%s' " $modes " | grep -q ' ReadWriteOnce' \
+    || die "reuse-volume: PVC $PG_REUSE_PVC accessModes ($modes) must include ReadWriteOnce"
+  kx -n "$NAMESPACE" get pod "$pod" >/dev/null \
+    || die "reuse-volume: pod $pod not found (v1 Postgres must be running so we can read version/UID/PGDATA)"
+  ver=$(v1_pg_super -d postgres -tAc "SHOW server_version;" | tr -d '[:space:]')
+  [ -n "$ver" ] || die "reuse-volume: could not read v1 server_version"
+  PG_REUSE_IMAGE_TAG=${ver%%.*}
+  [[ "$PG_REUSE_IMAGE_TAG" =~ ^[0-9]+$ ]] || die "reuse-volume: unexpected server_version '$ver'"
+  # Bitnami 1.5.x is Debian 12; pin bookworm so glibc matches (see migrate-values.py).
+  PG_REUSE_IMAGE_TAG="${PG_REUSE_IMAGE_TAG}-bookworm"
+  uid=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.spec.containers[0].securityContext.runAsUser}')
+  [ -n "$uid" ] || uid=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.spec.securityContext.runAsUser}')
+  [ -n "$uid" ] || uid=1001
+  PG_REUSE_UID=$uid
+  pgdata=$(kx -n "$NAMESPACE" exec "$pod" -- printenv PGDATA | tr -d '[:space:]')
+  [ -n "$pgdata" ] || die "reuse-volume: PGDATA is empty on $pod"
+  mount=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{range .spec.containers[0].volumeMounts[*]}{.name}{"\t"}{.mountPath}{"\n"}{end}' \
+    | awk -F'\t' '$1=="data"{print $2; exit}')
+  [ -n "$mount" ] || die "reuse-volume: could not find the 'data' volume mount on $pod"
+  rel=${pgdata#"$mount"/}
+  if [ "$rel" = "$pgdata" ] || [ -z "$rel" ]; then
+    die "reuse-volume: PGDATA $pgdata is not under the data volume mount $mount"
+  fi
+  PG_REUSE_PGDIR=$rel
+  log "postgres volume reuse: pvc=$PG_REUSE_PVC  image=postgres:$PG_REUSE_IMAGE_TAG  uid=$PG_REUSE_UID  pgDir=$PG_REUSE_PGDIR  sourcePod=$PG_REUSE_SOURCE_POD  (v1 server_version=$ver)"
+}
+
+retain_postgres_volume() {
+  local pvc=$PG_REUSE_PVC pv
+  kx -n "$NAMESPACE" annotate pvc "$pvc" helm.sh/resource-policy=keep --overwrite
+  kx -n "$NAMESPACE" patch "sts/${SRC_FULLNAME}-postgresql" --type merge -p \
+    '{"spec":{"persistentVolumeClaimRetentionPolicy":{"whenDeleted":"Retain","whenScaled":"Retain"}}}' \
+    >/dev/null 2>&1 || true
+  pv=$(kx -n "$NAMESPACE" get pvc "$pvc" -o jsonpath='{.spec.volumeName}')
+  [ -n "$pv" ] || die "PVC $pvc has no bound PersistentVolume"
+  kx patch pv "$pv" --type merge -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}' >/dev/null
+  log "retained PV/$pv via PVC $pvc (will not delete on v1 uninstall / scale-down)"
+}
+
 # Chart Ingress is swapped automatically when values enable it, or when the
 # existing Ingress is owned by the v1 Helm release. Anything else is treated
 # as externally managed — the script asks you to retarget it.
@@ -428,6 +493,10 @@ if kx -n "$NAMESPACE" get ingress "$V1_INGRESS" >/dev/null 2>&1; then
     warn "Ingress/$V1_INGRESS exists but is not owned by release $SOURCE_RELEASE — treating it as externally managed; you will need to retarget it at $V2_WEB"
   fi
 fi
+
+V1_WEB_HAD_REPLICAS=0
+V1_WEB_REPLICAS=$(kx -n "$NAMESPACE" get deploy "${SRC_FULLNAME}-web" -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 0)
+[ "${V1_WEB_REPLICAS:-0}" != "0" ] && V1_WEB_HAD_REPLICAS=1
 
 V1_MARKERS=0
 EXPECTED_MARKERS=0
@@ -461,6 +530,14 @@ elif [ "$V1_MARKERS" -eq 0 ]; then
   die "no v1 Bitnami resources found for bundled stores on release $SOURCE_RELEASE (looked for ClickHouse STS ${SRC_FULLNAME}-clickhouse-shard0, PVC data-${SRC_FULLNAME}-postgresql-0, and/or Deployment ${SRC_FULLNAME}-s3). Wrong context or already migrated?"
 fi
 
+if [ "$PG_MODE" = "reuse-volume" ]; then
+  [ "$PG_ON" -eq 1 ] || die "--postgres-mode reuse-volume requires postgresql.deploy=true"
+  detect_postgres_reuse
+  POSTGRES_REUSE_PASSWORD=$(secret_data "$NAMESPACE" "$V1_PG_SECRET" "$V1_PG_PW_KEY")
+  [ -n "$POSTGRES_REUSE_PASSWORD" ] || die "reuse-volume: could not read v1 Postgres password from Secret/$V1_PG_SECRET key $V1_PG_PW_KEY"
+  export POSTGRES_REUSE_PASSWORD
+fi
+
 if [ "$NEED_STORES" -eq 1 ] && hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
   warn "target release $TARGET_RELEASE already exists — later steps will reuse it"
 fi
@@ -471,6 +548,18 @@ write_values() {
   local extra=()
   if [ "$mode" != "inplace" ]; then
     extra+=(--target-fullname "$TGT_FULLNAME")
+  fi
+  if [ "$PG_MODE" = "reuse-volume" ] && [ "$PG_ON" -eq 1 ]; then
+    extra+=(
+      --postgres-mode reuse-volume
+      --postgres-pvc "$PG_REUSE_PVC"
+      --postgres-image-tag "$PG_REUSE_IMAGE_TAG"
+      --postgres-username "$V1_PG_USER"
+      --postgres-database "$V1_PG_DB"
+      --postgres-run-as-user "$PG_REUSE_UID"
+      --postgres-pg-dir "$PG_REUSE_PGDIR"
+      --postgres-source-pod "$PG_REUSE_SOURCE_POD"
+    )
   fi
   # Feed the JSON converted by yaml_to_json (like the --plan call) so the
   # yq/PyYAML/Ruby fallback chain holds — migrate-values.py itself can only
@@ -531,7 +620,7 @@ Migration plan (from values; deploy defaults to true when unset)
   context:          $CTX_NAME
   source release:   $SOURCE_RELEASE  (fullname $SRC_FULLNAME)
   target release:   $([ "$NEED_STORES" -eq 1 ] && echo "$TARGET_RELEASE  (fullname $TGT_FULLNAME)" || echo "(in-place upgrade of $SOURCE_RELEASE)")
-  postgresql:       $([ "$PG_ON" -eq 1 ] && echo "migrate (logical replication)" || echo "skip (external / deploy=false)")
+  postgresql:       $([ "$PG_ON" -eq 1 ] && { [ "$PG_MODE" = "reuse-volume" ] && echo "migrate (reuse Bitnami PVC $PG_REUSE_PVC, postgres:$PG_REUSE_IMAGE_TAG)" || echo "migrate (logical replication)"; } || echo "skip (external / deploy=false)")
   clickhouse:       $([ "$CH_ON" -eq 1 ] && echo "migrate (remote() watermark sync)" || echo "skip (external / deploy=false)")
   object storage:   $([ "$S3_ON" -eq 1 ] && echo "migrate (mc mirror MinIO → SeaweedFS)" || echo "skip (external / deploy=false)")
   redis/valkey:     $([ "$REDIS_ON" -eq 1 ] && echo "redeploy empty (ephemeral; no data copy)" || echo "skip (external / deploy=false)")
@@ -614,7 +703,7 @@ EOF
 fi
 
 # --- 4b. Enable logical replication on v1 Postgres --------------------------
-if [ "$PG_ON" -eq 1 ]; then
+if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "logical" ]; then
   WAL=$(v1_pg_super -d postgres -tAc "SHOW wal_level;" | tr -d '[:space:]' || true)
   if [ "$WAL" != "logical" ]; then
     confirm "Enable wal_level=logical on v1 Postgres (ALTER SYSTEM + StatefulSet restart)?"
@@ -626,6 +715,8 @@ if [ "$PG_ON" -eq 1 ]; then
   else
     log "v1 Postgres already has wal_level=logical"
   fi
+elif [ "$PG_ON" -eq 1 ]; then
+  log "postgres volume reuse: skipping wal_level=logical (no replication)"
 fi
 
 # --- 5. Stand up sibling v2 -------------------------------------------------
@@ -635,19 +726,62 @@ require_sibling_store() {
     || die "resume failed: $kind/$name is missing on $TARGET_RELEASE. helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run."
 }
 
+require_postgres_reuse_mount() {
+  local sts="${TGT_FULLNAME}-postgresql"
+  local claim vct
+  kx -n "$NAMESPACE" get sts "$sts" >/dev/null \
+    || die "reuse-volume: StatefulSet/$sts not found on $TARGET_RELEASE"
+  vct=$(kx -n "$NAMESPACE" get sts "$sts" -o jsonpath='{.spec.volumeClaimTemplates[*].metadata.name}')
+  claim=$(kx -n "$NAMESPACE" get sts "$sts" -o jsonpath='{range .spec.template.spec.volumes[*]}{.persistentVolumeClaim.claimName}{"\n"}{end}' | awk 'NF' | head -1)
+  if [ -n "$vct" ]; then
+    die "reuse-volume: StatefulSet/$sts still uses volumeClaimTemplates ($vct) instead of PVC $PG_REUSE_PVC. Switching a sibling from logical replication to reuse-volume is a forbidden STS update. helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run with --postgres-mode reuse-volume."
+  fi
+  if [ "$claim" != "$PG_REUSE_PVC" ]; then
+    die "reuse-volume: StatefulSet/$sts does not mount PVC $PG_REUSE_PVC (got '${claim:-none}'). helm uninstall $TARGET_RELEASE -n $NAMESPACE and re-run."
+  fi
+}
+
+refuse_reuse_comount() {
+  local pod="${TGT_FULLNAME}-postgresql-0"
+  local phase
+  phase=$(kx -n "$NAMESPACE" get pod "$pod" -o jsonpath='{.status.phase}' 2>/dev/null || true)
+  if [ "$phase" = "Running" ]; then
+    die "reuse-volume: $pod is Running while v1 Postgres still holds the volume — possible ReadWriteOnce co-mount on the same node. Aborting."
+  fi
+}
+
+scale_deploy_if_present() {
+  local name=$1 replicas=$2
+  if kx -n "$NAMESPACE" get deploy "$name" >/dev/null 2>&1; then
+    kx -n "$NAMESPACE" scale "deploy/$name" --replicas="$replicas"
+  else
+    log "Deployment/$name not found — skipping scale to $replicas"
+  fi
+}
+
 if ! hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev/null 2>&1; then
   confirm "Install v2 release $TARGET_RELEASE alongside $SOURCE_RELEASE (no downtime; ingress stays on v1)?"
   helm_apply "$TARGET_RELEASE" -f "$OUTPUT_VALUES" "${helm_extra[@]+"${helm_extra[@]}"}"
+  if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+    require_postgres_reuse_mount
+  fi
 else
   RESUME_TARGET=1
   confirm "Resume against existing release $TARGET_RELEASE? Stores must already match the generated overlay."
   [ "$PG_ON" -eq 1 ] && require_sibling_store sts "${TGT_FULLNAME}-postgresql"
+  if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+    require_postgres_reuse_mount
+  fi
   [ "$S3_ON" -eq 1 ] && require_sibling_store deploy "${TGT_FULLNAME}-s3-all-in-one"
   [ "$CH_ON" -eq 1 ] && require_sibling_store pod "${TGT_FULLNAME}-clickhouse-0-0-0"
   require_sibling_store deploy "$V2_WEB"
 fi
 
-[ "$PG_ON" -eq 1 ] && wait_sts "${TGT_FULLNAME}-postgresql"
+[ "$PG_ON" -eq 1 ] && [ "$PG_MODE" != "reuse-volume" ] && wait_sts "${TGT_FULLNAME}-postgresql"
+if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+  log "postgres volume reuse: sibling STS ${TGT_FULLNAME}-postgresql stays unschedulable until v1 Postgres leaves the node (required anti-affinity on $PG_REUSE_SOURCE_POD)"
+  refuse_reuse_comount
+fi
 [ "$REDIS_ON" -eq 1 ] && {
   if kx -n "$NAMESPACE" get sts "${TGT_FULLNAME}-redis" >/dev/null 2>&1; then
     wait_sts "${TGT_FULLNAME}-redis"
@@ -670,6 +804,8 @@ if [ "${V2_WEB_REPLICAS:-0}" != "0" ]; then
   log "scaling $V2_WEB / $V2_WORKER to 0 after schema init (v1 stays the writer)"
   kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=0
   kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=0 >/dev/null 2>&1 || true
+elif [ "$PG_MODE" = "reuse-volume" ]; then
+  log "$V2_WEB is at 0 replicas until the reused Postgres volume is attached at freeze"
 else
   log "$V2_WEB is already at 0 replicas — assuming schema init completed on a previous run"
 fi
@@ -702,7 +838,7 @@ pg_exec_v2_stdin() {
     psql -U postgres -d "$V2_PG_DB" "$@"
 }
 
-if [ "$PG_ON" -eq 1 ]; then
+if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "logical" ]; then
   confirm "Start PostgreSQL logical replication (publication on v1, subscription on v2)?"
   SU_PW=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_PASSWORD)
   V1_PW=$(secret_data "$NAMESPACE" "$V1_PG_SECRET" "$V1_PG_PW_KEY")
@@ -729,6 +865,8 @@ if [ "$PG_ON" -eq 1 ]; then
     pg_exec_v1 -c "SELECT application_name, state, pg_wal_lsn_diff(pg_current_wal_lsn(), replay_lsn) AS lag_bytes FROM pg_stat_replication;" || true
     sleep 3
   done
+elif [ "$PG_ON" -eq 1 ]; then
+  log "postgres volume reuse: no logical replication; sibling will take over PVC $PG_REUSE_PVC at freeze"
 fi
 
 ensure_mc_pod() {
@@ -874,10 +1012,25 @@ drain_v1_queues() {
 confirm "FREEZE window: scale down v1 web (then worker) and run final deltas? This starts application downtime."
 
 kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-web" --replicas=0
-drain_v1_queues
-kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-worker" --replicas=0
+if [ "$V1_WEB_HAD_REPLICAS" -eq 1 ]; then
+  drain_v1_queues
+else
+  log "v1 web was already at 0 replicas — skipping queue drain"
+fi
+scale_deploy_if_present "${SRC_FULLNAME}-worker" 0
 
-if [ "$PG_ON" -eq 1 ]; then
+if [ "$PG_ON" -eq 1 ] && [ "$PG_MODE" = "reuse-volume" ]; then
+  confirm "Detach Bitnami Postgres from PVC $PG_REUSE_PVC and start sibling Postgres on that volume?"
+  refuse_reuse_comount
+  retain_postgres_volume
+  log "scaling ${SRC_FULLNAME}-postgresql to 0 (releases the RWO volume)"
+  kx -n "$NAMESPACE" scale "sts/${SRC_FULLNAME}-postgresql" --replicas=0
+  if kx -n "$NAMESPACE" get pod "${SRC_FULLNAME}-postgresql-0" >/dev/null 2>&1; then
+    kx -n "$NAMESPACE" wait pod "${SRC_FULLNAME}-postgresql-0" --for=delete --timeout=180s \
+      || die "reuse-volume: v1 Postgres pod did not terminate; refusing to attach the volume"
+  fi
+  wait_sts "${TGT_FULLNAME}-postgresql"
+elif [ "$PG_ON" -eq 1 ]; then
   log "waiting for Postgres lag_bytes=0"
   SU_PW=$(secret_data "$NAMESPACE" "$V2_PG_SECRET" POSTGRES_PASSWORD)
   for i in $(seq 1 60); do
@@ -905,7 +1058,7 @@ fi
 # --- 8. Bring v2 writers up, then shift traffic -----------------------------
 log "scaling $V2_WEB / $V2_WORKER up"
 kx -n "$NAMESPACE" scale deploy/"$V2_WEB" --replicas=1
-kx -n "$NAMESPACE" scale deploy/"$V2_WORKER" --replicas=1 >/dev/null 2>&1 || true
+scale_deploy_if_present "$V2_WORKER" 1
 wait_deploy "$V2_WEB"
 
 if [ "$INGRESS_ON" -eq 1 ]; then
@@ -946,10 +1099,11 @@ v2 is release $TARGET_RELEASE (Service $V2_WEB). v1 ($SOURCE_RELEASE) is scaled 
 Next (manual):
   1. Keep $SOURCE_RELEASE until you are confident
   2. helm uninstall $SOURCE_RELEASE -n $NAMESPACE
-  3. Delete retained v1 Bitnami PVCs (data-${SRC_FULLNAME}-postgresql-0, …)
+$([ "$PG_MODE" = "reuse-volume" ] && echo "  3. Do NOT delete PVC data-${SRC_FULLNAME}-postgresql-0 — the sibling Postgres is using it" || echo "  3. Delete retained v1 Bitnami PVCs (data-${SRC_FULLNAME}-postgresql-0, …)")
 
 Rollback before uninstalling v1: scale v1 writers back up
   kubectl -n $NAMESPACE scale deploy/${SRC_FULLNAME}-web deploy/${SRC_FULLNAME}-worker --replicas=1
+$([ "$PG_MODE" = "reuse-volume" ] && echo "  kubectl -n $NAMESPACE scale sts/${TGT_FULLNAME}-postgresql --replicas=0 && kubectl -n $NAMESPACE scale sts/${SRC_FULLNAME}-postgresql --replicas=1")
 $([ "$INGRESS_ON" -eq 1 ] && echo "  (re-create Ingress/$V1_INGRESS from the v1 release if you already deleted it)")
 
 Generated values:

@@ -64,11 +64,13 @@ Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<s
 `--output-values`, `--output-cutover-values`, `--extra-values` (repeatable), `--context`,
 `--image-tag` (defaults to the v1 Helm `appVersion` / values tag), `--skip-prereqs`,
 `--worker-drain-seconds` (max wait for v1 Redis queues after web scale-down), `--force`
-(continue after lag / readiness / queue-drain failures). Helm **≥ 3.17** is required.
+(continue after lag / readiness / queue-drain failures), `--postgres-mode` (`logical`
+default, or `reuse-volume` to attach the Bitnami Postgres PVC to the sibling). Helm
+**≥ 3.17** is required.
 
 | `*.deploy` | Action |
 |------------|--------|
-| `postgresql.deploy: true` | Enable logical replication on v1, subscribe the sibling, drop subscription at freeze |
+| `postgresql.deploy: true` | **logical** (default): enable logical replication on v1, subscribe the sibling, drop subscription at freeze. **reuse-volume**: scale v1 Postgres to 0 and mount `data-<release>-postgresql-0` on the sibling (see below) |
 | `clickhouse.deploy: true` | Incremental `remote()` copy via [`ch-online-sync.sh`](./scripts/ch-online-sync.sh) |
 | `s3.deploy: true` | `mc mirror` MinIO → SeaweedFS (in-cluster `minio/mc` pod) |
 | `redis.deploy: true` | Stand up empty Valkey on the sibling (queue/cache; no data copy) |
@@ -85,13 +87,49 @@ Generated overlays:
 
 | Store | Online (v1 live) | Freeze delta |
 |-------|------------------|--------------|
-| **Postgres** | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
+| **Postgres** (logical) | Logical replication (initial copy + WAL streaming) | Wait `lag_bytes=0`, drop subscription |
+| **Postgres** (`reuse-volume`) | Sibling unschedulable (anti-affinity vs v1 Postgres pod) | Scale v1 Postgres to 0, sibling attaches the same disk |
 | **Object storage (MinIO → SeaweedFS)** | `mc mirror` / `mc mirror --watch` | Final `mc mirror` (new blobs only) |
 | **ClickHouse** | `remote()` INSERT…SELECT with an `event_ts` watermark loop | Final watermark pass (no `OPTIMIZE FINAL` by default) |
 | **Redis / Valkey** | — (ephemeral queue/cache) | — |
 
 Downtime ≈ freeze writers + drain v1 worker queue + final deltas + traffic shift.
 The multi-hour bulk copy runs **outside** the freeze window.
+
+### Postgres `--postgres-mode reuse-volume`
+
+Opt-in alternative to logical replication when you prefer to keep the Bitnami disk
+instead of copying it. The sibling is installed with
+`postgresql.storage.persistentVolumeClaimName` pointing at `data-<source>-postgresql-0`.
+`ReadWriteOnce` is per-node, not per-pod, so the overlay also sets a **required**
+pod anti-affinity against the v1 Postgres pod (`statefulset.kubernetes.io/pod-name`).
+That keeps the sibling off the node that still holds the volume until freeze scales
+v1 Postgres to 0. The existing PVC access mode is left unchanged (`ReadWriteOncePod`
+cannot be patched onto a bound claim).
+
+If the sibling release was already installed with logical replication (its own
+`volumeClaimTemplates` volume), uninstall it and re-run — Helm cannot switch an
+existing StatefulSet onto the Bitnami PVC.
+
+```bash
+./migrate-v1-to-v2.sh --values /path/to/your-v1-values.yaml --postgres-mode reuse-volume
+```
+
+The script pins `postgresql.image.tag` to `<major>-bookworm` (Bitnami 1.5.x is
+Postgres 17 on Debian 12; `postgres:17` is currently Debian 13 and would warn about
+a glibc collation version mismatch). It sets `settings.pgDir=data` (Bitnami PGDATA
+is `<volume>/data`, not groundhog2k's `pg/`), copies the v1 password / database /
+username, runs as the Bitnami UID (usually 1001), and writes `postgresql.conf` /
+`pg_hba.conf` into PGDATA on first start — Bitnami keeps those files in the image,
+not on the PVC. Generated overlays set `langfuse.allowV1Upgrade: true` because the
+chart's v1 guard keys off the Bitnami PVC name (`data-<release>-postgresql-0`) vs
+the empty v2 claim (`postgres-data-<release>-postgresql-0`), and reuse-volume keeps
+the former. Rollback is scale v2 Postgres to 0, then v1 Postgres back to 1 — do
+**not** delete the PVC.
+
+Trade-offs vs logical replication: no online copy and no extra disk, but Postgres is
+unavailable for the freeze window, majors cannot be jumped, and the sibling keeps using
+the v1 PVC name (`helm uninstall` of v1 must retain it).
 
 ## Naming (sibling path)
 
@@ -118,18 +156,29 @@ does.
 ### 0. Prerequisites
 
 1. Install cluster-wide **cert-manager** + **clickhouse-operator** (see [minimal-installation](../minimal-installation/)).
-2. Enable logical replication on **v1 Postgres** (Bitnami) and restart Postgres (or `helm upgrade` v1 once):
+2. **Postgres — pick one:**
+   - **Logical replication** (default, online copy): enable it on **v1 Postgres** (Bitnami) and restart Postgres (or `helm upgrade` v1 once):
 
-   ```yaml
-   postgresql:
-     primary:
-       extendedConfiguration: |
-         wal_level = logical
-         max_wal_senders = 10
-         max_replication_slots = 10
-   ```
+     ```yaml
+     postgresql:
+       primary:
+         extendedConfiguration: |
+           wal_level = logical
+           max_wal_senders = 10
+           max_replication_slots = 10
+     ```
 
-   Verify: `show wal_level;` → `logical`.
+     Verify: `show wal_level;` → `logical`.
+   - **Volume reuse** (same disk, downtime at freeze): skip `wal_level`. Confirm the Bitnami PVC, major version, and UID — the sibling overlay below must match:
+
+     ```bash
+     kubectl -n langfuse get pvc data-langfuse-postgresql-0
+     kubectl -n langfuse exec langfuse-postgresql-0 -- psql -U postgres -tAc 'SHOW server_version;'
+     kubectl -n langfuse get pod langfuse-postgresql-0 -o jsonpath='{.spec.containers[0].securityContext.runAsUser}{"\n"}'
+     kubectl -n langfuse exec langfuse-postgresql-0 -- printenv PGDATA
+     ```
+
+     Bitnami 1.5.x is typically Postgres **17**, UID **1001**, `PGDATA=/bitnami/postgresql/data` (so `settings.pgDir=data`). Pin `postgresql.image.tag` to `<major>-bookworm` (not `18`, and not plain `postgres:17`, which is Debian 13). If `PGDATA` is empty or not under the `data` volume mount, stop — do not guess `pgDir`.
 3. Point the sibling at the **same** Langfuse app Secret as v1 (see [`v2-values.yaml`](./v2-values.yaml)).
    If that Secret is Helm-owned by v1, protect it: `kubectl annotate secret <name> helm.sh/resource-policy=keep`.
 4. Size `clickhouse.cluster.resources` in the sibling overlay for your data volume.
@@ -147,6 +196,8 @@ Keep `*.deploy: false` and the existing host/auth fields. Service / Ingress name
 
 #### 1. Stand up v2 (no downtime)
 
+**Logical replication** — empty sibling Postgres; schema init runs, then park the writers:
+
 ```bash
 helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
   --version 2.0.0 -n langfuse -f v2-values.yaml
@@ -157,11 +208,120 @@ kubectl -n langfuse scale deploy/langfuse-v2-web deploy/langfuse-v2-worker --rep
 
 v1 keeps serving. Leave `langfuse.ingress.enabled: false` on the sibling so v1 keeps the domain.
 
+**Volume reuse** — do not create a new Postgres disk. Merge the overlay below with [`v2-values.yaml`](./v2-values.yaml) (set `auth.password` to the v1 superuser password, keep web/worker at 0). Required anti-affinity against `langfuse-postgresql-0` keeps the sibling **Pending** until freeze (ReadWriteOnce is per-node; do not change the PVC to ReadWriteOncePod). Skip waiting for `langfuse-v2-web` / `langfuse-v2-postgresql`. `langfuse.allowV1Upgrade` is required: the chart guard keys off the Bitnami PVC name and would otherwise refuse a deploy that still sees `data-langfuse-postgresql-0`. If a sibling from logical replication already exists, `helm uninstall langfuse-v2` first — the STS cannot switch from `volumeClaimTemplates` to this PVC.
+
+```yaml
+# postgres-reuse overlay (helm install ... -f v2-values.yaml -f this)
+langfuse:
+  allowV1Upgrade: true
+  replicas: 0
+  web:
+    replicas: 0
+  worker:
+    replicas: 0
+postgresql:
+  deploy: true
+  auth:
+    username: postgres          # v1 default
+    database: postgres_langfuse # v1 default
+    password: "<v1-superuser-password>"
+  image:
+    tag: "17-bookworm"
+  settings:
+    pgDir: data
+    existingSecret: langfuse-v2-postgresql-auth
+  userDatabase:
+    existingSecret: langfuse-v2-postgresql-auth
+  storage:
+    persistentVolumeClaimName: data-langfuse-postgresql-0
+  podSecurityContext:
+    fsGroup: 1001
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              statefulset.kubernetes.io/pod-name: langfuse-postgresql-0
+          topologyKey: kubernetes.io/hostname
+  extraInitContainers:
+    - name: bitnami-pgconf
+      image: docker.io/postgres:17-bookworm
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        runAsNonRoot: true
+        allowPrivilegeEscalation: false
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          DATA="/var/lib/postgresql/data/data"
+          if [ ! -f "$DATA/PG_VERSION" ]; then
+            echo "bitnami-pgconf: no PG_VERSION in $DATA (wrong pgDir? refusing to initdb an empty cluster)"
+            exit 1
+          fi
+          if [ ! -f "$DATA/postgresql.conf" ]; then
+            printf '%s\n' "listen_addresses = '*'" "port = 5432" \
+              "unix_socket_directories = '/tmp'" "password_encryption = scram-sha-256" \
+              > "$DATA/postgresql.conf"
+          fi
+          if [ ! -f "$DATA/pg_hba.conf" ]; then
+            printf '%s\n' "local   all  all                trust" \
+              "host    all  all  127.0.0.1/32  trust" \
+              "host    all  all  ::1/128       trust" \
+              "host    all  all  0.0.0.0/0     scram-sha-256" \
+              "host    all  all  ::/0          scram-sha-256" \
+              > "$DATA/pg_hba.conf"
+          fi
+      volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+  customStartupProbe:
+    exec:
+      command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+    initialDelaySeconds: 10
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 30
+    successThreshold: 1
+  customLivenessProbe:
+    exec:
+      command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+    initialDelaySeconds: 10
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  customReadinessProbe:
+    exec:
+      command: ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+    initialDelaySeconds: 10
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+```
+
+```bash
+helm install langfuse-v2 oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
+  --version 2.0.0 -n langfuse -f v2-values.yaml -f postgres-reuse.yaml
+```
+
+The init container writes `postgresql.conf` / `pg_hba.conf` into PGDATA — Bitnami keeps those files in the image, not on the PVC. A missing `PG_VERSION` is fatal so the official entrypoint cannot `initdb` an empty cluster. Probes use `-U postgres` because UID 1001 has no passwd entry in the official image.
+
 #### 2. Online sync (no downtime)
 
-Run Postgres, object storage, and ClickHouse syncs in parallel.
+Run object storage and ClickHouse syncs in parallel. For Postgres, run **either** 2a **or** skip it (volume reuse has no online copy).
 
 ##### 2a. PostgreSQL — logical replication
+
+Skip this section if you chose volume reuse.
 
 ```bash
 kubectl -n langfuse exec langfuse-postgresql-0 -- \
@@ -218,7 +378,18 @@ kubectl -n langfuse scale deploy/langfuse-web --replicas=0
 kubectl -n langfuse scale deploy/langfuse-worker --replicas=0
 ```
 
-1. **Postgres** — confirm `lag_bytes=0`, then `DROP SUBSCRIPTION lf_sub;` on v2.
+1. **Postgres**
+   - **Logical replication:** confirm `lag_bytes=0`, then `DROP SUBSCRIPTION lf_sub;` on v2.
+   - **Volume reuse:** keep the disk, detach Bitnami, let the sibling attach:
+
+     ```bash
+     kubectl -n langfuse annotate pvc data-langfuse-postgresql-0 helm.sh/resource-policy=keep --overwrite
+     PV=$(kubectl -n langfuse get pvc data-langfuse-postgresql-0 -o jsonpath='{.spec.volumeName}')
+     kubectl patch pv "$PV" --type merge -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+     kubectl -n langfuse scale sts/langfuse-postgresql --replicas=0
+     kubectl -n langfuse wait pod/langfuse-postgresql-0 --for=delete --timeout=180s
+     kubectl -n langfuse rollout status sts/langfuse-v2-postgresql --timeout=600s
+     ```
 2. **Object storage** — final `mc mirror` (no `--watch`).
 3. **ClickHouse** — `./ch-online-sync.sh --final`.
 
@@ -248,12 +419,20 @@ curl -s localhost:3000/api/public/ready
 ```
 
 Keep `langfuse` until you are confident, then `helm uninstall langfuse` and delete retained v1
-PVCs (`data-langfuse-postgresql-0`, …).
+PVCs (`data-langfuse-postgresql-0`, …). **Volume reuse:** do **not** delete `data-langfuse-postgresql-0`
+— the sibling Postgres is using it.
 
 #### Rollback
 
 Until v1 is uninstalled, abort by stopping the sync loops and scaling v1 writers back up. If the
 v1 Ingress was already deleted, restore it from the v1 release before sending traffic back.
+
+**Volume reuse:** scale the sibling Postgres off the disk before bringing Bitnami back:
+
+```bash
+kubectl -n langfuse scale sts/langfuse-v2-postgresql --replicas=0
+kubectl -n langfuse scale sts/langfuse-postgresql --replicas=1
+```
 
 ---
 

@@ -16,11 +16,19 @@ Modes:
             Service names stay on that release.
 
 Reads YAML (or JSON) on stdin / --input and writes v2 values YAML to stdout.
+
+Postgres data movement (sibling/cutover only, when postgresql.deploy is true):
+
+  logical        Default. Empty sibling Postgres; copy with logical replication.
+  reuse-volume   Point the sibling at the Bitnami PVC (data-<src>-postgresql-0)
+                 after v1 Postgres is scaled to 0. Same major version, auth, and
+                 on-disk layout (settings.pgDir=data). No online copy.
 """
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from typing import Any
 
@@ -257,7 +265,151 @@ def apply_auth_secrets(v2: dict[str, Any], fullname: str) -> dict[str, Any]:
     return v2
 
 
-def migrate_sibling(v1: dict[str, Any], target_fullname: str, *, ingress: bool) -> dict[str, Any]:
+def scale_app_to_zero(v2: dict[str, Any]) -> None:
+    """Keep sibling web/worker off until the reused Postgres volume is attached."""
+    lf = v2.setdefault("langfuse", {})
+    if not isinstance(lf, dict):
+        return
+    lf["replicas"] = 0
+    for comp in ("web", "worker"):
+        block = lf.get(comp)
+        block = dict(block) if isinstance(block, dict) else {}
+        block["replicas"] = 0
+        lf[comp] = block
+
+
+def apply_postgres_volume_reuse(
+    v2: dict[str, Any],
+    *,
+    pvc: str,
+    image_tag: str,
+    username: str,
+    database: str,
+    password: str | None,
+    run_as_user: int,
+    pg_dir: str,
+    source_pod: str | None = None,
+) -> None:
+    """Mount the Bitnami PVC on groundhog2k/postgres instead of creating a new volume.
+
+    Bitnami stores PGDATA in a `data/` subdirectory of the volume and runs as UID
+    1001. Official postgres (groundhog2k) defaults to `/var/lib/postgresql/data/pg`
+    and UID 999 — both must be overridden or the existing files are invisible /
+    unreadable. ReadWriteOnce is per-node, not per-pod, so a required anti-affinity
+    against the v1 Postgres pod keeps the sibling off that node (and therefore
+    unable to attach) until freeze scales v1 to 0. The existing PVC access mode is
+    left unchanged: ReadWriteOncePod cannot be patched onto a bound claim.
+    """
+    uid = int(run_as_user)
+    # The chart blocks a helm upgrade that still deploys Postgres when the
+    # Bitnami PVC data-<release>-postgresql-0 is present (v2 would otherwise
+    # create empty postgres-data-<release>-postgresql-0). reuse-volume keeps
+    # that PVC on purpose, so the guard must be lifted.
+    lf = v2.setdefault("langfuse", {})
+    if isinstance(lf, dict):
+        lf["allowV1Upgrade"] = True
+    pg = v2.setdefault("postgresql", {})
+    pg["deploy"] = True
+    auth = pg.setdefault("auth", {})
+    auth["username"] = username
+    auth["database"] = database
+    if password:
+        auth["password"] = password
+    settings = pg.setdefault("settings", {})
+    settings["pgDir"] = pg_dir
+    # Bitnami 1.5.x ships Debian 12 (glibc 2.36). Current docker.io/postgres:<major>
+    # is Debian 13 and prints a collation version mismatch; pin bookworm to stay
+    # on glibc 2.36. Bare majors from SHOW server_version get this suffix.
+    tag = str(image_tag)
+    if tag.isdigit():
+        tag = f"{tag}-bookworm"
+    image = pg.setdefault("image", {})
+    image["tag"] = tag
+    storage = pg.setdefault("storage", {})
+    storage["persistentVolumeClaimName"] = pvc
+    pg["podSecurityContext"] = {"fsGroup": uid}
+    pg["securityContext"] = {
+        "runAsUser": uid,
+        "runAsGroup": uid,
+        "runAsNonRoot": True,
+    }
+    data_dir = f"/var/lib/postgresql/data/{pg_dir}".replace("//", "/")
+    pg["extraInitContainers"] = [
+        {
+            "name": "bitnami-pgconf",
+            "image": f"docker.io/postgres:{tag}",
+            "imagePullPolicy": "IfNotPresent",
+            "securityContext": {
+                "runAsUser": uid,
+                "runAsGroup": uid,
+                "runAsNonRoot": True,
+                "allowPrivilegeEscalation": False,
+            },
+            "command": [
+                "sh",
+                "-c",
+                (
+                    "set -e\n"
+                    f'DATA="{data_dir}"\n'
+                    'if [ ! -f "$DATA/PG_VERSION" ]; then echo "bitnami-pgconf: no PG_VERSION in $DATA (wrong pgDir? refusing to initdb an empty cluster)"; exit 1; fi\n'
+                    'if [ ! -f "$DATA/postgresql.conf" ]; then\n'
+                    '  printf "%s\\n" "listen_addresses = \'*\'" "port = 5432" '
+                    '"unix_socket_directories = \'/tmp\'" "password_encryption = scram-sha-256" '
+                    '> "$DATA/postgresql.conf"\n'
+                    '  echo "bitnami-pgconf: wrote $DATA/postgresql.conf"\n'
+                    "fi\n"
+                    'if [ ! -f "$DATA/pg_hba.conf" ]; then\n'
+                    '  printf "%s\\n" "local   all  all                trust" '
+                    '"host    all  all  127.0.0.1/32  trust" '
+                    '"host    all  all  ::1/128       trust" '
+                    '"host    all  all  0.0.0.0/0     scram-sha-256" '
+                    '"host    all  all  ::/0          scram-sha-256" '
+                    '> "$DATA/pg_hba.conf"\n'
+                    '  echo "bitnami-pgconf: wrote $DATA/pg_hba.conf"\n'
+                    "fi\n"
+                ),
+            ],
+            "volumeMounts": [
+                {"name": "postgres-data", "mountPath": "/var/lib/postgresql/data"},
+            ],
+        }
+    ]
+    # Official image has no passwd entry for Bitnami UID 1001, so the default
+    # `pg_isready -h localhost` returns "no attempt". Probe as the postgres role.
+    probe_exec = {
+        "exec": {"command": ["pg_isready", "-h", "127.0.0.1", "-U", "postgres"]},
+        "initialDelaySeconds": 10,
+        "timeoutSeconds": 5,
+        "periodSeconds": 10,
+        "successThreshold": 1,
+    }
+    pg["customStartupProbe"] = {**probe_exec, "failureThreshold": 30}
+    pg["customLivenessProbe"] = {**probe_exec, "failureThreshold": 3}
+    pg["customReadinessProbe"] = {**probe_exec, "failureThreshold": 3}
+    if source_pod:
+        pg["affinity"] = {
+            "podAntiAffinity": {
+                "requiredDuringSchedulingIgnoredDuringExecution": [
+                    {
+                        "labelSelector": {
+                            "matchLabels": {
+                                "statefulset.kubernetes.io/pod-name": source_pod,
+                            }
+                        },
+                        "topologyKey": "kubernetes.io/hostname",
+                    }
+                ]
+            }
+        }
+
+
+def migrate_sibling(
+    v1: dict[str, Any],
+    target_fullname: str,
+    *,
+    ingress: bool,
+    postgres_reuse: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     lf = copy_langfuse(v1)
     lf.setdefault("ingress", {})
     if isinstance(lf["ingress"], dict):
@@ -265,7 +417,12 @@ def migrate_sibling(v1: dict[str, Any], target_fullname: str, *, ingress: bool) 
         lf["ingress"]["enabled"] = bool(ingress and ingress_enabled(v1))
     v2: dict[str, Any] = {"langfuse": lf}
     v2.update(store_blocks(v1))
-    return apply_auth_secrets(v2, target_fullname)
+    apply_auth_secrets(v2, target_fullname)
+    if postgres_reuse:
+        apply_postgres_volume_reuse(v2, **postgres_reuse)
+        if not ingress:
+            scale_app_to_zero(v2)
+    return v2
 
 
 def migrate_inplace(v1: dict[str, Any]) -> dict[str, Any]:
@@ -279,13 +436,15 @@ def migrate_inplace(v1: dict[str, Any]) -> dict[str, Any]:
     return v2
 
 
-def plan(v1: dict[str, Any]) -> dict[str, bool]:
+def plan(v1: dict[str, Any], postgres_mode: str = "logical") -> dict[str, Any]:
+    pg = deploy_enabled(v1, "postgresql")
     return {
-        "postgresql": deploy_enabled(v1, "postgresql"),
+        "postgresql": pg,
         "clickhouse": deploy_enabled(v1, "clickhouse"),
         "redis": deploy_enabled(v1, "redis"),
         "s3": deploy_enabled(v1, "s3"),
         "ingress": ingress_enabled(v1),
+        "postgresMode": postgres_mode if pg else "skip",
     }
 
 
@@ -312,11 +471,31 @@ def main() -> int:
         dest="image_tag",
         help="Pin langfuse.image.tag so the sibling / in-place upgrade matches v1",
     )
+    p.add_argument(
+        "--postgres-mode",
+        choices=("logical", "reuse-volume"),
+        default="logical",
+        help="logical (default): replicate into a new volume. reuse-volume: mount the Bitnami PVC on the sibling",
+    )
+    p.add_argument("--postgres-pvc", help="Bitnami PVC name (required for reuse-volume)")
+    p.add_argument("--postgres-image-tag", help="Postgres major/image tag matching v1 (required for reuse-volume)")
+    p.add_argument("--postgres-username", help="Override postgresql.auth.username for reuse-volume")
+    p.add_argument("--postgres-database", help="Override postgresql.auth.database for reuse-volume")
+    p.add_argument(
+        "--postgres-password",
+        help="v1 superuser password (or set POSTGRES_REUSE_PASSWORD). Written into the generated overlay",
+    )
+    p.add_argument("--postgres-run-as-user", type=int, default=1001, help="UID/GID of the Bitnami data files (default 1001)")
+    p.add_argument("--postgres-pg-dir", default="data", help="PGDATA directory on the Bitnami volume (default data)")
+    p.add_argument(
+        "--postgres-source-pod",
+        help="v1 Postgres pod name for required anti-affinity (reuse-volume). Prevents RWO co-mount on the same node",
+    )
     args = p.parse_args()
 
     v1 = load(None if args.input == "-" else args.input)
     if args.plan:
-        json.dump(plan(v1), sys.stdout)
+        json.dump(plan(v1, args.postgres_mode), sys.stdout)
         sys.stdout.write("\n")
         return 0
 
@@ -326,11 +505,54 @@ def main() -> int:
     elif mode == "stores":
         mode = "sibling"
 
+    postgres_reuse = None
+    if args.postgres_mode == "reuse-volume":
+        if mode == "inplace":
+            sys.stderr.write("error: --postgres-mode reuse-volume is only valid for sibling/cutover (bundled Postgres)\n")
+            return 2
+        if not deploy_enabled(v1, "postgresql"):
+            sys.stderr.write("error: --postgres-mode reuse-volume requires postgresql.deploy=true\n")
+            return 2
+        if not args.postgres_pvc or not args.postgres_image_tag:
+            sys.stderr.write("error: --postgres-pvc and --postgres-image-tag are required for reuse-volume\n")
+            return 2
+        if not args.postgres_source_pod:
+            sys.stderr.write(
+                "error: --postgres-source-pod is required for reuse-volume "
+                "(required anti-affinity against the v1 Postgres pod; ReadWriteOnce is per-node)\n"
+            )
+            return 2
+        pg_src = v1.get("postgresql") or {}
+        auth_src = pg_src.get("auth") if isinstance(pg_src, dict) else {}
+        if not isinstance(auth_src, dict):
+            auth_src = {}
+        password = (
+            os.environ.get("POSTGRES_REUSE_PASSWORD")
+            or args.postgres_password
+            or auth_src.get("password")
+            or None
+        )
+        postgres_reuse = {
+            "pvc": args.postgres_pvc,
+            "image_tag": args.postgres_image_tag,
+            "username": args.postgres_username or auth_src.get("username") or "postgres",
+            "database": args.postgres_database or auth_src.get("database") or "postgres_langfuse",
+            "password": password,
+            "run_as_user": args.postgres_run_as_user,
+            "pg_dir": args.postgres_pg_dir,
+            "source_pod": args.postgres_source_pod,
+        }
+
     if mode in ("sibling", "cutover"):
         if not args.target_fullname:
             sys.stderr.write("error: --target-fullname is required for sibling/cutover\n")
             return 2
-        data = migrate_sibling(v1, args.target_fullname, ingress=(mode == "cutover"))
+        data = migrate_sibling(
+            v1,
+            args.target_fullname,
+            ingress=(mode == "cutover"),
+            postgres_reuse=postgres_reuse,
+        )
         warn_dropped(v1)
     else:
         data = migrate_inplace(v1)
