@@ -53,6 +53,19 @@ tests:
           value: 16Gi
         template: clickhouse/cluster.yaml
 
+  - it: should render extra KeeperCluster settings
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.settings:
+        logger:
+          level: warning
+    asserts:
+      - equal:
+          path: spec.settings.logger.level
+          value: warning
+        template: clickhouse/keeper.yaml
+
   - it: should always emit the CRD-required keeperClusterRef on the ClickHouseCluster
     values:
       - ../values.lint.yaml
