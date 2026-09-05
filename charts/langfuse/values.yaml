@@ -738,6 +738,8 @@ redis:
 clickhouse:
   # -- Deploy ClickHouse (ClickHouseCluster + KeeperCluster CRs) via the operator. Disable to use an external or self-managed ClickHouse.
   deploy: true
+  # -- ClickHouse cluster domain. ClusterDomain is the Kubernetes cluster domain suffix used for DNS resolution. The default is “cluster.local”. --
+  # clusterDomain: "cluster.local"
 
   # -- ClickHouse hostname Langfuse connects to. Auto-set from the cluster Service when deploy is true; set explicitly for external ClickHouse.
   host: ""
@@ -812,6 +814,8 @@ clickhouse:
   keeper:
     # -- Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper.
     enabled: true
+    # -- ClickHouse Keeper domain. ClusterDomain is the Kubernetes cluster domain suffix used for DNS resolution. The default is “cluster.local”. --
+    # clusterDomain: "cluster.local"
     # -- Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA.
     replicas: 3
     image:
