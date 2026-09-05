@@ -296,6 +296,9 @@ See our [self-hosting docs](https://langfuse.com/self-hosting/infrastructure/blo
 
 #### Examples
 
+> [!IMPORTANT]
+> External PostgreSQL and ClickHouse instances must use UTC. See the [timezone troubleshooting guide](https://langfuse.com/faq/all/self-hosting-timezone-errors) for verification steps and fixes.
+
 ##### With an external Postgres server
 
 ```yaml
