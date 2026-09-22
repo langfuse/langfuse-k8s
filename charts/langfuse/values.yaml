@@ -796,6 +796,13 @@ clickhouse:
         memory: 2Gi
       limits:
         memory: 4Gi
+    # -- CPU/memory for the operator's version-probe Job (`clickhouse local`, runs before the server StatefulSet is created). The operator's own 256Mi default OOMKills on recent clickhouse-server images and stalls reconcile with `VersionProbeFailed`. Set to `null` to fall back to the operator default.
+    versionProbeResources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
     # -- Node selector for ClickHouse pods.
     nodeSelector: {}
     # -- Tolerations for ClickHouse pods.

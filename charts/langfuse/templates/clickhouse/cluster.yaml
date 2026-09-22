@@ -29,6 +29,17 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+  {{- /* The operator merges this onto its own probe Job by container name (strategic merge patch), so only name + resources are needed. */}}
+  {{- with .Values.clickhouse.cluster.versionProbeResources }}
+  versionProbeTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: version-probe
+              resources:
+                {{- toYaml . | nindent 16 }}
+  {{- end }}
   {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName }}
   podTemplate:
     {{- with .Values.clickhouse.cluster.nodeSelector }}

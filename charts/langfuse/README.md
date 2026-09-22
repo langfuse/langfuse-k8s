@@ -48,6 +48,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
 | clickhouse.cluster.tolerations | list | `[]` | Tolerations for ClickHouse pods. |
+| clickhouse.cluster.versionProbeResources | object | `{"limits":{"memory":"512Mi"},"requests":{"cpu":"100m","memory":"256Mi"}}` | CPU/memory for the operator's version-probe Job (`clickhouse local`, runs before the server StatefulSet is created). The operator's own 256Mi default OOMKills on recent clickhouse-server images and stalls reconcile with `VersionProbeFailed`. Set to `null` to fall back to the operator default. |
 | clickhouse.crdCheck | bool | `true` | Require ClickHouse operator CRDs when deploy is true. Disable for offline helm template/GitOps diffs (or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`). |
 | clickhouse.database | string | `"default"` | ClickHouse database name Langfuse connects to. |
 | clickhouse.deploy | bool | `true` | Deploy ClickHouse (ClickHouseCluster + KeeperCluster CRs) via the operator. Disable to use an external or self-managed ClickHouse. |

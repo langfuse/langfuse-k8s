@@ -53,6 +53,48 @@ tests:
           value: 16Gi
         template: clickhouse/cluster.yaml
 
+  - it: should ship non-empty default resources on the version-probe Job
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.versionProbeTemplate.spec.template.spec.containers[0].name
+          value: version-probe
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.versionProbeTemplate.spec.template.spec.containers[0].resources.requests.memory
+          value: 256Mi
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.versionProbeTemplate.spec.template.spec.containers[0].resources.limits.memory
+          value: 512Mi
+        template: clickhouse/cluster.yaml
+
+  - it: should allow overriding the version-probe resources
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.versionProbeResources:
+        requests:
+          memory: 2Gi
+        limits:
+          memory: 8Gi
+    asserts:
+      - equal:
+          path: spec.versionProbeTemplate.spec.template.spec.containers[0].resources.limits.memory
+          value: 8Gi
+        template: clickhouse/cluster.yaml
+
+  - it: should omit versionProbeTemplate when versionProbeResources is null
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.versionProbeResources: null
+    asserts:
+      - notExists:
+          path: spec.versionProbeTemplate
+        template: clickhouse/cluster.yaml
+
   - it: should always emit the CRD-required keeperClusterRef on the ClickHouseCluster
     values:
       - ../values.lint.yaml
