@@ -25,7 +25,8 @@ CHART_VERSION="${CHART_VERSION:-2.0.0}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
 CLICKHOUSE_OPERATOR_VERSION="${CLICKHOUSE_OPERATOR_VERSION:-0.0.5}"
 WORKER_DRAIN_SECONDS="${WORKER_DRAIN_SECONDS:-60}"
-MC_IMAGE="${MC_IMAGE:-minio/mc:latest}"
+# Docker Hub's minio/mc is no longer publicly pullable; quay.io is the working source.
+MC_IMAGE="${MC_IMAGE:-quay.io/minio/mc:latest}"
 IMAGE_TAG="${IMAGE_TAG:-}"
 MC_POD=""
 RESUME_TARGET=0

@@ -70,7 +70,7 @@ Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<s
 |------------|--------|
 | `postgresql.deploy: true` | Enable logical replication on v1, subscribe the sibling, drop subscription at freeze |
 | `clickhouse.deploy: true` | Incremental `remote()` copy via [`ch-online-sync.sh`](./scripts/ch-online-sync.sh) |
-| `s3.deploy: true` | `mc mirror` MinIO → SeaweedFS (in-cluster `minio/mc` pod) |
+| `s3.deploy: true` | `mc mirror` MinIO → SeaweedFS (in-cluster `quay.io/minio/mc` pod) |
 | `redis.deploy: true` | Stand up empty Valkey on the sibling (queue/cache; no data copy) |
 | any `deploy: false` | Skip that store; copy host/auth fields into the generated overlay |
 | all stores external | No sibling; helm-upgrade the original release in place |

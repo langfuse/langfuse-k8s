@@ -806,6 +806,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for ClickHouse pods.
     priorityClassName: ""
+    # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which is very verbose; `level: information` is a sensible production setting.
+    logger: {}
     # -- Extra ClickHouse server settings applied under the `<clickhouse>` config section.
     settings: {}
     # -- Extra ClickHouse user profile settings mounted into users.xml.
@@ -845,6 +847,10 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for Keeper pods.
     priorityClassName: ""
+    # -- Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which logs every Raft heartbeat and probe; `level: information` is a sensible production setting.
+    logger: {}
+    # -- Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server.
+    settings: {}
 
 # S3 / Object Storage Configuration
 # Deploys SeaweedFS in allInOne mode via the seaweedfs/seaweedfs sub-chart (image `chrislusf/seaweedfs`).

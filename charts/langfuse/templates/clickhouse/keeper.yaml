@@ -26,6 +26,17 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+  {{- if or .Values.clickhouse.keeper.logger .Values.clickhouse.keeper.settings }}
+  settings:
+    {{- with .Values.clickhouse.keeper.logger }}
+    logger:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.settings }}
+    extraConfig:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
   {{- if or .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity .Values.clickhouse.keeper.priorityClassName }}
   podTemplate:
     {{- with .Values.clickhouse.keeper.nodeSelector }}

@@ -53,6 +53,10 @@ spec:
       secret:
         name: {{ .Values.clickhouse.auth.existingSecret | default (printf "%s-clickhouse-auth" (include "langfuse.fullname" .)) | quote }}
         key: {{ .Values.clickhouse.auth.existingSecretKey | default "password" | quote }}
+    {{- with .Values.clickhouse.cluster.logger }}
+    logger:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     {{- with .Values.clickhouse.cluster.settings }}
     extraConfig:
       {{- toYaml . | nindent 6 }}
