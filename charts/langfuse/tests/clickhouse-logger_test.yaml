@@ -1,0 +1,57 @@
+suite: test clickhouse operator logger settings
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should not emit KeeperCluster settings by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.settings
+        template: clickhouse/keeper.yaml
+
+  - it: should render the Keeper logger level under KeeperCluster spec.settings.logger
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.logger:
+        level: information
+    asserts:
+      - equal:
+          path: spec.settings.logger.level
+          value: information
+        template: clickhouse/keeper.yaml
+
+  - it: should render extra Keeper configuration under KeeperCluster spec.settings.extraConfig
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.settings:
+        keeper_server:
+          coordination_settings:
+            session_timeout_ms: 30000
+    asserts:
+      - equal:
+          path: spec.settings.extraConfig.keeper_server.coordination_settings.session_timeout_ms
+          value: 30000
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.settings.logger
+        template: clickhouse/keeper.yaml
+
+  - it: should render the server logger level next to the existing ClickHouseCluster settings
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.logger:
+        level: information
+    asserts:
+      - equal:
+          path: spec.settings.logger.level
+          value: information
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.settings.defaultUserPassword.secret.key
+          value: password
+        template: clickhouse/cluster.yaml
