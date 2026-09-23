@@ -841,6 +841,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for Keeper pods.
     priorityClassName: ""
+    # -- Extra Keeper settings applied under the KeeperCluster `spec.settings` field.
+    settings: {}
 
 # S3 / Object Storage Configuration
 # Deploys SeaweedFS in allInOne mode via the seaweedfs/seaweedfs sub-chart (image `chrislusf/seaweedfs`).

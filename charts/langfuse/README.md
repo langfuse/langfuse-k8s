@@ -60,6 +60,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
 | clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
+| clickhouse.keeper.settings | object | `{}` | Extra Keeper settings applied under the KeeperCluster `spec.settings` field. |
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.keeper.storage.className | string | `""` | StorageClass for Keeper PVCs. Leave empty to use the cluster default. |
 | clickhouse.keeper.storage.size | string | `"20Gi"` | Persistent volume size for each Keeper pod. |
