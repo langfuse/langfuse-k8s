@@ -48,12 +48,14 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
 | clickhouse.cluster.tolerations | list | `[]` | Tolerations for ClickHouse pods. |
+| clickhouse.clusterDomain | string | `"cluster.local"` | Kubernetes cluster domain suffix the operator uses to build in-cluster DNS names for ClickHouse pods (`spec.clusterDomain` on the ClickHouseCluster CR). Change only if your cluster does not use the default `cluster.local`. |
 | clickhouse.crdCheck | bool | `true` | Require ClickHouse operator CRDs when deploy is true. Disable for offline helm template/GitOps diffs (or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`). |
 | clickhouse.database | string | `"default"` | ClickHouse database name Langfuse connects to. |
 | clickhouse.deploy | bool | `true` | Deploy ClickHouse (ClickHouseCluster + KeeperCluster CRs) via the operator. Disable to use an external or self-managed ClickHouse. |
 | clickhouse.host | string | `""` | ClickHouse hostname Langfuse connects to. Auto-set from the cluster Service when deploy is true; set explicitly for external ClickHouse. |
 | clickhouse.httpPort | int | `8123` | HTTP port Langfuse uses to talk to ClickHouse. |
 | clickhouse.keeper.affinity | object | `{}` | Affinity rules for Keeper pods. |
+| clickhouse.keeper.clusterDomain | string | `"cluster.local"` | Kubernetes cluster domain suffix the operator uses to build in-cluster DNS names for Keeper pods (`spec.clusterDomain` on the KeeperCluster CR). Keep aligned with `clickhouse.clusterDomain`. |
 | clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |

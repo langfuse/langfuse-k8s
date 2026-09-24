@@ -8,6 +8,7 @@ metadata:
     {{- include "langfuse.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.clickhouse.cluster.replicas }}
+  clusterDomain: {{ .Values.clickhouse.clusterDomain | default "cluster.local" }}
   shards: 1
   {{- /* Required by the CRD — a keeper-less deploy is rejected in validations.yaml */}}
   keeperClusterRef:
