@@ -1,0 +1,37 @@
+{{- if .Values.langfuse.httpRoute.enabled -}}
+{{- $port := .Values.langfuse.web.service.externalPort | default .Values.langfuse.web.service.port -}}
+{{- $defaultBackendRefs := list (dict "name" (printf "%s-web" (include "langfuse.fullname" .)) "port" $port) -}}
+{{- $rules := .Values.langfuse.httpRoute.rules | default (list (dict "matches" (list (dict "path" (dict "type" "PathPrefix" "value" "/"))))) -}}
+apiVersion: {{ include "langfuse.httpRoute.apiVersion" . }}
+kind: HTTPRoute
+metadata:
+  name: {{ include "langfuse.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.httpRoute.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.langfuse.httpRoute.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  parentRefs:
+    {{- toYaml .Values.langfuse.httpRoute.parentRefs | nindent 4 }}
+  {{- with .Values.langfuse.httpRoute.hostnames }}
+  hostnames:
+    {{- range . }}
+    - {{ . | quote }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range $rules }}
+    {{- $rest := omit . "backendRefs" }}
+    - backendRefs:
+        {{- toYaml (.backendRefs | default $defaultBackendRefs) | nindent 8 }}
+      {{- with $rest }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
