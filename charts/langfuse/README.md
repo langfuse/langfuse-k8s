@@ -226,6 +226,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.keda.value | string | `"50"` | The target utilization percentage for the langfuse worker pods |
 | langfuse.worker.livenessProbe.failureThreshold | int | `3` | Failure threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.initialDelaySeconds | int | `20` | Initial delay seconds for livenessProbe. |
+| langfuse.worker.livenessProbe.path | string | `"/api/health"` | Path to check for liveness. Append `?failIfQueueConsumptionStuck=true` to make the probe fail when the worker has stopped consuming all BullMQ queues. |
 | langfuse.worker.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
 | langfuse.worker.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
 | langfuse.worker.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
