@@ -1,0 +1,21 @@
+suite: test worker livenessProbe path
+templates:
+  - worker/deployment.yaml
+tests:
+  - it: should default the worker livenessProbe path to /api/health
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /api/health
+
+  - it: should use a custom worker livenessProbe path
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.worker.livenessProbe.path: /api/health?failIfQueueConsumptionStuck=true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /api/health?failIfQueueConsumptionStuck=true

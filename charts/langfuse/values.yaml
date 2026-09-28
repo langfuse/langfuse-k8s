@@ -461,6 +461,8 @@ langfuse:
       maxUnavailable: ""
 
     livenessProbe:
+      # -- Path to check for liveness. Append `?failIfQueueConsumptionStuck=true` to make the probe fail when the worker has stopped consuming all BullMQ queues.
+      path: "/api/health"
       # -- Initial delay seconds for livenessProbe.
       initialDelaySeconds: 20
       # -- Period seconds for livenessProbe.
