@@ -26,7 +26,7 @@ kubectl wait --for=condition=Established \
 
 ```bash
 helm install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
-  --version 0.0.5 \
+  --version 0.0.8 \
   --namespace clickhouse-operator --create-namespace
 
 kubectl wait --for=condition=Established \

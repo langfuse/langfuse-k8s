@@ -808,7 +808,7 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for ClickHouse pods.
     priorityClassName: ""
-    # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which is very verbose; `level: information` is a sensible production setting.
+    # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one.
     logger: {}
     # -- Extra ClickHouse server settings applied under the `<clickhouse>` config section.
     settings: {}
@@ -849,7 +849,7 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for Keeper pods.
     priorityClassName: ""
-    # -- Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which logs every Raft heartbeat and probe; `level: information` is a sensible production setting.
+    # -- Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one.
     logger: {}
     # -- Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server.
     settings: {}

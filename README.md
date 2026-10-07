@@ -72,7 +72,7 @@ kubectl wait --for=condition=Established \
 
 # 2. clickhouse-operator
 helm install clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
-  --version 0.0.5 \
+  --version 0.0.8 \
   --namespace clickhouse-operator --create-namespace
 
 kubectl wait --for=condition=Established \
@@ -116,6 +116,14 @@ helm upgrade langfuse langfuse/langfuse
 
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
+
+The ClickHouse operator is installed separately, so upgrade it on its own when the [Prerequisites](#prerequisites) move to a new version. Its chart ships the CRDs as templates, so `helm upgrade` updates them too. Review the [operator release notes](https://github.com/ClickHouse/clickhouse-operator/releases) first:
+
+```bash
+helm upgrade clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-helm \
+  --version 0.0.8 \
+  --namespace clickhouse-operator
+```
 
 Upgrading a **v1 (Bitnami) release to v2** onto empty v2 volumes is blocked. Follow [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/): in-place upgrade when every store is already external; otherwise install a sibling v2 release, copy data, then shift traffic.
 

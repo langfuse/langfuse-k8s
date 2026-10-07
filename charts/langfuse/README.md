@@ -37,7 +37,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.enabled | bool | `true` | Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
-| clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which is very verbose; `level: information` is a sensible production setting. |
+| clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
 | clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
@@ -59,7 +59,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
-| clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. The CRD default level is `trace`, which logs every Raft heartbeat and probe; `level: information` is a sensible production setting. |
+| clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
