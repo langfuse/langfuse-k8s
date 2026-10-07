@@ -40,6 +40,18 @@ If you have ClickHouse environment variables in `langfuse.additionalEnv` (such a
 
 Using both approaches simultaneously will cause the chart deployment to fail with validation errors or produce inconsistent results when connecting.
 
+## ClickHouse never starts: version-probe Job OOMKilled
+
+If `langfuse-web` crashloops on a fresh install, the `ClickHouseCluster` reports `VersionProbeFailed`, and the operator's probe pod shows `OOMKilled`:
+
+```
+langfuse-clickhouse-version-probe-<hash>-xxxxx   0/1   OOMKilled
+```
+
+you are running clickhouse-operator 0.0.6 or 0.0.7. Before they create the ClickHouse StatefulSet, these releases run a `clickhouse local` version-probe Job with a 256Mi memory limit and no retries. On nodes with transparent huge pages enabled, the probe can exceed that limit, and a single OOMKill stops the reconcile.
+
+Upgrade the operator to 0.0.8 or newer (see [Upgrading](./README.md#upgrading)). It keeps the probe within 256Mi and retries failed probe Jobs, so the stuck cluster recovers without further action.
+
 ## Bundled store pods fail to start with an existing Secret
 
 If the Postgres, Valkey, or SeaweedFS pods sit in `CreateContainerConfigError` or fail to mount a Secret volume after you set `postgresql.auth.existingSecret`, `redis.auth.existingSecret`, or `s3.auth.existingSecret` with the bundled store (`deploy: true`), the sub-chart is still pointing at the chart-managed Secret that your `existingSecret` suppressed.
