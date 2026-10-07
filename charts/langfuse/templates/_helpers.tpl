@@ -62,6 +62,23 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
+API version for the Gateway API HTTPRoute. Prefers an explicit override, then
+whatever the cluster registers. Offline rendering (helm template, unit tests)
+has no discovery, so fall back to the GA version.
+*/}}
+{{- define "langfuse.httpRoute.apiVersion" -}}
+{{- if .Values.langfuse.httpRoute.apiVersion -}}
+{{- .Values.langfuse.httpRoute.apiVersion -}}
+{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/HTTPRoute" -}}
+gateway.networking.k8s.io/v1
+{{- else if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1beta1/HTTPRoute" -}}
+gateway.networking.k8s.io/v1beta1
+{{- else -}}
+gateway.networking.k8s.io/v1
+{{- end -}}
+{{- end }}
+
+{{/*
 Fullname of an aliased sub-chart, computed the way the sub-chart's own
 fullname helper does (postgres, valkey, and seaweedfs all share the standard
 pattern, with the dependency alias as the chart name). This is what the
