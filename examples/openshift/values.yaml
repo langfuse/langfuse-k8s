@@ -1,0 +1,120 @@
+# Langfuse Helm values for OpenShift / OKD
+#
+# Key differences from a plain Kubernetes deployment:
+#   1. Use `route` instead of `ingress` — OpenShift's built-in router handles TLS.
+#   2. ⚠️  KNOWN LIMITATION — Bitnami sub-charts (PostgreSQL, Valkey/Redis) run as
+#      a fixed UID (1001) which conflicts with OpenShift's restricted-v2 SCC.
+#      Two options are documented below and in TROUBLESHOOTING.md:
+#        Option A (dev/demo): grant anyuid SCC to the service account
+#        Option B (production): use an external PostgreSQL — e.g. CrunchyData PGO
+#      operator or any managed service — and set `postgresql.deploy: false`.
+#      This is a limitation of the upstream Bitnami images, not the Langfuse chart.
+#   3. Secrets must be created before installing the chart (see secret.yaml).
+#
+# Prerequisites
+# -------------
+#   1. Create the namespace/project:
+#        oc new-project <YOUR_NAMESPACE>
+#   2. Generate and apply the secret:
+#        oc apply -f secret.yaml
+#   3. (Only if using bundled PostgreSQL/Redis) Grant the anyuid SCC to the
+#      chart's service account — required because Bitnami images run as UID 1001:
+#        oc adm policy add-scc-to-user anyuid \
+#          -z langfuse \
+#          -n <YOUR_NAMESPACE>
+#      For a production cluster consider using an external PostgreSQL (e.g. via the
+#      CrunchyData PGO operator) and setting `postgresql.deploy: false` to avoid
+#      the SCC requirement entirely.
+#
+# Install
+# -------
+#   helm install langfuse langfuse/langfuse \
+#     -n <YOUR_NAMESPACE> \
+#     -f values.yaml
+
+langfuse:
+  # Reference the pre-created secret for all sensitive values
+  encryptionKey:
+    secretKeyRef:
+      name: langfuse
+      key: encryption-key
+
+  salt:
+    secretKeyRef:
+      name: langfuse
+      key: salt
+
+  nextauth:
+    # OpenShift auto-generates the hostname from the Route below; set this to
+    # the final URL once the Route is created, or use the wildcard domain:
+    #   https://langfuse-<namespace>.apps.<cluster-domain>
+    url: "https://langfuse-<YOUR_NAMESPACE>.apps.<CLUSTER_DOMAIN>"
+    secret:
+      secretKeyRef:
+        name: langfuse
+        key: nextauth-secret
+
+  features:
+    telemetryEnabled: false
+
+  # Use OpenShift Route instead of Ingress
+  route:
+    enabled: true
+    # Leave host empty to let OpenShift auto-generate from the wildcard domain,
+    # or set explicitly: langfuse.apps.<cluster-domain>
+    host: ""
+    tls:
+      enabled: true
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+
+  # ⚠️  Do NOT set runAsNonRoot: true here.
+  # The Langfuse web/worker image uses a non-numeric user ("nextjs") which
+  # OpenShift cannot verify as non-root, causing CreateContainerConfigError.
+  # Leave these empty — the anyuid SCC grant (see Prerequisites) is sufficient.
+  podSecurityContext: {}
+  securityContext: {}
+
+postgresql:
+  deploy: true
+  auth:
+    existingSecret: langfuse
+    secretKeys:
+      adminPasswordKey: postgresql-password
+      userPasswordKey: postgresql-password
+  # Bitnami PostgreSQL runs as UID 1001. OpenShift's restricted-v2 SCC will
+  # reject this unless you either grant anyuid (see Prerequisites above) or
+  # switch to an external PostgreSQL instance with `postgresql.deploy: false`.
+  primary:
+    podSecurityContext:
+      # Uncomment if you granted anyuid SCC:
+      # runAsUser: 1001
+      fsGroup: 1001
+    containerSecurityContext:
+      # Uncomment if you granted anyuid SCC:
+      # runAsUser: 1001
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+
+clickhouse:
+  auth:
+    existingSecret: langfuse
+    existingSecretKey: clickhouse-password
+
+redis:
+  auth:
+    existingSecret: langfuse
+    existingSecretPasswordKey: redis-password
+  # Same SCC note as PostgreSQL above applies to Valkey/Redis.
+  master:
+    podSecurityContext:
+      fsGroup: 1001
+    containerSecurityContext:
+      runAsNonRoot: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
