@@ -35,6 +35,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.auth.username | string | `"default"` | Username Langfuse uses to authenticate to ClickHouse. |
 | clickhouse.cluster.affinity | object | `{}` | Affinity rules for ClickHouse pods. |
 | clickhouse.cluster.enabled | bool | `true` | Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse. |
+| clickhouse.cluster.image.pullSecrets | list | `[]` | Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
 | clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
@@ -57,6 +58,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.affinity | object | `{}` | Affinity rules for Keeper pods. |
 | clickhouse.keeper.clusterDomain | string | `"cluster.local"` | Kubernetes cluster domain suffix the operator uses to build in-cluster DNS names for Keeper pods (`spec.clusterDomain` on the KeeperCluster CR). Keep aligned with `clickhouse.clusterDomain`. |
 | clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
+| clickhouse.keeper.image.pullSecrets | list | `[]` | Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
 | clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |

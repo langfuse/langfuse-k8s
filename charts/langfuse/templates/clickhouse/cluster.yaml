@@ -30,8 +30,12 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- if or .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName }}
+  {{- if or .Values.clickhouse.cluster.image.pullSecrets .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName }}
   podTemplate:
+    {{- with .Values.clickhouse.cluster.image.pullSecrets }}
+    imagePullSecrets:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     {{- with .Values.clickhouse.cluster.nodeSelector }}
     nodeSelector:
       {{- toYaml . | nindent 6 }}

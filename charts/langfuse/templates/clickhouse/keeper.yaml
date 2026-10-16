@@ -37,8 +37,12 @@ spec:
       {{- toYaml . | nindent 6 }}
     {{- end }}
   {{- end }}
-  {{- if or .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity .Values.clickhouse.keeper.priorityClassName }}
+  {{- if or .Values.clickhouse.keeper.image.pullSecrets .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity .Values.clickhouse.keeper.priorityClassName }}
   podTemplate:
+    {{- with .Values.clickhouse.keeper.image.pullSecrets }}
+    imagePullSecrets:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     {{- with .Values.clickhouse.keeper.nodeSelector }}
     nodeSelector:
       {{- toYaml . | nindent 6 }}
