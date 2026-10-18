@@ -77,6 +77,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.nativePort | int | `9000` | Native TCP port Langfuse uses to talk to ClickHouse. |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
+| global.imageRegistry | string | `""` | Registry for all images, replacing the registry in each image repository. Not honored by the bundled Postgres; set `postgresql.image.registry` too. |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |

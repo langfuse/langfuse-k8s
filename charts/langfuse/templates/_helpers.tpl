@@ -86,6 +86,19 @@ own fullname prefix only coincides with it when the release is named
 {{- end -}}
 
 {{/*
+Image repository with global.imageRegistry replacing its registry host, if any.
+Takes (list $ "<repository>").
+*/}}
+{{- define "langfuse.image.repository" -}}
+{{- $repository := index . 1 -}}
+{{- with ((index . 0).Values.global).imageRegistry -}}
+{{- printf "%s/%s" (trimSuffix "/" .) (regexReplaceAll "^[^/]*[.:][^/]*/" $repository "") -}}
+{{- else -}}
+{{- $repository -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Names of the chart-managed auth Secrets for the bundled stores. The
 sub-charts read these names from plain values (Helm cannot template
 sub-chart values), so the values keys are the single source of truth and

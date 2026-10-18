@@ -1,0 +1,20 @@
+suite: test global.imageRegistry
+templates:
+  - web/deployment.yaml
+  - clickhouse/cluster.yaml
+tests:
+  - it: should prefix image repositories with global.imageRegistry
+    values:
+      - ../values.lint.yaml
+    set:
+      global.imageRegistry: registry.example.com
+      langfuse.image.tag: "v1.2.3"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/langfuse/langfuse:v1.2.3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: registry.example.com/clickhouse/clickhouse-server
+        template: clickhouse/cluster.yaml

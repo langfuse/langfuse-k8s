@@ -1,5 +1,9 @@
 # Langfuse Helm Chart Configuration
 
+global:
+  # -- Registry for all images, replacing the registry in each image repository. Not honored by the bundled Postgres; set `postgresql.image.registry` too.
+  imageRegistry: ""
+
 # -- Override the name for the selector labels, defaults to the chart name
 nameOverride: ""
 
