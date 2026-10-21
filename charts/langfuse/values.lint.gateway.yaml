@@ -7,7 +7,7 @@ langfuse:
   gateway:
     enabled: true
     image:
-      repository: registry.example.com/langfuse/langfuse-ai-gateway
+      repository: registry.example.com/langfuse/ai-gateway
       tag: "4.70.0"
       pullPolicy: IfNotPresent
       pullSecrets:

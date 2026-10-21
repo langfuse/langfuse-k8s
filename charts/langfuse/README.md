@@ -122,7 +122,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the AI gateway pods |
 | langfuse.gateway.image.pullPolicy | string | `nil` | The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set. |
 | langfuse.gateway.image.pullSecrets | string | `nil` | The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set. |
-| langfuse.gateway.image.repository | string | `"docker.langfuse.com/langfuse/langfuse-ai-gateway"` | The image repository to use for the AI gateway pods. |
+| langfuse.gateway.image.repository | string | `"docker.langfuse.com/langfuse/ai-gateway"` | The image repository to use for the AI gateway pods. |
 | langfuse.gateway.image.tag | string | `nil` | The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set. |
 | langfuse.gateway.ingress.additionalLabels | object | `{}` | Additional labels for the AI gateway ingress |
 | langfuse.gateway.ingress.annotations | object | `{}` | Annotations for the AI gateway ingress |

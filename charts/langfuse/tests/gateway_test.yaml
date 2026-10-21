@@ -61,7 +61,7 @@ tests:
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.langfuse.com/langfuse/langfuse-ai-gateway:4.63.0
+          value: docker.langfuse.com/langfuse/ai-gateway:4.63.0
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
@@ -324,7 +324,7 @@ tests:
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.langfuse.com/langfuse/langfuse-ai-gateway:4.99.0
+          value: docker.langfuse.com/langfuse/ai-gateway:4.99.0
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.imagePullSecrets
@@ -424,7 +424,7 @@ tests:
       # image
       - equal:
           path: spec.template.spec.containers[1].image
-          value: registry.example.com/langfuse/langfuse-ai-gateway:4.70.0
+          value: registry.example.com/langfuse/ai-gateway:4.70.0
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[1].imagePullPolicy

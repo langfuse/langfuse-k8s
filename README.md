@@ -292,7 +292,7 @@ langfuse:
 
 #### AI gateway
 
-`langfuse.gateway.enabled: true` deploys the Langfuse AI gateway as its own Deployment, Service, Ingress, HPA, and PodDisruptionBudget, and sets `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Requires a Langfuse release that contains [langfuse/langfuse#19159](https://github.com/langfuse/langfuse/pull/19159) and a published `langfuse-ai-gateway` image with the same tag as web.
+`langfuse.gateway.enabled: true` deploys the Langfuse AI gateway as its own Deployment, Service, Ingress, HPA, and PodDisruptionBudget, and sets `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Requires a Langfuse release that contains [langfuse/langfuse#19159](https://github.com/langfuse/langfuse/pull/19159). The gateway image (`docker.langfuse.com/langfuse/ai-gateway`, also on Docker Hub as `langfuse/ai-gateway` and at `ghcr.io/langfuse/ai-gateway`) is released with the same tags as web, so it follows `langfuse.image.tag` and the chart appVersion.
 
 ```yaml
 langfuse:

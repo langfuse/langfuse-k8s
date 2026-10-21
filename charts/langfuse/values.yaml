@@ -483,7 +483,7 @@ langfuse:
     enabled: false
     image:
       # -- The image repository to use for the AI gateway pods.
-      repository: docker.langfuse.com/langfuse/langfuse-ai-gateway
+      repository: docker.langfuse.com/langfuse/ai-gateway
       # -- The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set.
       tag: Null
       # -- The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set.
