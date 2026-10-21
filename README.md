@@ -290,6 +290,40 @@ langfuse:
 
 `mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications. This one value requires Langfuse `>= 4.25`; the rest of the block works on `>= 4.24`.
 
+#### AI gateway
+
+`langfuse.gateway.enabled: true` deploys the Langfuse AI gateway as its own Deployment, Service, Ingress, HPA, and PodDisruptionBudget, and sets `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Requires a Langfuse release that contains [langfuse/langfuse#19159](https://github.com/langfuse/langfuse/pull/19159) and a published `langfuse-ai-gateway` image with the same tag as web.
+
+```yaml
+langfuse:
+  nextauth:
+    url: https://langfuse.example.com
+  gateway:
+    enabled: true
+    ingress:
+      enabled: true
+      hosts:
+        - gateway.langfuse.example.com
+      tls:
+        enabled: true
+        secretName: langfuse-gateway-tls
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-body-size: "17m"
+```
+
+- **Host, DNS, and TLS:** web derives the gateway URL it shows users as `gateway.<host of nextauth.url>`, so serve the gateway there. Add a DNS record for it pointing at your load balancer, and a certificate that covers it: with cert-manager, the `cert-manager.io/cluster-issuer` annotation issues a separate certificate (use a `secretName` different from web's); otherwise reuse a certificate whose SANs include the gateway host, or a wildcard.
+- **Web URL:** the gateway calls web at `langfuse.gateway.webUrl`, which defaults to `langfuse.nextauth.url` and must be HTTPS. These calls go through web's Ingress, so web's ingress must accept telemetry uploads of up to 20 MiB (for ingress-nginx, `proxy-body-size: "20m"` on `langfuse.ingress.annotations`).
+- **Timeouts:** the chart sets no proxy annotations. Streams can run up to 600 seconds and may stay quiet for up to 120 seconds, so raise proxy read and send timeouts above 120 seconds at minimum (620 covers the full execution limit), and turn off response buffering. On the AWS Load Balancer Controller, the idle timeout is per load balancer: sharing web's `group.name` changes web's timeout too, so a separate group is the cleaner option.
+- **Shutdown:** on SIGTERM the gateway drains in-flight requests for `shutdownTimeoutSeconds` (110 by default, at most 300), after a `preStopSleepSeconds` (10) sleep that lets the endpoint drop out of the load balancer. `terminationGracePeriodSeconds` (130) must be greater than both together. Streams longer than the drain timeout are cut on every rollout and scale-in.
+- **Secrets:** the HMAC service key (shared by web and the gateway) and web's ES256 JWT private key are generated into `<release>-app` when the gateway is enabled, unless you set `serviceKey` or `jwt.privateKey`. Web derives the JWT public key and key id from the private key; `jwt.publicKey` and `jwt.keyId` are optional overrides. Under `helm template`-based GitOps (e.g. ArgoCD), `lookup` cannot see the cluster and the generated values would rotate on every sync, failing gateway requests until both pods restart — pin both via `secretKeyRef` there.
+- **Isolation:** the gateway pod gets only gateway settings. The global `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraInitContainers`, `extraVolumes`, `extraVolumeMounts`, and `extraLifecycle` do not apply to it; use `langfuse.gateway.pod.*` instead. Every gateway request depends on web, so run at least two web replicas when the gateway is enabled.
+- **Sizing:** the gateway admits requests up to a memory budget (`LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, 1 GiB by default), so set its memory limit to at least the budget plus 512 Mi. Tuning knobs go through `langfuse.gateway.pod.additionalEnv`.
+
 #### Storage Provider Options
 
 Langfuse supports multiple blob storage providers through the `s3.storageProvider` configuration:
@@ -800,4 +834,11 @@ helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
 ```bash
 helm unittest charts/langfuse --color
+```
+
+CI also lints the chart with the default lint values and with the AI gateway enabled:
+
+```bash
+helm lint charts/langfuse -f charts/langfuse/values.lint.yaml
+helm lint charts/langfuse -f charts/langfuse/values.lint.yaml -f charts/langfuse/values.lint.gateway.yaml
 ```

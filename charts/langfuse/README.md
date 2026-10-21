@@ -111,6 +111,66 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.features.experimentalFeaturesEnabled | bool | `false` | Enable experimental features |
 | langfuse.features.signUpDisabled | bool | `false` | Disable public sign up |
 | langfuse.features.telemetryEnabled | bool | `true` | Whether or not to report basic usage statistics to a centralized server. |
+| langfuse.gateway.deployment.additionalLabels | object | `{}` | Additional labels for the AI gateway deployment |
+| langfuse.gateway.deployment.annotations | object | `{}` | Annotations for the AI gateway deployment |
+| langfuse.gateway.deployment.strategy | object | `{}` | Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy |
+| langfuse.gateway.enabled | bool | `false` | Set to `true` to deploy the Langfuse AI gateway and set `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
+| langfuse.gateway.hpa.annotations | object | `{}` | Annotations for the AI gateway HPA |
+| langfuse.gateway.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the AI gateway pods |
+| langfuse.gateway.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the AI gateway pods |
+| langfuse.gateway.hpa.minReplicas | int | `1` | The minimum number of replicas to use for the AI gateway pods |
+| langfuse.gateway.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the AI gateway pods |
+| langfuse.gateway.image.pullPolicy | string | `nil` | The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set. |
+| langfuse.gateway.image.pullSecrets | string | `nil` | The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set. |
+| langfuse.gateway.image.repository | string | `"docker.langfuse.com/langfuse/langfuse-ai-gateway"` | The image repository to use for the AI gateway pods. |
+| langfuse.gateway.image.tag | string | `nil` | The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set. |
+| langfuse.gateway.ingress.additionalLabels | object | `{}` | Additional labels for the AI gateway ingress |
+| langfuse.gateway.ingress.annotations | object | `{}` | Annotations for the AI gateway ingress |
+| langfuse.gateway.ingress.className | string | `""` | The class name for the AI gateway ingress. Using `langfuse.ingress.className` if not set. |
+| langfuse.gateway.ingress.enabled | bool | `false` | Set to `true` to create an Ingress for the AI gateway |
+| langfuse.gateway.ingress.hosts | list | `[]` | Hostnames for the AI gateway ingress, e.g. `["gateway.langfuse.example.com"]`. Each host routes `/` to the gateway service. |
+| langfuse.gateway.ingress.tls.enabled | bool | `false` | Set to `true` to enable HTTPS on the AI gateway ingress |
+| langfuse.gateway.ingress.tls.secretName | string | `""` | The name of the TLS secret for the AI gateway hosts. Use a different secret than `langfuse.ingress.tls.secretName` when cert-manager issues it. |
+| langfuse.gateway.jwt.keyId | string | `""` | LANGFUSE_AI_GATEWAY_JWT_KEY_ID set on web. Optional; web defaults it to the RFC 7638 thumbprint of the public key. |
+| langfuse.gateway.jwt.privateKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY: ES256 (P-256) PEM private key (SEC1 or PKCS8) web signs ingestion tokens with. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl ecparam -name prime256v1 -genkey -noout`. |
+| langfuse.gateway.jwt.publicKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY: PEM public key matching `privateKey`. Optional; web derives it from the private key when unset. Requires `privateKey` to be provided. |
+| langfuse.gateway.livenessProbe.failureThreshold | int | `3` | Failure threshold for livenessProbe. |
+| langfuse.gateway.livenessProbe.initialDelaySeconds | int | `5` | Initial delay seconds for livenessProbe. |
+| langfuse.gateway.livenessProbe.path | string | `"/health"` | Path to check for liveness. Returns 200 while the process runs, including while draining. |
+| langfuse.gateway.livenessProbe.periodSeconds | int | `10` | Period seconds for livenessProbe. |
+| langfuse.gateway.livenessProbe.successThreshold | int | `1` | Success threshold for livenessProbe. |
+| langfuse.gateway.livenessProbe.timeoutSeconds | int | `5` | Timeout seconds for livenessProbe. |
+| langfuse.gateway.pdb.create | bool | `true` | Set to `true` to create a Pod Disruption Budget for the AI gateway pods |
+| langfuse.gateway.pdb.maxUnavailable | string | `""` | Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.gateway.pdb.minAvailable | string | `""` | Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
+| langfuse.gateway.pod.additionalEnv | list | `[]` | Additional environment variables for the AI gateway pods, e.g. the tuning knobs `LANGFUSE_AI_GATEWAY_MAX_REQUEST_BYTES`, `LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, `LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS`, and `LANGFUSE_AI_GATEWAY_STALL_TIMEOUT_SECONDS`. The global `langfuse.additionalEnv` does not apply. |
+| langfuse.gateway.pod.additionalEnvFrom | list | `[]` | Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply. |
+| langfuse.gateway.pod.affinity | string | `nil` | Affinity for the AI gateway pods. Overrides the global affinity |
+| langfuse.gateway.pod.annotations | object | `{}` | Annotations for the AI gateway pods |
+| langfuse.gateway.pod.extraContainers | list | `[]` | Additional containers for the AI gateway pods. The global `langfuse.extraContainers` do not apply. |
+| langfuse.gateway.pod.labels | object | `{}` | Labels for the AI gateway pods |
+| langfuse.gateway.pod.nodeSelector | string | `nil` | Node selector for the AI gateway pods. Overrides the global nodeSelector |
+| langfuse.gateway.pod.priorityClassName | string | `nil` | PriorityClass for the AI gateway pods. Overrides the global priorityClassName |
+| langfuse.gateway.pod.tolerations | string | `nil` | Tolerations for the AI gateway pods. Overrides the global tolerations |
+| langfuse.gateway.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints |
+| langfuse.gateway.preStopSleepSeconds | int | `10` | Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook. |
+| langfuse.gateway.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
+| langfuse.gateway.readinessProbe.initialDelaySeconds | int | `5` | Initial delay seconds for readinessProbe. |
+| langfuse.gateway.readinessProbe.path | string | `"/ready"` | Path to check for readiness. Returns 503 while draining or when web is not configured. |
+| langfuse.gateway.readinessProbe.periodSeconds | int | `5` | Period seconds for readinessProbe. |
+| langfuse.gateway.readinessProbe.successThreshold | int | `1` | Success threshold for readinessProbe. |
+| langfuse.gateway.readinessProbe.timeoutSeconds | int | `5` | Timeout seconds for readinessProbe. |
+| langfuse.gateway.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
+| langfuse.gateway.resources | object | `{}` | Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi. |
+| langfuse.gateway.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit |
+| langfuse.gateway.service.additionalLabels | object | `{}` | Additional labels for the AI gateway service |
+| langfuse.gateway.service.annotations | object | `{}` | Annotations for the AI gateway service |
+| langfuse.gateway.service.port | int | `8080` | The port the AI gateway listens on and the service exposes |
+| langfuse.gateway.service.type | string | `"ClusterIP"` | The type of service to use for the AI gateway |
+| langfuse.gateway.serviceKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. |
+| langfuse.gateway.shutdownTimeoutSeconds | int | `110` | LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). Streams longer than this are cut on every rollout and scale-in. |
+| langfuse.gateway.terminationGracePeriodSeconds | int | `130` | Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `shutdownTimeoutSeconds`. |
+| langfuse.gateway.webUrl | string | `""` | LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to `langfuse.nextauth.url`. Must be HTTPS; the gateway rejects plain-HTTP web URLs. |
 | langfuse.image.pullPolicy | string | `"Always"` | The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.pullSecrets | list | `[]` | The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.tag | string | `nil` | The image tag to use for all langfuse deployments. Can be overridden by the individual deployments. Falls back to appVersion if not set. |
