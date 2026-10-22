@@ -852,6 +852,25 @@ tests:
           value: 4
         template: gateway/deployment.yaml
 
+  - it: keeps an explicit zero replicas and revisionHistoryLimit
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.replicas: 3
+      langfuse.gateway.enabled: true
+      langfuse.gateway.replicas: 0
+      langfuse.gateway.revisionHistoryLimit: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 0
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 0
+        template: gateway/deployment.yaml
+
   # Validations
   - it: rejects a plain-HTTP web URL
     values:

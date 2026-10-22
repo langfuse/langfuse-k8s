@@ -17,9 +17,9 @@ metadata:
   {{- end }}
 spec:
   {{- if not $gw.hpa.enabled }}
-  replicas: {{ $gw.replicas | default .Values.langfuse.replicas }}
+  replicas: {{ ternary .Values.langfuse.replicas $gw.replicas (kindIs "invalid" $gw.replicas) }}
   {{- end }}
-  revisionHistoryLimit: {{ $gw.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ ternary .Values.langfuse.revisionHistoryLimit $gw.revisionHistoryLimit (kindIs "invalid" $gw.revisionHistoryLimit) }}
   {{- with (coalesce $gw.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
