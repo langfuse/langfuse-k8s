@@ -114,7 +114,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.deployment.additionalLabels | object | `{}` | Additional labels for the AI gateway deployment |
 | langfuse.gateway.deployment.annotations | object | `{}` | Annotations for the AI gateway deployment |
 | langfuse.gateway.deployment.strategy | object | `{}` | Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy |
-| langfuse.gateway.enabled | bool | `false` | Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_ENABLED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
+| langfuse.gateway.enabled | bool | `false` | Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
 | langfuse.gateway.hpa.annotations | object | `{}` | Annotations for the AI gateway HPA |
 | langfuse.gateway.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the AI gateway pods |
 | langfuse.gateway.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the AI gateway pods |

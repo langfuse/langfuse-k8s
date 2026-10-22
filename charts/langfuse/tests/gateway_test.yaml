@@ -35,8 +35,14 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ENABLED
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
             value: "false"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ENABLED
+          any: true
         template: web/deployment.yaml
       - notContains:
           path: spec.template.spec.containers[0].env
@@ -184,8 +190,14 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ENABLED
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
             value: "true"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ENABLED
+          any: true
         template: web/deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].env
@@ -226,7 +238,7 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ENABLED
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
           any: true
         template: worker/deployment.yaml
       - notContains:
@@ -968,21 +980,21 @@ tests:
         template: validations.yaml
 
   # Web flag and public URL
-  - it: does not override LANGFUSE_AI_GATEWAY_ENABLED or LANGFUSE_AI_GATEWAY_PUBLIC_URL set in additionalEnv
+  - it: does not override LANGFUSE_AI_GATEWAY_DEPLOYED or LANGFUSE_AI_GATEWAY_PUBLIC_URL set in additionalEnv
     values:
       - ../values.lint.yaml
     set:
       langfuse.gateway.enabled: true
       langfuse.gateway.publicUrl: https://llm.example.com
       langfuse.additionalEnv:
-        - name: LANGFUSE_AI_GATEWAY_ENABLED
+        - name: LANGFUSE_AI_GATEWAY_DEPLOYED
           value: "false"
       langfuse.web.pod.additionalEnv:
         - name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
           value: https://custom.example.com
     asserts:
       - equal:
-          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_ENABLED")].value
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_DEPLOYED")].value
           value: "false"
         template: web/deployment.yaml
       - equal:
@@ -992,7 +1004,7 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ENABLED
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
             value: "true"
         template: web/deployment.yaml
       - notContains:
@@ -1000,6 +1012,26 @@ tests:
           content:
             name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
             value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: passes a user-set LANGFUSE_AI_GATEWAY_ENABLED feature flag through unchanged
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.web.pod.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_ENABLED
+          value: "false"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_ENABLED")].value
+          value: "false"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+            value: "true"
         template: web/deployment.yaml
 
   - it: does not set a public URL on web without publicUrl or a gateway ingress

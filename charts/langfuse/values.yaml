@@ -487,7 +487,7 @@ langfuse:
   # gateway's preStop hook (see `preStopSleepSeconds`).
   # Global scheduling, security context, service account, and DNS settings do apply.
   gateway:
-    # -- Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_ENABLED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
+    # -- Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
     enabled: false
     image:
       # -- The image repository to use for the AI gateway pods.

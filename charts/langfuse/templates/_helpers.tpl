@@ -984,18 +984,19 @@ over https when the ingress terminates TLS or web itself is served over https
 {{- end -}}
 
 {{/*
-AI gateway settings on web: the enable flag (always rendered, "true" or "false"),
-the public gateway URL, the HMAC service key it verifies gateway calls with, and
+AI gateway settings on web: whether a gateway is deployed (always rendered, "true"
+or "false"; the LANGFUSE_AI_GATEWAY_ENABLED feature flag is left to the user), the
+public gateway URL, the HMAC service key it verifies gateway calls with, and
 the ES256 key pair it signs and verifies ingestion tokens with. Web derives the
 public key and key id from the private key unless they are overridden. The
-gateway never holds the JWT keys. LANGFUSE_AI_GATEWAY_ENABLED and
+gateway never holds the JWT keys. LANGFUSE_AI_GATEWAY_DEPLOYED and
 LANGFUSE_AI_GATEWAY_PUBLIC_URL are skipped when already set in additionalEnv.
 */}}
 {{- define "langfuse.gatewayWebEnv" -}}
 {{- $gw := (.Values.langfuse.gateway | default dict) -}}
 {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list) (.Values.langfuse.web.pod.additionalEnv | default list) -}}
-{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_ENABLED")) }}
-- name: LANGFUSE_AI_GATEWAY_ENABLED
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_DEPLOYED")) }}
+- name: LANGFUSE_AI_GATEWAY_DEPLOYED
   value: {{ ternary "true" "false" (eq (toString $gw.enabled) "true") | quote }}
 {{- end }}
 {{- if $gw.enabled }}
