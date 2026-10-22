@@ -1,0 +1,113 @@
+suite: test clickhouse pod template configuration
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should not render podTemplate when no pod-template fields are set
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.podTemplate
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.podTemplate
+        template: clickhouse/keeper.yaml
+
+  - it: should render podLabels on ClickHouseCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.podLabels:
+        psp-readonlyrootfilesystem-exempt: "true"
+        runasnonroot-exempt: "true"
+    asserts:
+      - equal:
+          path: spec.podTemplate.labels["psp-readonlyrootfilesystem-exempt"]
+          value: "true"
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.podTemplate.labels["runasnonroot-exempt"]
+          value: "true"
+        template: clickhouse/cluster.yaml
+
+  - it: should render podLabels on KeeperCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.podLabels:
+        psp-readonlyrootfilesystem-exempt: "true"
+    asserts:
+      - equal:
+          path: spec.podTemplate.labels["psp-readonlyrootfilesystem-exempt"]
+          value: "true"
+        template: clickhouse/keeper.yaml
+
+  - it: should render podSecurityContext on ClickHouseCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.podSecurityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+    asserts:
+      - equal:
+          path: spec.podTemplate.securityContext.fsGroup
+          value: 1000
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.podTemplate.securityContext.runAsUser
+          value: 1000
+        template: clickhouse/cluster.yaml
+
+  - it: should render podSecurityContext on KeeperCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.podSecurityContext:
+        fsGroup: 2000
+    asserts:
+      - equal:
+          path: spec.podTemplate.securityContext.fsGroup
+          value: 2000
+        template: clickhouse/keeper.yaml
+
+  - it: should render container securityContext on ClickHouseCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.securityContext:
+        readOnlyRootFilesystem: true
+        runAsNonRoot: false
+    asserts:
+      - equal:
+          path: spec.containerTemplate.securityContext.readOnlyRootFilesystem
+          value: true
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.securityContext.runAsNonRoot
+          value: false
+        template: clickhouse/cluster.yaml
+
+  - it: should render container securityContext on KeeperCluster when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.securityContext:
+        allowPrivilegeEscalation: false
+    asserts:
+      - equal:
+          path: spec.containerTemplate.securityContext.allowPrivilegeEscalation
+          value: false
+        template: clickhouse/keeper.yaml
+
+  - it: should not render containerTemplate.securityContext when not set
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.containerTemplate.securityContext
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.containerTemplate.securityContext
+        template: clickhouse/keeper.yaml
