@@ -495,6 +495,24 @@ tests:
             - configMapRef:
                 name: gateway-tuning
         template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: gateway-init
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: private-ca
+              configMap:
+                name: private-ca
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts
+          value:
+            - name: private-ca
+              mountPath: /etc/ssl/private-ca
+              readOnly: true
+        template: gateway/deployment.yaml
       # gateway env from first-class values
       - contains:
           path: spec.template.spec.containers[1].env

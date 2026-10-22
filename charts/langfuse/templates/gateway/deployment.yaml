@@ -53,6 +53,14 @@ spec:
       securityContext:
         {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: {{ $gw.terminationGracePeriodSeconds }}
+      {{- with $gw.pod.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $gw.pod.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         {{- with $gw.pod.extraContainers }}
         {{- toYaml . | nindent 8 }}
@@ -69,6 +77,10 @@ spec:
             {{- end }}
           {{- with $gw.pod.additionalEnvFrom }}
           envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $gw.pod.extraVolumeMounts }}
+          volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           ports:

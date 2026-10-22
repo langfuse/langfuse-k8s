@@ -61,6 +61,18 @@ langfuse:
       additionalEnvFrom:
         - configMapRef:
             name: gateway-tuning
+      extraInitContainers:
+        - name: gateway-init
+          image: busybox:1.36
+          command: ["true"]
+      extraVolumes:
+        - name: private-ca
+          configMap:
+            name: private-ca
+      extraVolumeMounts:
+        - name: private-ca
+          mountPath: /etc/ssl/private-ca
+          readOnly: true
     service:
       type: ClusterIP
       port: 8081

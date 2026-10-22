@@ -242,6 +242,12 @@ langfuse:
       additionalEnv: []
       # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnvFrom: []
+      # -- Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
+      extraInitContainers: []
+      # -- Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
+      extraVolumes: []
+      # -- Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
+      extraVolumeMounts: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -477,6 +483,8 @@ langfuse:
   # AI gateway configuration. The gateway pod only receives gateway settings: the global
   # `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraVolumes`, `extraVolumeMounts`,
   # `extraInitContainers`, and `extraLifecycle` do not apply to it, so it never sees database or storage credentials.
+  # Use the `langfuse.gateway.pod.*` equivalents instead. Lifecycle hooks are not configurable: the chart owns the
+  # gateway's preStop hook (see `preStopSleepSeconds`).
   # Global scheduling, security context, service account, and DNS settings do apply.
   gateway:
     # -- Set to `true` to deploy the Langfuse AI gateway and set `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.

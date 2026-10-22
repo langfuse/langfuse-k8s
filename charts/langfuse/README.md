@@ -240,6 +240,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.pod.affinity | string | `nil` | Affinity for the web pods. Overrides the global affinity |
 | langfuse.web.pod.annotations | object | `{}` | Annotations for the web pods |
 | langfuse.web.pod.extraContainers | list | `[]` | Allows additional containers to be added to all langfuse web pods |
+| langfuse.web.pod.extraInitContainers | list | `[]` | Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply. |
+| langfuse.web.pod.extraVolumeMounts | list | `[]` | Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply. |
+| langfuse.web.pod.extraVolumes | list | `[]` | Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply. |
 | langfuse.web.pod.labels | object | `{}` | Labels for the web pods |
 | langfuse.web.pod.nodeSelector | string | `nil` | Node selector for the web pods. Overrides the global nodeSelector |
 | langfuse.web.pod.priorityClassName | string | `nil` | PriorityClass for the web pods. Overrides the global priorityClassName |
