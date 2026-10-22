@@ -969,16 +969,42 @@ the gateway needs no database, Redis, ClickHouse, or S3 credentials.
 {{- end -}}
 
 {{/*
-AI gateway settings on web: the global enable flag, the HMAC service key it
-verifies gateway calls with, and the ES256 key pair it signs and verifies
-ingestion tokens with. Web derives the public key and key id from the private
-key unless they are overridden. The gateway never holds the JWT keys.
+Public gateway URL web shows users. Defaults to the first gateway ingress host,
+over https when the ingress terminates TLS or web itself is served over https
+(TLS terminated in front of the ingress, e.g. an ALB certificate annotation).
+*/}}
+{{- define "langfuse.gateway.publicUrl" -}}
+{{- $gw := .Values.langfuse.gateway -}}
+{{- if $gw.publicUrl -}}
+{{- $gw.publicUrl -}}
+{{- else if and $gw.ingress.enabled $gw.ingress.hosts -}}
+{{- $scheme := ternary "https" "http" (or $gw.ingress.tls.enabled (hasPrefix "https://" (.Values.langfuse.nextauth.url | default "" | lower))) -}}
+{{- printf "%s://%v" $scheme (first $gw.ingress.hosts) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+AI gateway settings on web: the enable flag (always rendered, "true" or "false"),
+the public gateway URL, the HMAC service key it verifies gateway calls with, and
+the ES256 key pair it signs and verifies ingestion tokens with. Web derives the
+public key and key id from the private key unless they are overridden. The
+gateway never holds the JWT keys. LANGFUSE_AI_GATEWAY_ENABLED and
+LANGFUSE_AI_GATEWAY_PUBLIC_URL are skipped when already set in additionalEnv.
 */}}
 {{- define "langfuse.gatewayWebEnv" -}}
 {{- $gw := (.Values.langfuse.gateway | default dict) -}}
-{{- if $gw.enabled }}
+{{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list) (.Values.langfuse.web.pod.additionalEnv | default list) -}}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_ENABLED")) }}
 - name: LANGFUSE_AI_GATEWAY_ENABLED
-  value: "true"
+  value: {{ ternary "true" "false" (eq (toString $gw.enabled) "true") | quote }}
+{{- end }}
+{{- if $gw.enabled }}
+{{- with (include "langfuse.gateway.publicUrl" .) }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_PUBLIC_URL")) }}
+- name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
 - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
   {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
 {{- if $gw.jwt.keyId }}

@@ -32,11 +32,17 @@ tests:
       - hasDocuments:
           count: 0
         template: gateway/pdb.yaml
-      - notContains:
+      - contains:
           path: spec.template.spec.containers[0].env
           content:
             name: LANGFUSE_AI_GATEWAY_ENABLED
-            value: "true"
+            value: "false"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          any: true
         template: web/deployment.yaml
       - notExists:
           path: data["ai-gateway-service-key"]
@@ -423,6 +429,12 @@ tests:
       - ../values.lint.yaml
       - ../values.lint.gateway.yaml
     asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.langfuse.example.com
+        template: web/deployment.yaml
       # image
       - equal:
           path: spec.template.spec.containers[1].image
@@ -953,6 +965,136 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "langfuse.gateway.webUrl must be an http:// or https:// URL"
+        template: validations.yaml
+
+  # Web flag and public URL
+  - it: does not override LANGFUSE_AI_GATEWAY_ENABLED or LANGFUSE_AI_GATEWAY_PUBLIC_URL set in additionalEnv
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: https://llm.example.com
+      langfuse.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_ENABLED
+          value: "false"
+      langfuse.web.pod.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          value: https://custom.example.com
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_ENABLED")].value
+          value: "false"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_PUBLIC_URL")].value
+          value: https://custom.example.com
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ENABLED
+            value: "true"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: does not set a public URL on web without publicUrl or a gateway ingress
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          any: true
+        template: web/deployment.yaml
+
+  - it: passes an explicit publicUrl to web over the ingress host
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: https://llm.example.com
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - gateway.langfuse.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to the first ingress host over https when the ingress terminates TLS
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: http://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+        - llm2.example.com
+      langfuse.gateway.ingress.tls.enabled: true
+      langfuse.gateway.ingress.tls.secretName: gateway-tls
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to https when web is served over https and TLS terminates in front of the ingress
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to http without TLS on the ingress or web
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: http://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: http://llm.example.com
+        template: web/deployment.yaml
+
+  - it: rejects a publicUrl that is not an http(s) URL
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: llm.example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.publicUrl must be an http:// or https:// URL"
         template: validations.yaml
 
   - it: rejects a shutdown timeout below 1

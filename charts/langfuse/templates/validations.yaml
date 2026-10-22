@@ -398,6 +398,11 @@ what you are doing.
 {{- if not (regexMatch "^(?i)https?://[^/\\s?#@]+(/[^\\s?#]*)?$" $gatewayWebUrl) -}}
     {{- fail (printf "langfuse.gateway.webUrl must be an http:// or https:// URL, got %q. Leave it empty to use the in-cluster web Service." $gatewayWebUrl) -}}
 {{- end -}}
+{{- with $.Values.langfuse.gateway.publicUrl -}}
+{{- if not (regexMatch "^(?i)https?://[^/\\s?#@]+(/[^\\s?#]*)?$" .) -}}
+    {{- fail (printf "langfuse.gateway.publicUrl must be an http:// or https:// URL, got %q." .) -}}
+{{- end -}}
+{{- end -}}
 {{- $shutdown := $gateway.shutdownTimeoutSeconds -}}
 {{- if or (not (include "langfuse.isInteger" $shutdown)) (lt (int $shutdown) 1) (gt (int $shutdown) 300) -}}
     {{- fail (printf "langfuse.gateway.shutdownTimeoutSeconds must be an integer from 1 to 300, got %v." $shutdown) -}}

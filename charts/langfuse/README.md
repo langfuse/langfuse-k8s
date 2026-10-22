@@ -114,7 +114,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.deployment.additionalLabels | object | `{}` | Additional labels for the AI gateway deployment |
 | langfuse.gateway.deployment.annotations | object | `{}` | Annotations for the AI gateway deployment |
 | langfuse.gateway.deployment.strategy | object | `{}` | Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy |
-| langfuse.gateway.enabled | bool | `false` | Set to `true` to deploy the Langfuse AI gateway and set `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
+| langfuse.gateway.enabled | bool | `false` | Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_ENABLED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
 | langfuse.gateway.hpa.annotations | object | `{}` | Annotations for the AI gateway HPA |
 | langfuse.gateway.hpa.enabled | bool | `false` | Set to `true` to enable HPA for the AI gateway pods |
 | langfuse.gateway.hpa.maxReplicas | int | `2` | The maximum number of replicas to use for the AI gateway pods |
@@ -154,6 +154,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.pod.tolerations | string | `nil` | Tolerations for the AI gateway pods. Overrides the global tolerations |
 | langfuse.gateway.pod.topologySpreadConstraints | string | `nil` | Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints |
 | langfuse.gateway.preStopSleepSeconds | int | `10` | Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook. |
+| langfuse.gateway.publicUrl | string | `""` | LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins. |
 | langfuse.gateway.readinessProbe.failureThreshold | int | `3` | Failure threshold for readinessProbe. |
 | langfuse.gateway.readinessProbe.initialDelaySeconds | int | `5` | Initial delay seconds for readinessProbe. |
 | langfuse.gateway.readinessProbe.path | string | `"/ready"` | Path to check for readiness. Returns 503 while draining or when web is not configured. |

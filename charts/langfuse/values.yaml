@@ -487,7 +487,7 @@ langfuse:
   # gateway's preStop hook (see `preStopSleepSeconds`).
   # Global scheduling, security context, service account, and DNS settings do apply.
   gateway:
-    # -- Set to `true` to deploy the Langfuse AI gateway and set `LANGFUSE_AI_GATEWAY_ENABLED=true` on web. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
+    # -- Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_ENABLED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
     enabled: false
     image:
       # -- The image repository to use for the AI gateway pods.
@@ -565,6 +565,8 @@ langfuse:
 
     # -- LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`).
     webUrl: ""
+    # -- LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins.
+    publicUrl: ""
     # -- LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin.
     serviceKey:
       value: ""
