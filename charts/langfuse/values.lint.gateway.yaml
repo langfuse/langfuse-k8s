@@ -84,7 +84,7 @@ langfuse:
       tls:
         enabled: true
         secretName: langfuse-gateway-tls
-    webUrl: https://langfuse.example.com
+    # webUrl left empty: the gateway calls web through its in-cluster Service.
     serviceKey:
       secretKeyRef:
         name: langfuse-gateway

@@ -395,8 +395,8 @@ what you are doing.
 {{- $gateway := .Values.langfuse.gateway | default dict -}}
 {{- if $gateway.enabled -}}
 {{- $gatewayWebUrl := include "langfuse.gateway.webUrl" . -}}
-{{- if not (hasPrefix "https://" $gatewayWebUrl) -}}
-    {{- fail (printf "langfuse.gateway.webUrl (defaulting to langfuse.nextauth.url) must be an https:// URL, got %q. The AI gateway rejects plain-HTTP web URLs because web's responses carry provider API keys." $gatewayWebUrl) -}}
+{{- if not (regexMatch "^(?i)https?://[^/\\s?#@]+(/[^\\s?#]*)?$" $gatewayWebUrl) -}}
+    {{- fail (printf "langfuse.gateway.webUrl must be an http:// or https:// URL, got %q. Leave it empty to use the in-cluster web Service." $gatewayWebUrl) -}}
 {{- end -}}
 {{- $shutdown := $gateway.shutdownTimeoutSeconds -}}
 {{- if or (not (include "langfuse.isInteger" $shutdown)) (lt (int $shutdown) 1) (gt (int $shutdown) 300) -}}

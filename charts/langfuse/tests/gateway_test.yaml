@@ -95,7 +95,9 @@ tests:
             - name: LANGFUSE_LOG_FORMAT
               value: text
             - name: LANGFUSE_AI_GATEWAY_WEB_URL
-              value: https://langfuse.example.com
+              value: http://RELEASE-NAME-langfuse-web.NAMESPACE.svc.cluster.local:3000
+            - name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+              value: "true"
             - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
               valueFrom:
                 secretKeyRef:
@@ -504,7 +506,13 @@ tests:
           path: spec.template.spec.containers[1].env
           content:
             name: LANGFUSE_AI_GATEWAY_WEB_URL
-            value: https://langfuse.example.com
+            value: http://RELEASE-NAME-langfuse-web.NAMESPACE.svc.cluster.local:3000
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            value: "true"
         template: gateway/deployment.yaml
       - contains:
           path: spec.template.spec.containers[1].env
@@ -872,22 +880,14 @@ tests:
         template: gateway/deployment.yaml
 
   # Validations
-  - it: rejects a plain-HTTP web URL
+  - it: defaults webUrl to the in-cluster web Service and opts into plain HTTP
     values:
       - ../values.lint.yaml
+    release:
+      namespace: langfuse
     set:
       langfuse.gateway.enabled: true
-    asserts:
-      - failedTemplate:
-          errorPattern: "langfuse.gateway.webUrl \\(defaulting to langfuse.nextauth.url\\) must be an https:// URL"
-        template: validations.yaml
-
-  - it: accepts an explicit HTTPS webUrl when nextauth.url is plain HTTP
-    values:
-      - ../values.lint.yaml
-    set:
-      langfuse.gateway.enabled: true
-      langfuse.gateway.webUrl: https://langfuse.internal.example.com
+      langfuse.web.service.port: 4000
     asserts:
       - notFailedTemplate: {}
         template: validations.yaml
@@ -895,8 +895,47 @@ tests:
           path: spec.template.spec.containers[0].env
           content:
             name: LANGFUSE_AI_GATEWAY_WEB_URL
-            value: https://langfuse.internal.example.com
+            value: http://RELEASE-NAME-langfuse-web.langfuse.svc.cluster.local:4000
         template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            value: "true"
+        template: gateway/deployment.yaml
+
+  - it: uses an explicit HTTPS webUrl without the insecure opt-in
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.webUrl: https://langfuse.example.com
+    asserts:
+      - notFailedTemplate: {}
+        template: validations.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_WEB_URL
+            value: https://langfuse.example.com
+        template: gateway/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            value: "true"
+        template: gateway/deployment.yaml
+
+  - it: rejects a webUrl that is not an http(s) URL
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.webUrl: https://user:pass@langfuse.example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.webUrl must be an http:// or https:// URL"
+        template: validations.yaml
 
   - it: rejects a shutdown timeout below 1
     values:

@@ -921,12 +921,15 @@ true
 {{- end -}}
 
 {{/*
-URL the AI gateway calls web on. The gateway only accepts HTTPS (or loopback),
-because /resolve responses carry provider API keys, so the in-cluster web
-Service cannot be used yet.
+URL the AI gateway calls web on. Defaults to the in-cluster web Service, so
+gateway traffic and telemetry never pass through web's Ingress.
 */}}
 {{- define "langfuse.gateway.webUrl" -}}
-{{- .Values.langfuse.gateway.webUrl | default .Values.langfuse.nextauth.url -}}
+{{- if .Values.langfuse.gateway.webUrl -}}
+{{- .Values.langfuse.gateway.webUrl -}}
+{{- else -}}
+{{- printf "http://%s-web.%s.svc.cluster.local:%v" (include "langfuse.fullname" .) .Release.Namespace (.Values.langfuse.web.service.externalPort | default .Values.langfuse.web.service.port) -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -954,6 +957,11 @@ the gateway needs no database, Redis, ClickHouse, or S3 credentials.
   value: {{ .Values.langfuse.logging.format | quote }}
 - name: LANGFUSE_AI_GATEWAY_WEB_URL
   value: {{ include "langfuse.gateway.webUrl" . | quote }}
+{{- if hasPrefix "http://" (include "langfuse.gateway.webUrl" . | lower) }}
+{{- /* The gateway refuses non-loopback plain-HTTP web URLs unless opted in; /resolve responses carry provider API keys. */}}
+- name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+  value: "true"
+{{- end }}
 - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
   {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
 - name: LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS
