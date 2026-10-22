@@ -959,7 +959,7 @@ the gateway needs no database, Redis, ClickHouse, or S3 credentials.
   value: {{ include "langfuse.gateway.webUrl" . | quote }}
 {{- if hasPrefix "http://" (include "langfuse.gateway.webUrl" . | lower) }}
 {{- /* The gateway refuses non-loopback plain-HTTP web URLs unless opted in; /resolve responses carry provider API keys. */}}
-- name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+- name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
   value: "true"
 {{- end }}
 - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY

@@ -96,7 +96,7 @@ tests:
               value: text
             - name: LANGFUSE_AI_GATEWAY_WEB_URL
               value: http://RELEASE-NAME-langfuse-web.NAMESPACE.svc.cluster.local:3000
-            - name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            - name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
               value: "true"
             - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
               valueFrom:
@@ -511,7 +511,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[1].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
             value: "true"
         template: gateway/deployment.yaml
       - contains:
@@ -900,7 +900,7 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
             value: "true"
         template: gateway/deployment.yaml
 
@@ -922,7 +922,7 @@ tests:
       - notContains:
           path: spec.template.spec.containers[0].env
           content:
-            name: LANGFUSE_AI_GATEWAY_ALLOW_INSECURE_WEB_URL
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
             value: "true"
         template: gateway/deployment.yaml
 
