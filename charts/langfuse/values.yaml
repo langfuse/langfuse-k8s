@@ -1,7 +1,7 @@
 # Langfuse Helm Chart Configuration
 
 global:
-  # -- Registry for all images, replacing the registry in each image repository. Not honored by the bundled Postgres; set `postgresql.image.registry` too.
+  # -- Registry for all images, taking precedence over each `image.registry`. Langfuse and ClickHouse repositories that already include a registry are used as is. Not honored by the bundled Postgres; set `postgresql.image.registry` too. Langfuse and ClickHouse don't use `global.imagePullSecrets`; set `langfuse.image.pullSecrets` and `clickhouse.*.image.pullSecrets`.
   imageRegistry: ""
 
 # -- Override the name for the selector labels, defaults to the chart name
@@ -210,8 +210,10 @@ langfuse:
   # Web deployment configuration
   web:
     image:
+      # -- The image registry to use for the langfuse web pods. `global.imageRegistry` takes precedence when set.
+      registry: docker.langfuse.com
       # -- The image repository to use for the langfuse web pods.
-      repository: docker.langfuse.com/langfuse/langfuse
+      repository: langfuse/langfuse
       # -- The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set.
       tag: Null
       # -- The pull policy to use for the langfuse web pods. Using `langfuse.image.pullPolicy` if not set.
@@ -362,8 +364,10 @@ langfuse:
     # -- Adding records to /etc/hosts in the worker pod's network.
     hostAliases: []
     image:
+      # -- The image registry to use for the langfuse worker pods. `global.imageRegistry` takes precedence when set.
+      registry: docker.langfuse.com
       # -- The image repository to use for the langfuse worker pods
-      repository: docker.langfuse.com/langfuse/langfuse-worker
+      repository: langfuse/langfuse-worker
       # -- The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set.
       tag: Null
       # -- The pull policy to use for the langfuse worker pods. Using `langfuse.image.pullPolicy` if not set.
@@ -538,6 +542,8 @@ postgresql:
   # Sub-chart settings (groundhog2k/postgres) — passed through to the sub-chart.
   # See https://artifacthub.io/packages/helm/groundhog2k/postgres for the full schema.
   image:
+    # -- Postgres image registry. The Postgres sub-chart ignores `global.imageRegistry`, so set this too when using one.
+    registry: docker.io
     # -- Postgres image. Defaults to the upstream Docker Hub image (Apache 2.0 / PostgreSQL license).
     repository: postgres
     tag: "18"
@@ -786,6 +792,8 @@ clickhouse:
     # -- Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled.
     replicas: 1
     image:
+      # -- ClickHouse server image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set.
+      registry: ""
       # -- ClickHouse server image repository.
       repository: clickhouse/clickhouse-server
       # -- ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4.
@@ -829,6 +837,8 @@ clickhouse:
     # -- Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA.
     replicas: 3
     image:
+      # -- ClickHouse Keeper image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set.
+      registry: ""
       # -- ClickHouse Keeper image repository.
       repository: clickhouse/clickhouse-keeper
       # -- ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag.

@@ -20,7 +20,7 @@ spec:
         storage: {{ .Values.clickhouse.keeper.storage.size | quote }}
   containerTemplate:
     image:
-      repository: {{ include "langfuse.image.repository" (list $ .Values.clickhouse.keeper.image.repository) | quote }}
+      repository: {{ include "langfuse.imageRepository" (list $ .Values.clickhouse.keeper.image) | quote }}
       tag: {{ .Values.clickhouse.keeper.image.tag | quote }}
     {{- with .Values.clickhouse.keeper.resources }}
     resources:

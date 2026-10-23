@@ -86,15 +86,17 @@ own fullname prefix only coincides with it when the release is named
 {{- end -}}
 
 {{/*
-Image repository with global.imageRegistry replacing its registry host, if any.
-Takes (list $ "<repository>").
+Image repository prefixed with global.imageRegistry, or else image.registry.
+A repository that already starts with a registry host is used as is.
+Takes (list $ <image values>).
 */}}
-{{- define "langfuse.image.repository" -}}
-{{- $repository := index . 1 -}}
-{{- with ((index . 0).Values.global).imageRegistry -}}
-{{- printf "%s/%s" (trimSuffix "/" .) (regexReplaceAll "^[^/]*[.:][^/]*/" $repository "") -}}
+{{- define "langfuse.imageRepository" -}}
+{{- $image := index . 1 -}}
+{{- $registry := default $image.registry ((index . 0).Values.global).imageRegistry -}}
+{{- if and $registry (not (regexMatch "^(localhost|[^/]*[.:][^/]*)/" $image.repository)) -}}
+{{- printf "%s/%s" (trimSuffix "/" $registry) $image.repository -}}
 {{- else -}}
-{{- $repository -}}
+{{- $image.repository -}}
 {{- end -}}
 {{- end -}}
 
