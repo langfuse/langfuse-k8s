@@ -1,0 +1,42 @@
+# AI gateway on top of examples/minimal-installation. Combine with one ingress file:
+# with-nginx.yaml (ingress-nginx + cert-manager) or with-alb.yaml (AWS Load Balancer Controller).
+#
+#   helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse -n langfuse \
+#     -f ../minimal-installation/values.yaml -f values.yaml -f with-nginx.yaml
+langfuse:
+  nextauth:
+    url: https://langfuse.example.com
+
+  web:
+    # Every gateway request depends on web, so keep more than one web replica.
+    replicas: 2
+
+  gateway:
+    enabled: true
+
+    # Pinned keys from secret.yaml. Leave both unset to let the chart generate them into
+    # <release>-app instead; don't do that under helm-template based GitOps (e.g. ArgoCD),
+    # where the generated keys would rotate on every sync.
+    serviceKey:
+      secretKeyRef:
+        name: langfuse-ai-gateway
+        key: service-key
+    jwt:
+      privateKey:
+        secretKeyRef:
+          name: langfuse-ai-gateway
+          key: jwt-private-key
+
+    # Memory limit >= LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES (1 GiB by default) + 512 Mi.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1536Mi
+      limits:
+        memory: 1536Mi
+
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 70

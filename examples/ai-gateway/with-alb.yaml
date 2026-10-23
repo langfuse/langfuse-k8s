@@ -1,0 +1,34 @@
+# AWS Load Balancer Controller. Replace the hostnames and certificate ARNs.
+#
+# The ALB terminates TLS with ACM certificates, so the chart's ingress TLS stays off. The URL
+# web shows users for the gateway still uses https, because langfuse.nextauth.url is https.
+langfuse:
+  ingress:
+    enabled: true
+    className: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:123456789012:certificate/web
+    hosts:
+      - host: langfuse.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+
+  gateway:
+    ingress:
+      enabled: true
+      className: alb
+      annotations:
+        alb.ingress.kubernetes.io/scheme: internet-facing
+        alb.ingress.kubernetes.io/target-type: ip
+        alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+        alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:eu-west-1:123456789012:certificate/gateway
+        # The idle timeout is per load balancer: a separate group keeps web's timeout unchanged.
+        alb.ingress.kubernetes.io/group.name: langfuse-gateway
+        alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=620
+        alb.ingress.kubernetes.io/healthcheck-path: /ready
+      hosts:
+        - gateway.langfuse.example.com
