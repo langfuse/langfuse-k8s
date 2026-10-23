@@ -474,8 +474,11 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
-  # AI gateway configuration (beta). `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees
-  # and may change in minor releases. The gateway pod only receives gateway settings: the global
+  # AI gateway configuration.
+  #
+  # BETA: `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees and may change in minor releases.
+  #
+  # The gateway pod only receives gateway settings: the global
   # `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraVolumes`, `extraVolumeMounts`,
   # `extraInitContainers`, and `extraLifecycle` do not apply to it, so it never sees database or storage credentials.
   # Use the `langfuse.gateway.pod.*` equivalents instead. Lifecycle hooks are not configurable: the chart owns the
