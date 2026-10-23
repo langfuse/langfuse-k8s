@@ -1,6 +1,7 @@
 suite: test nextauth.url
 templates:
   - web/deployment.yaml
+  - worker/deployment.yaml
 tests:
   - it: should render templates in nextauth.url
     values:
@@ -14,3 +15,10 @@ tests:
           content:
             name: NEXTAUTH_URL
             value: https://langfuse.example.com
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: NEXTAUTH_URL
+            value: https://langfuse.example.com
+        template: worker/deployment.yaml

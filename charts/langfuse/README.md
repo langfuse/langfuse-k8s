@@ -125,7 +125,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.logging.format | string | `"text"` | Set the log format for the application (text or json) |
 | langfuse.logging.level | string | `"info"` | Set the log level for the application (trace, debug, info, warn, error, fatal) |
 | langfuse.nextauth.secret | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | NextAuth secret for JWT encryption and email token hashing. Leave empty to auto-generate on first install (persisted in `<release>-app`); override with value/secretKeyRef to pin. |
-| langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. |
+| langfuse.nextauth.url | string | `"http://localhost:3000"` | When deploying to production, set the `nextauth.url` value to the canonical URL of your site. Supports Helm templating, rendered against this chart's values, so a parent chart's values are only reachable through `global`, e.g. `https://langfuse.{{ .Values.global.domain }}`. |
 | langfuse.nodeEnv | string | `"production"` | Node.js environment to use for all langfuse deployments |
 | langfuse.nodeSelector | object | `{}` | Node selector for all langfuse deployments |
 | langfuse.pod.annotations | object | `{}` | Annotations for all langfuse pods |
