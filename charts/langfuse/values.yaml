@@ -474,66 +474,67 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
-  # AI gateway configuration. The gateway pod only receives gateway settings: the global
+  # AI gateway configuration (beta). `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees
+  # and may change in minor releases. The gateway pod only receives gateway settings: the global
   # `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraVolumes`, `extraVolumeMounts`,
   # `extraInitContainers`, and `extraLifecycle` do not apply to it, so it never sees database or storage credentials.
   # Use the `langfuse.gateway.pod.*` equivalents instead. Lifecycle hooks are not configurable: the chart owns the
   # gateway's preStop hook (see `preStopSleepSeconds`).
   # Global scheduling, security context, service account, and DNS settings do apply.
   gateway:
-    # -- Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
+    # -- [Beta] Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
     enabled: false
     image:
-      # -- The image repository to use for the AI gateway pods.
+      # -- [Beta] The image repository to use for the AI gateway pods.
       repository: docker.langfuse.com/langfuse/ai-gateway
-      # -- The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set.
+      # -- [Beta] The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set.
       tag: Null
-      # -- The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set.
+      # -- [Beta] The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set.
       pullPolicy: Null
-      # -- The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set.
+      # -- [Beta] The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set.
       pullSecrets: Null
     deployment:
-      # -- Additional labels for the AI gateway deployment
+      # -- [Beta] Additional labels for the AI gateway deployment
       additionalLabels: {}
-      # -- Annotations for the AI gateway deployment
+      # -- [Beta] Annotations for the AI gateway deployment
       annotations: {}
-      # -- Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy
+      # -- [Beta] Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy
       strategy: {}
     pod:
-      # -- Annotations for the AI gateway pods
+      # -- [Beta] Annotations for the AI gateway pods
       annotations: {}
-      # -- Labels for the AI gateway pods
+      # -- [Beta] Labels for the AI gateway pods
       labels: {}
-      # -- Node selector for the AI gateway pods. Overrides the global nodeSelector
+      # -- [Beta] Node selector for the AI gateway pods. Overrides the global nodeSelector
       nodeSelector: null
-      # -- Tolerations for the AI gateway pods. Overrides the global tolerations
+      # -- [Beta] Tolerations for the AI gateway pods. Overrides the global tolerations
       tolerations: null
-      # -- Affinity for the AI gateway pods. Overrides the global affinity
+      # -- [Beta] Affinity for the AI gateway pods. Overrides the global affinity
       affinity: null
-      # -- Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints
+      # -- [Beta] Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints
       topologySpreadConstraints: null
-      # -- PriorityClass for the AI gateway pods. Overrides the global priorityClassName
+      # -- [Beta] PriorityClass for the AI gateway pods. Overrides the global priorityClassName
       priorityClassName: null
-      # -- Additional containers for the AI gateway pods. The global `langfuse.extraContainers` do not apply.
+      # -- [Beta] Additional containers for the AI gateway pods. The global `langfuse.extraContainers` do not apply.
       extraContainers: []
-      # -- Additional environment variables for the AI gateway pods, e.g. the tuning knobs `LANGFUSE_AI_GATEWAY_MAX_REQUEST_BYTES`, `LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, `LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS`, and `LANGFUSE_AI_GATEWAY_STALL_TIMEOUT_SECONDS`. The global `langfuse.additionalEnv` does not apply.
+      # -- [Beta] Additional environment variables for the AI gateway pods, e.g. the tuning knobs `LANGFUSE_AI_GATEWAY_MAX_REQUEST_BYTES`, `LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, `LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS`, and `LANGFUSE_AI_GATEWAY_STALL_TIMEOUT_SECONDS`. The global `langfuse.additionalEnv` does not apply.
       additionalEnv: []
-      # -- Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply.
+      # -- [Beta] Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply.
       additionalEnvFrom: []
-      # -- Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
+      # -- [Beta] Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
       extraInitContainers: []
-      # -- Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
+      # -- [Beta] Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
       extraVolumes: []
-      # -- Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
+      # -- [Beta] Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
       extraVolumeMounts: []
     service:
-      # -- The type of service to use for the AI gateway
+      # -- [Beta] The type of service to use for the AI gateway
       type: ClusterIP
-      # -- The port the AI gateway listens on and the service exposes
+      # -- [Beta] The port the AI gateway listens on and the service exposes
       port: 8080
-      # -- Additional labels for the AI gateway service
+      # -- [Beta] Additional labels for the AI gateway service
       additionalLabels: {}
-      # -- Annotations for the AI gateway service
+      # -- [Beta] Annotations for the AI gateway service
       annotations: {}
 
     # The gateway gets its own Ingress on a dedicated host (e.g. `gateway.langfuse.example.com`), which needs a DNS record
@@ -547,112 +548,112 @@ langfuse:
     #   nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
     #   nginx.ingress.kubernetes.io/proxy-body-size: "17m"
     ingress:
-      # -- Set to `true` to create an Ingress for the AI gateway
+      # -- [Beta] Set to `true` to create an Ingress for the AI gateway
       enabled: false
-      # -- The class name for the AI gateway ingress. Using `langfuse.ingress.className` if not set.
+      # -- [Beta] The class name for the AI gateway ingress. Using `langfuse.ingress.className` if not set.
       className: ""
-      # -- Additional labels for the AI gateway ingress
+      # -- [Beta] Additional labels for the AI gateway ingress
       additionalLabels: {}
-      # -- Annotations for the AI gateway ingress
+      # -- [Beta] Annotations for the AI gateway ingress
       annotations: {}
-      # -- Hostnames for the AI gateway ingress, e.g. `["gateway.langfuse.example.com"]`. Each host routes `/` to the gateway service.
+      # -- [Beta] Hostnames for the AI gateway ingress, e.g. `["gateway.langfuse.example.com"]`. Each host routes `/` to the gateway service.
       hosts: []
       tls:
-        # -- Set to `true` to enable HTTPS on the AI gateway ingress
+        # -- [Beta] Set to `true` to enable HTTPS on the AI gateway ingress
         enabled: false
-        # -- The name of the TLS secret for the AI gateway hosts. Use a different secret than `langfuse.ingress.tls.secretName` when cert-manager issues it.
+        # -- [Beta] The name of the TLS secret for the AI gateway hosts. Use a different secret than `langfuse.ingress.tls.secretName` when cert-manager issues it.
         secretName: ""
 
-    # -- LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`).
+    # -- [Beta] LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`).
     webUrl: ""
-    # -- LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins.
+    # -- [Beta] LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins.
     publicUrl: ""
-    # -- LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin.
+    # -- [Beta] LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin.
     serviceKey:
       value: ""
       secretKeyRef:
         name: ""
         key: ""
     jwt:
-      # -- LANGFUSE_AI_GATEWAY_JWT_KEY_ID set on web. Optional; web defaults it to the RFC 7638 thumbprint of the public key.
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_KEY_ID set on web. Optional; web defaults it to the RFC 7638 thumbprint of the public key.
       keyId: ""
-      # -- LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY: ES256 (P-256) PEM private key (SEC1 or PKCS8) web signs ingestion tokens with. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl ecparam -name prime256v1 -genkey -noout`.
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY: ES256 (P-256) PEM private key (SEC1 or PKCS8) web signs ingestion tokens with. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl ecparam -name prime256v1 -genkey -noout`.
       privateKey:
         value: ""
         secretKeyRef:
           name: ""
           key: ""
-      # -- LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY: PEM public key matching `privateKey`. Optional; web derives it from the private key when unset. Requires `privateKey` to be provided.
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY: PEM public key matching `privateKey`. Optional; web derives it from the private key when unset. Requires `privateKey` to be provided.
       publicKey:
         value: ""
         secretKeyRef:
           name: ""
           key: ""
 
-    # -- LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). Streams longer than this are cut on every rollout and scale-in.
+    # -- [Beta] LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). Streams longer than this are cut on every rollout and scale-in.
     shutdownTimeoutSeconds: 110
-    # -- Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook.
+    # -- [Beta] Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook.
     preStopSleepSeconds: 10
-    # -- Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `shutdownTimeoutSeconds`.
+    # -- [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `shutdownTimeoutSeconds`.
     terminationGracePeriodSeconds: 130
 
-    # -- Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi.
+    # -- [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi.
     resources: {}
 
-    # -- Number of replicas to use if HPA is not enabled. Defaults to the global replicas
+    # -- [Beta] Number of replicas to use if HPA is not enabled. Defaults to the global replicas
     replicas: null
 
-    # -- Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit
+    # -- [Beta] Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit
     revisionHistoryLimit: null
 
     # Horizontal Pod Autoscaler configuration
     hpa:
-      # -- Set to `true` to enable HPA for the AI gateway pods
+      # -- [Beta] Set to `true` to enable HPA for the AI gateway pods
       enabled: false
-      # -- Annotations for the AI gateway HPA
+      # -- [Beta] Annotations for the AI gateway HPA
       annotations: {}
-      # -- The minimum number of replicas to use for the AI gateway pods
+      # -- [Beta] The minimum number of replicas to use for the AI gateway pods
       minReplicas: 1
-      # -- The maximum number of replicas to use for the AI gateway pods
+      # -- [Beta] The maximum number of replicas to use for the AI gateway pods
       maxReplicas: 2
-      # -- The target CPU utilization percentage for the AI gateway pods
+      # -- [Beta] The target CPU utilization percentage for the AI gateway pods
       targetCPUUtilizationPercentage: 50
 
     # Pod Disruption Budget configuration for the AI gateway deployment
     pdb:
-      # -- Set to `true` to create a Pod Disruption Budget for the AI gateway pods
+      # -- [Beta] Set to `true` to create a Pod Disruption Budget for the AI gateway pods
       create: true
-      # -- Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      # -- [Beta] Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
       minAvailable: ""
-      # -- Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      # -- [Beta] Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
       maxUnavailable: ""
 
     livenessProbe:
-      # -- Path to check for liveness. Returns 200 while the process runs, including while draining.
+      # -- [Beta] Path to check for liveness. Returns 200 while the process runs, including while draining.
       path: "/health"
-      # -- Initial delay seconds for livenessProbe.
+      # -- [Beta] Initial delay seconds for livenessProbe.
       initialDelaySeconds: 5
-      # -- Period seconds for livenessProbe.
+      # -- [Beta] Period seconds for livenessProbe.
       periodSeconds: 10
-      # -- Timeout seconds for livenessProbe.
+      # -- [Beta] Timeout seconds for livenessProbe.
       timeoutSeconds: 5
-      # -- Failure threshold for livenessProbe.
+      # -- [Beta] Failure threshold for livenessProbe.
       failureThreshold: 3
-      # -- Success threshold for livenessProbe.
+      # -- [Beta] Success threshold for livenessProbe.
       successThreshold: 1
 
     readinessProbe:
-      # -- Path to check for readiness. Returns 503 while draining or when web is not configured.
+      # -- [Beta] Path to check for readiness. Returns 503 while draining or when web is not configured.
       path: "/ready"
-      # -- Initial delay seconds for readinessProbe.
+      # -- [Beta] Initial delay seconds for readinessProbe.
       initialDelaySeconds: 5
-      # -- Period seconds for readinessProbe.
+      # -- [Beta] Period seconds for readinessProbe.
       periodSeconds: 5
-      # -- Timeout seconds for readinessProbe.
+      # -- [Beta] Timeout seconds for readinessProbe.
       timeoutSeconds: 5
-      # -- Failure threshold for readinessProbe.
+      # -- [Beta] Failure threshold for readinessProbe.
       failureThreshold: 3
-      # -- Success threshold for readinessProbe.
+      # -- [Beta] Success threshold for readinessProbe.
       successThreshold: 1
 
   # -- Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release).

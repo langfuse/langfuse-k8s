@@ -114,6 +114,8 @@ helm repo update
 helm upgrade langfuse langfuse/langfuse
 ```
 
+The chart follows [SemVer](https://semver.org/): breaking changes bump the major version. Values marked `[Beta]` (currently the [AI gateway](#ai-gateway) under `langfuse.gateway.*`) are excluded and may change in minor releases; the release notes call such changes out.
+
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
 
@@ -291,6 +293,9 @@ langfuse:
 `mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications. This one value requires Langfuse `>= 4.25`; the rest of the block works on `>= 4.24`.
 
 #### AI gateway
+
+> [!NOTE]
+> The AI gateway is in beta. Its `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees and may change in minor releases; see [Upgrading](#upgrading).
 
 `langfuse.gateway.enabled: true` deploys the Langfuse AI gateway as its own Deployment, Service, Ingress, HPA, and PodDisruptionBudget, and sets `LANGFUSE_AI_GATEWAY_DEPLOYED=true` on web (`"false"` while the gateway is disabled). The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag, which web defaults to `true`; set it to `"false"` through `langfuse.additionalEnv` or `langfuse.web.pod.additionalEnv` to turn the gateway features off. Requires a Langfuse release that contains [langfuse/langfuse#19159](https://github.com/langfuse/langfuse/pull/19159) and splits the web flag into `LANGFUSE_AI_GATEWAY_ENABLED` (feature flag) and `LANGFUSE_AI_GATEWAY_DEPLOYED`; on older releases web ignores `LANGFUSE_AI_GATEWAY_DEPLOYED` and keeps the gateway off. The gateway image (`docker.langfuse.com/langfuse/ai-gateway`, also on Docker Hub as `langfuse/ai-gateway` and at `ghcr.io/langfuse/ai-gateway`) is released with the same tags as web, so it follows `langfuse.image.tag` and the chart appVersion.
 
