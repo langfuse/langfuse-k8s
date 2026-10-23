@@ -242,12 +242,6 @@ langfuse:
       additionalEnv: []
       # -- Secrets or ConfigMap of additional environment variables to be added to all langfuse web pods. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details.
       additionalEnvFrom: []
-      # -- Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
-      extraInitContainers: []
-      # -- Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
-      extraVolumes: []
-      # -- Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
-      extraVolumeMounts: []
     service:
       # -- The type of service to use for the langfuse web application
       type: ClusterIP
@@ -526,6 +520,12 @@ langfuse:
       additionalEnv: []
       # -- Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply.
       additionalEnvFrom: []
+      # -- Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
+      extraInitContainers: []
+      # -- Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
+      extraVolumes: []
+      # -- Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
+      extraVolumeMounts: []
     service:
       # -- The type of service to use for the AI gateway
       type: ClusterIP
