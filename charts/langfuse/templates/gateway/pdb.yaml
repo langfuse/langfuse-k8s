@@ -1,0 +1,24 @@
+{{- if and .Values.langfuse.gateway.enabled .Values.langfuse.gateway.pdb.create }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "langfuse.fullname" . }}-gateway-pdb
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+  {{- with (coalesce .Values.langfuse.gateway.deployment.annotations .Values.langfuse.deployment.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.langfuse.gateway.pdb.minAvailable }}
+  minAvailable: {{ .Values.langfuse.gateway.pdb.minAvailable }}
+  {{- end }}
+  {{- if or .Values.langfuse.gateway.pdb.maxUnavailable (not .Values.langfuse.gateway.pdb.minAvailable) }}
+  maxUnavailable: {{ .Values.langfuse.gateway.pdb.maxUnavailable | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+{{- end }}

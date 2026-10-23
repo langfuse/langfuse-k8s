@@ -38,6 +38,9 @@ jobs:
       - name: Run helm lint
         run: helm lint charts/langfuse/ -f charts/langfuse/values.lint.yaml
 
+      - name: Run helm lint with the AI gateway enabled
+        run: helm lint charts/langfuse/ -f charts/langfuse/values.lint.yaml -f charts/langfuse/values.lint.gateway.yaml
+
       - name: Validate helm-docs
         run: |
           helm-docs charts/langfuse/

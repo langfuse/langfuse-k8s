@@ -1,0 +1,150 @@
+# Layered on top of values.lint.yaml to lint the chart with the AI gateway enabled and every langfuse.gateway value set.
+# It is not used for the deployment.
+# Example usage: `helm lint . --values values.lint.yaml --values values.lint.gateway.yaml`
+langfuse:
+  nextauth:
+    url: https://langfuse.example.com
+  gateway:
+    enabled: true
+    image:
+      repository: registry.example.com/langfuse/ai-gateway
+      tag: "4.70.0"
+      pullPolicy: IfNotPresent
+      pullSecrets:
+        - name: gateway-registry
+    deployment:
+      additionalLabels:
+        team: gateway
+      annotations:
+        example.com/owner: gateway
+      strategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxSurge: 1
+          maxUnavailable: 0
+    pod:
+      annotations:
+        example.com/scrape: "false"
+      labels:
+        tier: gateway
+      nodeSelector:
+        pool: gateway
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: gateway
+          effect: NoSchedule
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: gateway
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: gateway
+      priorityClassName: gateway-critical
+      extraContainers:
+        - name: gateway-sidecar
+          image: busybox:1.36
+          command: ["sleep", "infinity"]
+      additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS
+          value: "600"
+      additionalEnvFrom:
+        - configMapRef:
+            name: gateway-tuning
+      extraInitContainers:
+        - name: gateway-init
+          image: busybox:1.36
+          command: ["true"]
+      extraVolumes:
+        - name: private-ca
+          configMap:
+            name: private-ca
+      extraVolumeMounts:
+        - name: private-ca
+          mountPath: /etc/ssl/private-ca
+          readOnly: true
+    service:
+      type: ClusterIP
+      port: 8081
+      additionalLabels:
+        team: gateway
+      annotations:
+        example.com/service: gateway
+    ingress:
+      enabled: true
+      className: nginx
+      additionalLabels:
+        team: gateway
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-body-size: "17m"
+      hosts:
+        - gateway.langfuse.example.com
+      tls:
+        enabled: true
+        secretName: langfuse-gateway-tls
+    # webUrl left empty: the gateway calls web through its in-cluster Service.
+    publicUrl: https://llm.langfuse.example.com
+    serviceKey:
+      secretKeyRef:
+        name: langfuse-gateway
+        key: service-key
+    jwt:
+      keyId: langfuse-gateway-2026
+      privateKey:
+        secretKeyRef:
+          name: langfuse-gateway
+          key: jwt-private-key
+      publicKey:
+        secretKeyRef:
+          name: langfuse-gateway
+          key: jwt-public-key
+    shutdownTimeoutSeconds: 100
+    preStopSleepSeconds: 15
+    terminationGracePeriodSeconds: 125
+    resources:
+      requests:
+        cpu: "1"
+        memory: 2Gi
+      limits:
+        memory: 2Gi
+    replicas: 2
+    revisionHistoryLimit: 5
+    hpa:
+      enabled: true
+      annotations:
+        example.com/hpa: gateway
+      minReplicas: 2
+      maxReplicas: 6
+      targetCPUUtilizationPercentage: 60
+    pdb:
+      create: true
+      minAvailable: 1
+      maxUnavailable: ""
+    livenessProbe:
+      path: /health
+      initialDelaySeconds: 3
+      periodSeconds: 15
+      timeoutSeconds: 3
+      failureThreshold: 4
+      successThreshold: 1
+    readinessProbe:
+      path: /ready
+      initialDelaySeconds: 2
+      periodSeconds: 3
+      timeoutSeconds: 2
+      failureThreshold: 2
+      successThreshold: 2

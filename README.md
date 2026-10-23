@@ -114,6 +114,8 @@ helm repo update
 helm upgrade langfuse langfuse/langfuse
 ```
 
+The chart follows [SemVer](https://semver.org/): breaking changes bump the major version. Values marked `[Beta]` (currently the [AI gateway](#ai-gateway) under `langfuse.gateway.*`) are excluded and may change in minor releases; the release notes call such changes out.
+
 Please validate whether the helm sub-charts in the Chart.yaml were updated between versions.
 If yes, follow the guide for the respective sub-chart to upgrade it.
 
@@ -289,6 +291,45 @@ langfuse:
 `egressNetworkConnectorArn` is required with the `lambda-microvm` provider: without it AWS attaches its default `INTERNET_EGRESS` connector and sandboxed code reaches the public internet.
 
 `mcp.useInternalWebUrl` points the worker's MCP calls at the in-cluster web Service. It sets `LANGFUSE_MCP_BASE_URL` and leaves `NEXTAUTH_URL` alone, because the worker also builds links for users out of `NEXTAUTH_URL` in batch export emails and Slack notifications. This one value requires Langfuse `>= 4.25`; the rest of the block works on `>= 4.24`.
+
+#### AI gateway
+
+> [!NOTE]
+> The AI gateway is in beta. Its `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees and may change in minor releases; see [Upgrading](#upgrading).
+
+`langfuse.gateway.enabled: true` deploys the Langfuse AI gateway as its own Deployment, Service, Ingress, HPA, and PodDisruptionBudget, and sets `LANGFUSE_AI_GATEWAY_DEPLOYED=true` on web (`"false"` while the gateway is disabled). The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag, which web defaults to `true`; set it to `"false"` through `langfuse.additionalEnv` or `langfuse.web.pod.additionalEnv` to turn the gateway features off. Requires a Langfuse release that contains [langfuse/langfuse#19159](https://github.com/langfuse/langfuse/pull/19159) and splits the web flag into `LANGFUSE_AI_GATEWAY_ENABLED` (feature flag) and `LANGFUSE_AI_GATEWAY_DEPLOYED`; on older releases web ignores `LANGFUSE_AI_GATEWAY_DEPLOYED` and keeps the gateway off. The gateway image (`docker.langfuse.com/langfuse/ai-gateway`, also on Docker Hub as `langfuse/ai-gateway` and at `ghcr.io/langfuse/ai-gateway`) is released with the same tags as web, so it follows `langfuse.image.tag` and the chart appVersion.
+
+```yaml
+langfuse:
+  nextauth:
+    url: https://langfuse.example.com
+  gateway:
+    enabled: true
+    ingress:
+      enabled: true
+      hosts:
+        - gateway.langfuse.example.com
+      tls:
+        enabled: true
+        secretName: langfuse-gateway-tls
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-body-size: "17m"
+```
+
+See [`examples/minimal-installation/with-ai-gateway.yaml`](./examples/minimal-installation/with-ai-gateway.yaml) for a minimal setup.
+
+- **Host, DNS, and TLS:** serve the gateway on any host via `langfuse.gateway.ingress.hosts`. The chart passes the URL web shows users (UI and setup snippets) as `LANGFUSE_AI_GATEWAY_PUBLIC_URL`: `langfuse.gateway.publicUrl` if set, otherwise the first gateway ingress host, over `https` when the gateway ingress has TLS enabled or `nextauth.url` is `https://` (covering TLS terminated in front of the ingress, e.g. by an ALB), else `http`. Set `publicUrl` explicitly when the gateway is exposed some other way (your own Ingress, Gateway API, or a LoadBalancer Service). Without either, web falls back to `gateway.<host of nextauth.url>`. The override requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL`; older releases ignore it and always show `gateway.<host of nextauth.url>`. A `LANGFUSE_AI_GATEWAY_DEPLOYED` or `LANGFUSE_AI_GATEWAY_PUBLIC_URL` entry in `additionalEnv` takes precedence over the chart's value. Add a DNS record for it pointing at your load balancer, and a certificate that covers it: with cert-manager, the `cert-manager.io/cluster-issuer` annotation issues a separate certificate (use a `secretName` different from web's); otherwise reuse a certificate whose SANs include the gateway host, or a wildcard.
+- **Web URL:** the gateway calls web at `langfuse.gateway.webUrl`, which defaults to web's in-cluster Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`), so these calls do not go through web's Ingress. Because that URL is plain HTTP, the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default: web's responses to the gateway carry provider API keys. If you set an explicit `webUrl` that crosses a public network, it must be `https://` (for example your `nextauth.url`). Requires a Langfuse release whose gateway supports `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL`.
+- **Timeouts:** the chart sets no proxy annotations. Streams can run up to 600 seconds and may stay quiet for up to 120 seconds, so raise proxy read and send timeouts above 120 seconds at minimum (620 covers the full execution limit), and turn off response buffering. On the AWS Load Balancer Controller, the idle timeout is per load balancer: sharing web's `group.name` changes web's timeout too, so a separate group is the cleaner option.
+- **Shutdown:** on SIGTERM the gateway drains in-flight requests for `shutdownTimeoutSeconds` (110 by default, at most 300), after a `preStopSleepSeconds` (10) sleep that lets the endpoint drop out of the load balancer. `terminationGracePeriodSeconds` (130) must be greater than both together. Streams longer than the drain timeout are cut on every rollout and scale-in.
+- **Secrets:** the HMAC service key (shared by web and the gateway) and web's ES256 JWT private key are generated into `<release>-app` when the gateway is enabled, unless you set `serviceKey` or `jwt.privateKey`. Web derives the JWT public key and key id from the private key; `jwt.publicKey` and `jwt.keyId` are optional overrides. Under `helm template`-based GitOps (e.g. ArgoCD), `lookup` cannot see the cluster and the generated values would rotate on every sync, failing gateway requests until both pods restart — pin both via `secretKeyRef` there.
+- **Isolation:** the gateway pod gets only gateway settings. The global `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraInitContainers`, `extraVolumes`, `extraVolumeMounts`, and `extraLifecycle` do not apply to it; use `langfuse.gateway.pod.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraInitContainers`, `extraVolumes`, and `extraVolumeMounts` instead. There is no gateway equivalent of `extraLifecycle`: the chart owns the gateway's preStop hook (`preStopSleepSeconds`).
+- **Sizing:** the gateway admits requests up to a memory budget (`LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, 1 GiB by default), so set its memory limit to at least the budget plus 512 Mi. Tuning knobs go through `langfuse.gateway.pod.additionalEnv`.
 
 #### Storage Provider Options
 
@@ -800,4 +841,11 @@ helm plugin install https://github.com/helm-unittest/helm-unittest.git
 
 ```bash
 helm unittest charts/langfuse --color
+```
+
+CI also lints the chart with the default lint values and with the AI gateway enabled:
+
+```bash
+helm lint charts/langfuse -f charts/langfuse/values.lint.yaml
+helm lint charts/langfuse -f charts/langfuse/values.lint.yaml -f charts/langfuse/values.lint.gateway.yaml
 ```

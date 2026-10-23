@@ -925,6 +925,117 @@ has to stay externally resolvable.
 {{- end -}}
 
 {{/*
+"true" if the value is a whole number. YAML values arrive as float64,
+--set values as int64.
+*/}}
+{{- define "langfuse.isInteger" -}}
+{{- if or (kindIs "int" .) (kindIs "int64" .) (and (kindIs "float64" .) (eq (float64 (int .)) .)) -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+URL the AI gateway calls web on. Defaults to the in-cluster web Service, so
+gateway traffic and telemetry never pass through web's Ingress.
+*/}}
+{{- define "langfuse.gateway.webUrl" -}}
+{{- if .Values.langfuse.gateway.webUrl -}}
+{{- .Values.langfuse.gateway.webUrl -}}
+{{- else -}}
+{{- printf "http://%s-web.%s.svc.cluster.local:%v" (include "langfuse.fullname" .) .Release.Namespace (.Values.langfuse.web.service.externalPort | default .Values.langfuse.web.service.port) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+The gateway accepts debug, info, warn, error, and fatal, and exits on trace.
+*/}}
+{{- define "langfuse.gateway.logLevel" -}}
+{{- if eq .Values.langfuse.logging.level "trace" -}}
+debug
+{{- else -}}
+{{- .Values.langfuse.logging.level -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Environment of the AI gateway container. Deliberately excludes langfuse.commonEnv:
+the gateway needs no database, Redis, ClickHouse, or S3 credentials.
+*/}}
+{{- define "langfuse.gatewayEnv" -}}
+{{- $gw := .Values.langfuse.gateway -}}
+- name: LANGFUSE_AI_GATEWAY_LISTEN_ADDRESS
+  value: {{ printf "0.0.0.0:%v" $gw.service.port | quote }}
+- name: LANGFUSE_LOG_LEVEL
+  value: {{ include "langfuse.gateway.logLevel" . | quote }}
+- name: LANGFUSE_LOG_FORMAT
+  value: {{ .Values.langfuse.logging.format | quote }}
+- name: LANGFUSE_AI_GATEWAY_WEB_URL
+  value: {{ include "langfuse.gateway.webUrl" . | quote }}
+{{- if hasPrefix "http://" (include "langfuse.gateway.webUrl" . | lower) }}
+{{- /* The gateway refuses non-loopback plain-HTTP web URLs unless opted in; /resolve responses carry provider API keys. */}}
+- name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+  value: "true"
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
+- name: LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS
+  value: {{ $gw.shutdownTimeoutSeconds | quote }}
+{{- end -}}
+
+{{/*
+Public gateway URL web shows users. Defaults to the first gateway ingress host,
+over https when the ingress terminates TLS or web itself is served over https
+(TLS terminated in front of the ingress, e.g. an ALB certificate annotation).
+*/}}
+{{- define "langfuse.gateway.publicUrl" -}}
+{{- $gw := .Values.langfuse.gateway -}}
+{{- if $gw.publicUrl -}}
+{{- $gw.publicUrl -}}
+{{- else if and $gw.ingress.enabled $gw.ingress.hosts -}}
+{{- $scheme := ternary "https" "http" (or $gw.ingress.tls.enabled (hasPrefix "https://" (.Values.langfuse.nextauth.url | default "" | lower))) -}}
+{{- printf "%s://%v" $scheme (first $gw.ingress.hosts) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+AI gateway settings on web: whether a gateway is deployed (always rendered, "true"
+or "false"; the LANGFUSE_AI_GATEWAY_ENABLED feature flag is left to the user), the
+public gateway URL, the HMAC service key it verifies gateway calls with, and
+the ES256 key pair it signs and verifies ingestion tokens with. Web derives the
+public key and key id from the private key unless they are overridden. The
+gateway never holds the JWT keys. LANGFUSE_AI_GATEWAY_DEPLOYED and
+LANGFUSE_AI_GATEWAY_PUBLIC_URL are skipped when already set in additionalEnv.
+*/}}
+{{- define "langfuse.gatewayWebEnv" -}}
+{{- $gw := (.Values.langfuse.gateway | default dict) -}}
+{{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list) (.Values.langfuse.web.pod.additionalEnv | default list) -}}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_DEPLOYED")) }}
+- name: LANGFUSE_AI_GATEWAY_DEPLOYED
+  value: {{ ternary "true" "false" (eq (toString $gw.enabled) "true") | quote }}
+{{- end }}
+{{- if $gw.enabled }}
+{{- with (include "langfuse.gateway.publicUrl" .) }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_PUBLIC_URL")) }}
+- name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
+{{- if $gw.jwt.keyId }}
+- name: LANGFUSE_AI_GATEWAY_JWT_KEY_ID
+  value: {{ $gw.jwt.keyId | quote }}
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.jwt.privateKey" "value" $gw.jwt.privateKey "secretKey" "ai-gateway-jwt-private-key") | nindent 2 }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.gateway.jwt.publicKey" "value" $gw.jwt.publicKey)) }}
+- name: LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY
+  {{- . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Common environment variables for all deployments
 */}}
 {{- define "langfuse.commonEnv" -}}

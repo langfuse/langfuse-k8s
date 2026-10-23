@@ -72,7 +72,7 @@ helm install langfuse langfuse/langfuse -n langfuse -f values.yaml
 
 ## Configuration
 
-The example contains three configuration files:
+The example contains four configuration files:
 
 ### `secret.yaml`
 Contains all required secrets for the Langfuse installation. **Must be applied before installing the Helm chart**. Make sure to replace all placeholder values with secure values before applying.
@@ -137,3 +137,15 @@ langfuse:
 ```
 
 Make sure to adjust the hostname in the values file to match your environment before installing.
+
+### `with-ai-gateway.yaml` (Optional)
+Enables the [AI gateway](../../README.md#ai-gateway) with its keys from `secret.yaml`, and exposes it on its own host. Combine it with `with-ingress.yaml`:
+```bash
+helm install langfuse oci://ghcr.io/langfuse/langfuse-k8s/charts/langfuse \
+  --version 2.0.0 \
+  --namespace langfuse \
+  -f values.yaml -f with-ingress.yaml -f with-ai-gateway.yaml
+```
+
+Add a DNS record for the gateway host. Web shows it to users as the gateway URL.
+
