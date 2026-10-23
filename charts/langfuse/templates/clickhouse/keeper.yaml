@@ -26,6 +26,10 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    {{- with .Values.clickhouse.keeper.securityContext }}
+    securityContext:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   {{- if or .Values.clickhouse.keeper.logger .Values.clickhouse.keeper.settings }}
   settings:
     {{- with .Values.clickhouse.keeper.logger }}
@@ -37,8 +41,12 @@ spec:
       {{- toYaml . | nindent 6 }}
     {{- end }}
   {{- end }}
-  {{- if or .Values.clickhouse.keeper.image.pullSecrets .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity .Values.clickhouse.keeper.priorityClassName }}
+  {{- if or .Values.clickhouse.keeper.image.pullSecrets .Values.clickhouse.keeper.nodeSelector .Values.clickhouse.keeper.tolerations .Values.clickhouse.keeper.affinity .Values.clickhouse.keeper.priorityClassName .Values.clickhouse.keeper.podLabels .Values.clickhouse.keeper.podSecurityContext }}
   podTemplate:
+    {{- with .Values.clickhouse.keeper.podLabels }}
+    labels:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     {{- with .Values.clickhouse.keeper.image.pullSecrets }}
     imagePullSecrets:
       {{- toYaml . | nindent 6 }}
@@ -57,6 +65,10 @@ spec:
     {{- end }}
     {{- with .Values.clickhouse.keeper.priorityClassName }}
     priorityClassName: {{ . | quote }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.podSecurityContext }}
+    securityContext:
+      {{- toYaml . | nindent 6 }}
     {{- end }}
   {{- end }}
 {{- end }}
