@@ -127,6 +127,8 @@ helm upgrade clickhouse-operator oci://ghcr.io/clickhouse/clickhouse-operator-he
 
 Upgrading a **v1 (Bitnami) release to v2** onto empty v2 volumes is blocked. Follow [`examples/upgrade-v1-to-v2`](./examples/upgrade-v1-to-v2/): in-place upgrade when every store is already external; otherwise install a sibling v2 release, copy data, then shift traffic.
 
+The web, worker, ClickHouse and Keeper images now honor `global.imageRegistry`. If a parent chart already sets it, make sure that registry has these images before upgrading. A web or worker `image.repository` without a registry (e.g. `langfuse/langfuse`) now gets `image.registry` (default `docker.langfuse.com`) in front; set `image.registry: docker.io` to keep Docker Hub.
+
 ### Sizing
 
 By default, the chart will run with the minimum resources to provide a stable experience.

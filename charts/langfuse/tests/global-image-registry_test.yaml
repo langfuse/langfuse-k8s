@@ -1,0 +1,81 @@
+suite: test global.imageRegistry
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should keep the default images when global.imageRegistry is empty
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.image.tag: "v1.2.3"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.langfuse.com/langfuse/langfuse:v1.2.3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.langfuse.com/langfuse/langfuse-worker:v1.2.3
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: clickhouse/clickhouse-server
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: clickhouse/clickhouse-keeper
+        template: clickhouse/keeper.yaml
+
+  - it: should prefix image repositories with global.imageRegistry
+    values:
+      - ../values.lint.yaml
+    set:
+      global.imageRegistry: harbor.example.com/proxy/
+      langfuse.image.tag: "v1.2.3"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: harbor.example.com/proxy/langfuse/langfuse:v1.2.3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: harbor.example.com/proxy/langfuse/langfuse-worker:v1.2.3
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: harbor.example.com/proxy/clickhouse/clickhouse-server
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: harbor.example.com/proxy/clickhouse/clickhouse-keeper
+        template: clickhouse/keeper.yaml
+
+  - it: should keep repositories that already start with a registry
+    values:
+      - ../values.lint.yaml
+    set:
+      global.imageRegistry: harbor.example.com/proxy
+      langfuse.image.tag: "v1.2.3"
+      langfuse.web.image.repository: harbor.example.com/proxy/langfuse/langfuse
+      langfuse.worker.image.repository: ghcr.io/acme/langfuse-worker
+      clickhouse.cluster.image.repository: localhost/clickhouse/clickhouse-server
+      clickhouse.keeper.image.repository: localhost:5000/clickhouse/clickhouse-keeper
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: harbor.example.com/proxy/langfuse/langfuse:v1.2.3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/acme/langfuse-worker:v1.2.3
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: localhost/clickhouse/clickhouse-server
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: localhost:5000/clickhouse/clickhouse-keeper
+        template: clickhouse/keeper.yaml
