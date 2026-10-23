@@ -1,0 +1,86 @@
+suite: test s3 forcePathStyle per upload type
+templates:
+  - web/deployment.yaml
+  - validations.yaml
+tests:
+  - it: should use the global forcePathStyle when no per-type value is set
+    template: web/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
+            value: "true"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+
+  - it: should let a per-type false override a global true
+    template: web/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.deploy: false
+      s3.endpoint: https://s3.example.com
+      s3.forcePathStyle: true
+      s3.eventUpload.forcePathStyle: false
+      s3.batchExport.forcePathStyle: false
+      s3.mediaUpload.forcePathStyle: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
+            value: "false"
+
+  - it: should let a per-type true override a global false
+    template: web/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.deploy: false
+      s3.endpoint: https://s3.example.com
+      s3.forcePathStyle: false
+      s3.mediaUpload.forcePathStyle: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
+            value: "true"
+
+  - it: should fail when bundled SeaweedFS is deployed and a per-type value disables path-style
+    template: validations.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.deploy: true
+      s3.forcePathStyle: true
+      s3.eventUpload.forcePathStyle: false
+    asserts:
+      - failedTemplate:
+          errorMessage: "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to true to continue."
