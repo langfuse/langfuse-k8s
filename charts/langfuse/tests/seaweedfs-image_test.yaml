@@ -1,0 +1,46 @@
+suite: test SeaweedFS image
+templates:
+  - charts/s3/templates/all-in-one/all-in-one-deployment.yaml
+  - charts/s3/templates/shared/post-install-bucket-hook.yaml
+tests:
+  - it: should default to the sub-chart appVersion image
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: chrislusf/seaweedfs:4.23
+        template: charts/s3/templates/all-in-one/all-in-one-deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: chrislusf/seaweedfs:4.23
+        template: charts/s3/templates/shared/post-install-bucket-hook.yaml
+
+  - it: should honor s3.image overrides
+    values:
+      - ../values.lint.yaml
+    set:
+      s3.image.registry: registry.example.com
+      s3.image.repository: mirror/seaweedfs
+      s3.image.tag: "4.22"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/mirror/seaweedfs:4.22
+        template: charts/s3/templates/all-in-one/all-in-one-deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: registry.example.com/mirror/seaweedfs:4.22
+        template: charts/s3/templates/shared/post-install-bucket-hook.yaml
+
+  - it: should let global.imageRegistry take precedence over s3.image.registry
+    values:
+      - ../values.lint.yaml
+    set:
+      global.imageRegistry: mirror.example.com
+      s3.image.registry: registry.example.com
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: mirror.example.com/chrislusf/seaweedfs:4.23
+        template: charts/s3/templates/all-in-one/all-in-one-deployment.yaml
