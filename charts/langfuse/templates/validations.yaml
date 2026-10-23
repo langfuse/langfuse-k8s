@@ -92,6 +92,18 @@ what you are doing.
 {{- end -}}
 {{- end -}}
 
+# Validate Gateway API settings
+{{- if $.Values.langfuse.httpRoute.enabled -}}
+{{- if eq (len $.Values.langfuse.httpRoute.parentRefs) 0 -}}
+    {{- fail "langfuse.httpRoute.parentRefs must list at least one Gateway when langfuse.httpRoute.enabled is true: an HTTPRoute with no parent attaches to nothing and silently receives no traffic." -}}
+{{- end -}}
+{{- if and $.Values.langfuse.httpRoute.crdCheck (not $.Values.langfuse.httpRoute.apiVersion) -}}
+{{- if not (or ($.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1/HTTPRoute") ($.Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1beta1/HTTPRoute")) -}}
+    {{- fail "Gateway API CRDs not found (gateway.networking.k8s.io HTTPRoute). Install the Gateway API CRDs and a Gateway controller before enabling langfuse.httpRoute. To skip this check for offline rendering (helm template / GitOps diff), set langfuse.httpRoute.crdCheck=false or pass --api-versions gateway.networking.k8s.io/v1/HTTPRoute." -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 # Validate ClickHouse settings
 {{- if and (not $.Values.clickhouse.deploy) (not $.Values.clickhouse.host) (not (include "langfuse.getEnvVar" (dict "env" $.Values.langfuse.additionalEnv "name" "CLICKHOUSE_URL"))) -}}
     {{- fail "ClickHouse host must be configured when using an external ClickHouse instance. Set clickhouse.host to continue." -}}

@@ -105,6 +105,41 @@ langfuse:
       # -- The name of the secret to use for TLS Key
       secretName: ""
 
+  # Kubernetes Gateway API. Alternative to `langfuse.ingress`; requires the
+  # Gateway API CRDs and a Gateway that this route attaches to.
+  httpRoute:
+    # -- Set to `true` to enable the Gateway API HTTPRoute resource
+    enabled: false
+    # -- Set to `false` to skip the Gateway API CRD preflight check (offline rendering, GitOps diff)
+    crdCheck: true
+    # -- Additional labels for the HTTPRoute resource
+    additionalLabels: {}
+    # -- Annotations for the HTTPRoute resource
+    annotations: {}
+    # -- API version of the HTTPRoute resource. Auto-detected from the cluster when empty
+    apiVersion: ""
+    # -- The Gateways this route attaches to. Required when `enabled` is `true`
+    parentRefs: []
+    # Example:
+    # - name: my-gateway
+    #   namespace: gateway-system
+    #   sectionName: https
+
+    # -- The hostnames matched by this route
+    hostnames: []
+    # Example:
+    # - "langfuse.example.com"
+
+    # -- Routing rules. Rules without `backendRefs` are pointed at the langfuse web service. Defaults to a single `/` prefix rule when empty
+    rules: []
+    # Example:
+    # - matches:
+    #     - path:
+    #         type: PathPrefix
+    #         value: /
+    #   timeouts:
+    #     request: 60s
+
   # -- Pod security context for all langfuse deployments
   podSecurityContext: {}
   # -- Security context for all langfuse deployments
