@@ -13,10 +13,11 @@ spec:
   {{- /* Required by the CRD — a keeper-less deploy is rejected in validations.yaml */}}
   keeperClusterRef:
     name: {{ include "langfuse.fullname" . }}
-  {{- with .Values.clickhouse.cluster.externalSecret.name }}
+  {{- $ext := .Values.clickhouse.cluster.externalSecret | default dict }}
+  {{- with $ext.name }}
   externalSecret:
     name: {{ . | quote }}
-    policy: {{ $.Values.clickhouse.cluster.externalSecret.policy | default "Observe" | quote }}
+    policy: {{ $ext.policy | default "Observe" | quote }}
   {{- end }}
   dataVolumeClaimSpec:
     accessModes:
