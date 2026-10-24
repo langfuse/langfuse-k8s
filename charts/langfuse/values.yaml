@@ -779,6 +779,12 @@ clickhouse:
   cluster:
     # -- Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse.
     enabled: true
+    # Externally managed Secret used by the ClickHouse operator for Keeper identity, interserver authentication, and cluster secrets.
+    externalSecret:
+      # -- Name of an existing Secret in the release namespace. Leave empty to let the operator generate and own the Secret. It must contain `interserver-password`, `management-password`, `cluster-secret`, `keeper-identity` (format `clickhouse:<password>`), and `named-collections-key` on ClickHouse >= 25.12 (the default image); see the operator's [required keys](https://github.com/ClickHouse/clickhouse-operator/blob/v0.0.8/docs/guides/configuration.mdx#external-secret-required-keys). For existing installs, seed it from the operator-generated `<fullname>-clickhouse` Secret first, otherwise pods roll with a new keeper identity and fail with "Not authenticated".
+      name: ""
+      # -- Operator policy for the external Secret. `Observe` blocks reconciliation until every required key is present and never changes the Secret. `Manage` generates missing keys into the existing Secret.
+      policy: Observe
     # -- Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled.
     replicas: 1
     image:
