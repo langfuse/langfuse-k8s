@@ -964,8 +964,10 @@ the gateway needs no database, Redis, ClickHouse, or S3 credentials.
 {{- end }}
 - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
   {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
-- name: LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS
-  value: {{ $gw.shutdownTimeoutSeconds | quote }}
+- name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
+  value: {{ $gw.connectionDrainTimeoutSeconds | quote }}
+- name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+  value: {{ $gw.telemetryShutdownTimeoutSeconds | quote }}
 {{- end -}}
 
 {{/*

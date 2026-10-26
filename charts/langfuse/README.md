@@ -111,6 +111,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.features.experimentalFeaturesEnabled | bool | `false` | Enable experimental features |
 | langfuse.features.signUpDisabled | bool | `false` | Disable public sign up |
 | langfuse.features.telemetryEnabled | bool | `true` | Whether or not to report basic usage statistics to a centralized server. |
+| langfuse.gateway.connectionDrainTimeoutSeconds | int | `300` | [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in. |
 | langfuse.gateway.deployment.additionalLabels | object | `{}` | [Beta] Additional labels for the AI gateway deployment |
 | langfuse.gateway.deployment.annotations | object | `{}` | [Beta] Annotations for the AI gateway deployment |
 | langfuse.gateway.deployment.strategy | object | `{}` | [Beta] Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy |
@@ -172,8 +173,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.service.port | int | `8080` | [Beta] The port the AI gateway listens on and the service exposes |
 | langfuse.gateway.service.type | string | `"ClusterIP"` | [Beta] The type of service to use for the AI gateway |
 | langfuse.gateway.serviceKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. |
-| langfuse.gateway.shutdownTimeoutSeconds | int | `110` | [Beta] LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). Streams longer than this are cut on every rollout and scale-in. |
-| langfuse.gateway.terminationGracePeriodSeconds | int | `130` | [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `shutdownTimeoutSeconds`. |
+| langfuse.gateway.telemetryShutdownTimeoutSeconds | int | `30` | [Beta] LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway flushes telemetry after the connection drain ends (1-300). |
+| langfuse.gateway.terminationGracePeriodSeconds | int | `350` | [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `connectionDrainTimeoutSeconds` + `telemetryShutdownTimeoutSeconds`. |
 | langfuse.gateway.webUrl | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`). |
 | langfuse.image.pullPolicy | string | `"Always"` | The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.pullSecrets | list | `[]` | The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments. |

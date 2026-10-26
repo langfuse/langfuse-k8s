@@ -593,12 +593,14 @@ langfuse:
           name: ""
           key: ""
 
-    # -- [Beta] LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). Streams longer than this are cut on every rollout and scale-in.
-    shutdownTimeoutSeconds: 110
+    # -- [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in.
+    connectionDrainTimeoutSeconds: 300
+    # -- [Beta] LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway flushes telemetry after the connection drain ends (1-300).
+    telemetryShutdownTimeoutSeconds: 30
     # -- [Beta] Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook.
     preStopSleepSeconds: 10
-    # -- [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `shutdownTimeoutSeconds`.
-    terminationGracePeriodSeconds: 130
+    # -- [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `connectionDrainTimeoutSeconds` + `telemetryShutdownTimeoutSeconds`.
+    terminationGracePeriodSeconds: 350
 
     # -- [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi.
     resources: {}

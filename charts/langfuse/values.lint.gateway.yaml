@@ -112,9 +112,10 @@ langfuse:
         secretKeyRef:
           name: langfuse-gateway
           key: jwt-public-key
-    shutdownTimeoutSeconds: 100
+    connectionDrainTimeoutSeconds: 100
+    telemetryShutdownTimeoutSeconds: 20
     preStopSleepSeconds: 15
-    terminationGracePeriodSeconds: 125
+    terminationGracePeriodSeconds: 140
     resources:
       requests:
         cpu: "1"

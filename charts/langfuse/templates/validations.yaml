@@ -403,17 +403,22 @@ what you are doing.
     {{- fail (printf "langfuse.gateway.publicUrl must be an http:// or https:// URL, got %q." .) -}}
 {{- end -}}
 {{- end -}}
-{{- $shutdown := $gateway.shutdownTimeoutSeconds -}}
-{{- if or (not (include "langfuse.isInteger" $shutdown)) (lt (int $shutdown) 1) (gt (int $shutdown) 300) -}}
-    {{- fail (printf "langfuse.gateway.shutdownTimeoutSeconds must be an integer from 1 to 300, got %v." $shutdown) -}}
+{{- $drain := $gateway.connectionDrainTimeoutSeconds -}}
+{{- if or (not (include "langfuse.isInteger" $drain)) (lt (int $drain) 1) (gt (int $drain) 300) -}}
+    {{- fail (printf "langfuse.gateway.connectionDrainTimeoutSeconds must be an integer from 1 to 300, got %v." $drain) -}}
+{{- end -}}
+{{- $telemetry := $gateway.telemetryShutdownTimeoutSeconds -}}
+{{- if or (not (include "langfuse.isInteger" $telemetry)) (lt (int $telemetry) 1) (gt (int $telemetry) 300) -}}
+    {{- fail (printf "langfuse.gateway.telemetryShutdownTimeoutSeconds must be an integer from 1 to 300, got %v." $telemetry) -}}
 {{- end -}}
 {{- $preStop := $gateway.preStopSleepSeconds -}}
 {{- if or (not (include "langfuse.isInteger" $preStop)) (lt (int $preStop) 0) -}}
     {{- fail (printf "langfuse.gateway.preStopSleepSeconds must be a non-negative integer, got %v." $preStop) -}}
 {{- end -}}
 {{- $grace := $gateway.terminationGracePeriodSeconds -}}
-{{- if or (not (include "langfuse.isInteger" $grace)) (le (int $grace) (add (int $preStop) (int $shutdown))) -}}
-    {{- fail (printf "langfuse.gateway.terminationGracePeriodSeconds (%v) must be greater than preStopSleepSeconds + shutdownTimeoutSeconds (%d), or Kubernetes kills the gateway before in-flight requests drain." $grace (add (int $preStop) (int $shutdown))) -}}
+{{- $shutdown := add (int $preStop) (int $drain) (int $telemetry) -}}
+{{- if or (not (include "langfuse.isInteger" $grace)) (le (int $grace) $shutdown) -}}
+    {{- fail (printf "langfuse.gateway.terminationGracePeriodSeconds (%v) must be greater than preStopSleepSeconds + connectionDrainTimeoutSeconds + telemetryShutdownTimeoutSeconds (%d), or Kubernetes kills the gateway before in-flight requests drain and telemetry flushes." $grace $shutdown) -}}
 {{- end -}}
 {{- if and $gateway.ingress.enabled (not $gateway.ingress.hosts) -}}
     {{- fail "langfuse.gateway.ingress.hosts must list at least one host when langfuse.gateway.ingress.enabled is true, e.g. gateway.langfuse.example.com." -}}

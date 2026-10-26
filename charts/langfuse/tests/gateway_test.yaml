@@ -89,7 +89,7 @@ tests:
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.terminationGracePeriodSeconds
-          value: 130
+          value: 350
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].lifecycle.preStop
@@ -115,8 +115,10 @@ tests:
                 secretKeyRef:
                   name: RELEASE-NAME-langfuse-app
                   key: ai-gateway-service-key
-            - name: LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS
-              value: "110"
+            - name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
+              value: "300"
+            - name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+              value: "30"
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].ports
@@ -568,8 +570,14 @@ tests:
       - contains:
           path: spec.template.spec.containers[1].env
           content:
-            name: LANGFUSE_AI_GATEWAY_SHUTDOWN_TIMEOUT_SECONDS
+            name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
             value: "100"
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+            value: "20"
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[1].ports[0].containerPort
@@ -582,7 +590,7 @@ tests:
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.terminationGracePeriodSeconds
-          value: 125
+          value: 140
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[1].resources
@@ -1129,41 +1137,66 @@ tests:
           errorPattern: "langfuse.gateway.publicUrl must be an http:// or https:// URL"
         template: validations.yaml
 
-  - it: rejects a shutdown timeout below 1
+  - it: rejects a connection drain timeout below 1
     values:
       - ../values.lint.yaml
     set:
       langfuse.nextauth.url: https://langfuse.example.com
       langfuse.gateway.enabled: true
-      langfuse.gateway.shutdownTimeoutSeconds: 0
+      langfuse.gateway.connectionDrainTimeoutSeconds: 0
     asserts:
       - failedTemplate:
-          errorPattern: "shutdownTimeoutSeconds must be an integer from 1 to 300"
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
         template: validations.yaml
 
-  - it: rejects a shutdown timeout above 300
+  - it: rejects a connection drain timeout above 300
     values:
       - ../values.lint.yaml
     set:
       langfuse.nextauth.url: https://langfuse.example.com
       langfuse.gateway.enabled: true
-      langfuse.gateway.shutdownTimeoutSeconds: 301
+      langfuse.gateway.connectionDrainTimeoutSeconds: 301
       langfuse.gateway.terminationGracePeriodSeconds: 400
     asserts:
       - failedTemplate:
-          errorPattern: "shutdownTimeoutSeconds must be an integer from 1 to 300"
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
         template: validations.yaml
 
-  - it: rejects a fractional shutdown timeout
+  - it: rejects a fractional connection drain timeout
     values:
       - ../values.lint.yaml
     set:
       langfuse.nextauth.url: https://langfuse.example.com
       langfuse.gateway.enabled: true
-      langfuse.gateway.shutdownTimeoutSeconds: 10.5
+      langfuse.gateway.connectionDrainTimeoutSeconds: 10.5
     asserts:
       - failedTemplate:
-          errorPattern: "shutdownTimeoutSeconds must be an integer from 1 to 300"
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a telemetry shutdown timeout below 1
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.telemetryShutdownTimeoutSeconds: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "telemetryShutdownTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a telemetry shutdown timeout above 300
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.telemetryShutdownTimeoutSeconds: 301
+      langfuse.gateway.terminationGracePeriodSeconds: 700
+    asserts:
+      - failedTemplate:
+          errorPattern: "telemetryShutdownTimeoutSeconds must be an integer from 1 to 300"
         template: validations.yaml
 
   - it: rejects a negative preStop sleep
@@ -1178,16 +1211,16 @@ tests:
           errorPattern: "preStopSleepSeconds must be a non-negative integer"
         template: validations.yaml
 
-  - it: rejects a grace period that does not cover preStop plus the drain
+  - it: rejects a grace period that does not cover preStop, the drain, and the telemetry flush
     values:
       - ../values.lint.yaml
     set:
       langfuse.nextauth.url: https://langfuse.example.com
       langfuse.gateway.enabled: true
-      langfuse.gateway.terminationGracePeriodSeconds: 120
+      langfuse.gateway.terminationGracePeriodSeconds: 340
     asserts:
       - failedTemplate:
-          errorPattern: "terminationGracePeriodSeconds \\(120\\) must be greater than preStopSleepSeconds \\+ shutdownTimeoutSeconds \\(120\\)"
+          errorPattern: "terminationGracePeriodSeconds \\(340\\) must be greater than preStopSleepSeconds \\+ connectionDrainTimeoutSeconds \\+ telemetryShutdownTimeoutSeconds \\(340\\)"
         template: validations.yaml
 
   - it: requires hosts when the gateway ingress is enabled
