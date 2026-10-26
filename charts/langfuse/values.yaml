@@ -814,7 +814,7 @@ clickhouse:
     labels: {}
     # -- Pod-level security context for ClickHouse pods (`spec.podTemplate.securityContext` on the ClickHouseCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved.
     podSecurityContext: {}
-    # -- Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR). 
+    # -- Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved.
     securityContext: {}
     # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one.
     logger: {}
