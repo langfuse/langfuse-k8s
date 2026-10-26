@@ -592,6 +592,20 @@ Return ClickHouse protocol (http or https)
 {{- end -}}
 
 {{/*
+    Effective forcePathStyle for an upload type: the per-type value when it is set (including false),
+    otherwise the global s3.forcePathStyle. Takes (dict "values" .Values.s3 "bucket" "<type>").
+*/}}
+{{- define "langfuse.s3.forcePathStyle" -}}
+{{- $value := index .values .bucket "forcePathStyle" -}}
+{{- if kindIs "invalid" $value -}}
+{{- $value = .values.forcePathStyle -}}
+{{- end -}}
+{{- if not (kindIs "invalid" $value) -}}
+{{- $value -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
     S3/MinIO related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
@@ -666,7 +680,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.eventUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
-  value: {{ .Values.s3.eventUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "eventUpload") | quote }}
 {{- end }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
   value: {{ .Values.s3.batchExport.enabled | quote }}
@@ -729,7 +743,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.batchExport "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
-  value: {{ .Values.s3.batchExport.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "batchExport") | quote }}
 {{- end }}
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
@@ -790,7 +804,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.mediaUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
-  value: {{ .Values.s3.mediaUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "mediaUpload") | quote }}
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_MAX_CONTENT_LENGTH
   value: {{ .Values.s3.mediaUpload.maxContentLength | quote }}

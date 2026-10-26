@@ -1203,13 +1203,18 @@ s3:
   s3:
     enabled: false
 
+  # SeaweedFS image, rendered as `[registry/]repository:tag`. The sub-chart reads these top-level keys, not `allInOne.image`.
+  # Pull policy comes from `s3.global.seaweedfs.imagePullPolicy` (default `IfNotPresent`).
+  image:
+    # -- SeaweedFS image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set.
+    registry: ""
+    # -- SeaweedFS image repository. Empty uses the sub-chart default `chrislusf/seaweedfs`.
+    repository: ""
+    # -- SeaweedFS image tag. Empty uses the sub-chart appVersion (`4.23` for seaweedfs 4.23.0).
+    tag: ""
+
   allInOne:
     enabled: true
-    image:
-      registry: docker.io
-      repository: chrislusf/seaweedfs
-      tag: "3.95"
-      pullPolicy: IfNotPresent
     s3:
       enabled: true
       port: 8333

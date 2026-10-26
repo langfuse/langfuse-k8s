@@ -165,7 +165,7 @@ what you are doing.
 {{- end -}}
 
 #   Event Upload
-{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.eventUpload.forcePathStyle)) -}}
+{{- if and $.Values.s3.deploy (ne (include "langfuse.s3.forcePathStyle" (dict "values" $.Values.s3 "bucket" "eventUpload")) "true") -}}
     {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.eventUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
@@ -175,7 +175,7 @@ what you are doing.
 
 #   Batch Export
 {{- if $.Values.s3.batchExport.enabled -}}
-{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.batchExport.forcePathStyle)) -}}
+{{- if and $.Values.s3.deploy (ne (include "langfuse.s3.forcePathStyle" (dict "values" $.Values.s3 "bucket" "batchExport")) "true") -}}
     {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.batchExport.forcePathStyle to true to continue." -}}
 {{- end -}}
 
@@ -186,7 +186,7 @@ what you are doing.
 
 #   Media Upload
 {{- if $.Values.s3.mediaUpload.enabled -}}
-{{- if and $.Values.s3.deploy (not (or $.Values.s3.forcePathStyle $.Values.s3.mediaUpload.forcePathStyle)) -}}
+{{- if and $.Values.s3.deploy (ne (include "langfuse.s3.forcePathStyle" (dict "values" $.Values.s3 "bucket" "mediaUpload")) "true") -}}
     {{- fail "Bundled SeaweedFS S3 gateway requires path-style addressing. Set s3.forcePathStyle or s3.mediaUpload.forcePathStyle to true to continue." -}}
 {{- end -}}
 
