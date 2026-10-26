@@ -810,8 +810,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for ClickHouse pods.
     priorityClassName: ""
-    # -- Additional labels added to ClickHouse pods (`spec.podTemplate.labels` on the ClickHouseCluster CR).
-    podLabels: {}
+    # -- Additional labels added to ClickHouse resources (`spec.labels` on the ClickHouseCluster CR).
+    labels: {}
     # -- Pod-level security context for ClickHouse pods (`spec.podTemplate.securityContext` on the ClickHouseCluster CR).
     podSecurityContext: {}
     # -- Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR).
@@ -859,8 +859,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for Keeper pods.
     priorityClassName: ""
-    # -- Additional labels added to Keeper pods (`spec.podTemplate.labels` on the KeeperCluster CR).
-    podLabels: {}
+    # -- Additional labels added to Keeper resources (`spec.labels` on the KeeperCluster CR).
+    labels: {}
     # -- Pod-level security context for Keeper pods (`spec.podTemplate.securityContext` on the KeeperCluster CR).
     podSecurityContext: {}
     # -- Container-level security context for the Keeper container (`spec.containerTemplate.securityContext` on the KeeperCluster CR).

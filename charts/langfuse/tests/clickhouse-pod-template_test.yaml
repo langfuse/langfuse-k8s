@@ -14,32 +14,28 @@ tests:
           path: spec.podTemplate
         template: clickhouse/keeper.yaml
 
-  - it: should render podLabels on ClickHouseCluster when set
+  - it: should render labels on ClickHouseCluster when set
     values:
       - ../values.lint.yaml
     set:
-      clickhouse.cluster.podLabels:
-        psp-readonlyrootfilesystem-exempt: "true"
-        runasnonroot-exempt: "true"
+      clickhouse.cluster.labels:
+        test: "true"
     asserts:
       - equal:
-          path: spec.podTemplate.labels["psp-readonlyrootfilesystem-exempt"]
-          value: "true"
-        template: clickhouse/cluster.yaml
-      - equal:
-          path: spec.podTemplate.labels["runasnonroot-exempt"]
+          path: spec.labels["test"]
           value: "true"
         template: clickhouse/cluster.yaml
 
-  - it: should render podLabels on KeeperCluster when set
+
+  - it: should render labels on KeeperCluster when set
     values:
       - ../values.lint.yaml
     set:
-      clickhouse.keeper.podLabels:
-        psp-readonlyrootfilesystem-exempt: "true"
+      clickhouse.keeper.labels:
+        test: "true"
     asserts:
       - equal:
-          path: spec.podTemplate.labels["psp-readonlyrootfilesystem-exempt"]
+          path: spec.labels["test"]
           value: "true"
         template: clickhouse/keeper.yaml
 
