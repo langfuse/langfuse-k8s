@@ -812,9 +812,9 @@ clickhouse:
     priorityClassName: ""
     # -- Additional labels added to ClickHouse resources (`spec.labels` on the ClickHouseCluster CR).
     labels: {}
-    # -- Pod-level security context for ClickHouse pods (`spec.podTemplate.securityContext` on the ClickHouseCluster CR).
+    # -- Pod-level security context for ClickHouse pods (`spec.podTemplate.securityContext` on the ClickHouseCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved.
     podSecurityContext: {}
-    # -- Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR).
+    # -- Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR). 
     securityContext: {}
     # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one.
     logger: {}
@@ -861,9 +861,9 @@ clickhouse:
     priorityClassName: ""
     # -- Additional labels added to Keeper resources (`spec.labels` on the KeeperCluster CR).
     labels: {}
-    # -- Pod-level security context for Keeper pods (`spec.podTemplate.securityContext` on the KeeperCluster CR).
+    # -- Pod-level security context for Keeper pods (`spec.podTemplate.securityContext` on the KeeperCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved.
     podSecurityContext: {}
-    # -- Container-level security context for the Keeper container (`spec.containerTemplate.securityContext` on the KeeperCluster CR).
+    # -- Container-level security context for the Keeper container (`spec.containerTemplate.securityContext` on the KeeperCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved.
     securityContext: {}
     # -- Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one.
     logger: {}
