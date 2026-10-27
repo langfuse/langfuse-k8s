@@ -2,6 +2,48 @@ apiVersion: v1
 entries:
   langfuse:
   - apiVersion: v2
+    appVersion: 4.70.1
+    created: "2026-10-27T08:52:04.29432435Z"
+    dependencies:
+    - alias: postgresql
+      condition: postgresql.deploy
+      name: postgres
+      repository: https://groundhog2k.github.io/helm-charts/
+      version: 1.6.3
+    - alias: redis
+      condition: redis.deploy
+      name: valkey
+      repository: https://valkey-io.github.io/valkey-helm
+      version: 0.9.4
+    - alias: s3
+      condition: s3.deploy
+      name: seaweedfs
+      repository: https://seaweedfs.github.io/seaweedfs/helm
+      version: 4.23.0
+    description: Open source LLM engineering platform - LLM observability, metrics,
+      evaluations, prompt management.
+    digest: 02eb54d89ba178a087df53bbc56d89f285b1ced712b856cd0a1d88afe70283cd
+    home: https://langfuse.com/
+    icon: https://langfuse.com/langfuse_logo.png
+    keywords:
+    - langfuse
+    - llm
+    - observability
+    - prompt management
+    - metrics
+    maintainers:
+    - email: contact@langfuse.com
+      name: langfuse
+      url: https://langfuse.com/
+    name: langfuse
+    sources:
+    - https://github.com/langfuse/langfuse
+    - https://github.com/langfuse/langfuse-k8s
+    type: application
+    urls:
+    - https://github.com/langfuse/langfuse-k8s/releases/download/langfuse-2.1.7/langfuse-2.1.7.tgz
+    version: 2.1.7
+  - apiVersion: v2
     appVersion: 4.63.0
     created: "2026-10-19T13:59:15.818467568Z"
     dependencies:
@@ -5367,4 +5409,4 @@ entries:
     urls:
     - https://github.com/langfuse/langfuse-k8s/releases/download/langfuse-0.1.0/langfuse-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-19T13:59:15.818780606Z"
+generated: "2026-10-27T08:52:04.294554926Z"
