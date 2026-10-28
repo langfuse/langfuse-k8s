@@ -24,7 +24,7 @@ spec:
         storage: {{ .Values.clickhouse.cluster.storage.size | quote }}
   containerTemplate:
     image:
-      repository: {{ .Values.clickhouse.cluster.image.repository | quote }}
+      repository: {{ include "langfuse.imageRepository" (list $ .Values.clickhouse.cluster.image) | quote }}
       tag: {{ .Values.clickhouse.cluster.image.tag | quote }}
     {{- with .Values.clickhouse.cluster.resources }}
     resources:

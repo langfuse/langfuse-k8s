@@ -86,6 +86,21 @@ own fullname prefix only coincides with it when the release is named
 {{- end -}}
 
 {{/*
+Image repository prefixed with global.imageRegistry, or else image.registry.
+A repository that already starts with a registry host is used as is.
+Takes (list $ <image values>).
+*/}}
+{{- define "langfuse.imageRepository" -}}
+{{- $image := index . 1 -}}
+{{- $registry := default $image.registry ((index . 0).Values.global).imageRegistry -}}
+{{- if and $registry (not (regexMatch "^(localhost|[^/]*[.:][^/]*)/" $image.repository)) -}}
+{{- printf "%s/%s" (trimSuffix "/" $registry) $image.repository -}}
+{{- else -}}
+{{- $image.repository -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Names of the chart-managed auth Secrets for the bundled stores. The
 sub-charts read these names from plain values (Helm cannot template
 sub-chart values), so the values keys are the single source of truth and
