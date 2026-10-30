@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.1.7](https://img.shields.io/badge/Version-2.1.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.70.1](https://img.shields.io/badge/AppVersion-4.70.1-informational?style=flat-square)
+![Version: 2.2.0](https://img.shields.io/badge/Version-2.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.70.1](https://img.shields.io/badge/AppVersion-4.70.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -37,7 +37,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.enabled | bool | `true` | Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse. |
 | clickhouse.cluster.image.pullSecrets | list | `[]` | Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
-| clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.image.tag | string | `"26.8.36.3-lts"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
 | clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
 | clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
@@ -60,7 +60,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
 | clickhouse.keeper.image.pullSecrets | list | `[]` | Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
-| clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.image.tag | string | `"26.8.36.3-lts"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
 | clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |

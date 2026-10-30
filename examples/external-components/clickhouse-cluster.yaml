@@ -7,7 +7,7 @@ spec:
   containerTemplate:
     image:
       repository: clickhouse/clickhouse-keeper
-      tag: "26.4"
+      tag: "26.8.36.3-lts"
   dataVolumeClaimSpec:
     resources:
       requests:
@@ -25,7 +25,7 @@ spec:
   containerTemplate:
     image:
       repository: clickhouse/clickhouse-server
-      tag: "26.4" # Pick a current ClickHouse release
+      tag: "26.8.36.3-lts" # Pick a current ClickHouse release
   dataVolumeClaimSpec:
     resources:
       requests:
