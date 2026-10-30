@@ -785,7 +785,7 @@ clickhouse:
       # -- ClickHouse server image repository.
       repository: clickhouse/clickhouse-server
       # -- ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4.
-      tag: "26.4"
+      tag: "26.8.36.3-lts"
       # -- Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry.
       pullSecrets: []
     storage:
@@ -828,7 +828,7 @@ clickhouse:
       # -- ClickHouse Keeper image repository.
       repository: clickhouse/clickhouse-keeper
       # -- ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag.
-      tag: "26.4"
+      tag: "26.8.36.3-lts"
       # -- Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry.
       pullSecrets: []
     storage:

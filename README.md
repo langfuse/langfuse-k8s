@@ -26,9 +26,17 @@ If you still run the **Bitnami-based chart (v1.x)**, migrate the chart first via
 
 For all new setups we recommend these minimum versions for Langfuse v4:
 
-- ClickHouse: 25.12 minimum, 26.4 recommended
+- ClickHouse: 25.12 minimum, 26.8 (LTS) recommended
 - Postgres: 16 recommended
 - Redis: 7.2 recommended
+
+## ℹ️ ClickHouse 26.8 LTS in v2.2.0
+
+Chart **v2.2.0** bumps the bundled ClickHouse server and Keeper images from `26.4` to **`26.8.36.3-lts`** (`clickhouse.cluster.image.tag` / `clickhouse.keeper.image.tag`). The tag is now pinned to an exact LTS patch release instead of a floating minor tag.
+
+- If you deploy ClickHouse via this chart (`clickhouse.deploy: true`) and do not override the image tags, `helm upgrade` will make the clickhouse-operator roll your ClickHouse and Keeper pods onto 26.8. Plan for a short restart window and take a backup first.
+- To stay on your current version, pin `clickhouse.cluster.image.tag` and `clickhouse.keeper.image.tag` explicitly before upgrading.
+- External ClickHouse setups (`clickhouse.deploy: false`) are unaffected.
 
 ## ⚠️ Breaking changes in v2.0.0
 
