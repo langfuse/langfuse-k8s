@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.2.0](https://img.shields.io/badge/Version-2.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.63.0](https://img.shields.io/badge/AppVersion-4.63.0-informational?style=flat-square)
+![Version: 2.2.0](https://img.shields.io/badge/Version-2.2.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.70.1](https://img.shields.io/badge/AppVersion-4.70.1-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -336,10 +336,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.allInOne.data.storageClass | string | `""` |  |
 | s3.allInOne.data.type | string | `"persistentVolumeClaim"` | Persistence for the SeaweedFS data directory. |
 | s3.allInOne.enabled | bool | `true` |  |
-| s3.allInOne.image.pullPolicy | string | `"IfNotPresent"` |  |
-| s3.allInOne.image.registry | string | `"docker.io"` |  |
-| s3.allInOne.image.repository | string | `"chrislusf/seaweedfs"` |  |
-| s3.allInOne.image.tag | string | `"3.95"` |  |
 | s3.allInOne.resources.limits.cpu | int | `2` |  |
 | s3.allInOne.resources.limits.memory | string | `"2Gi"` |  |
 | s3.allInOne.resources.requests.cpu | string | `"500m"` |  |
@@ -381,6 +377,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.filer.enabled | bool | `false` |  |
 | s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for SeaweedFS / MinIO. Can be overridden per upload type. |
 | s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | GCS credentials JSON (or secretKeyRef). Falls back to the pod's environment/service account credentials if unset. |
+| s3.image.registry | string | `""` | SeaweedFS image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
+| s3.image.repository | string | `""` | SeaweedFS image repository. Empty uses the sub-chart default `chrislusf/seaweedfs`. |
+| s3.image.tag | string | `""` | SeaweedFS image tag. Empty uses the sub-chart appVersion (`4.23` for seaweedfs 4.23.0). |
 | s3.master.enabled | bool | `false` |  |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
 | s3.mediaUpload.bucket | string | `""` | S3 bucket to use for media uploads. |
