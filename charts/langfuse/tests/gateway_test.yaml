@@ -1,0 +1,1314 @@
+suite: test AI gateway
+templates:
+  - gateway/deployment.yaml
+  - gateway/service.yaml
+  - gateway/ingress.yaml
+  - gateway/hpa.yaml
+  - gateway/pdb.yaml
+  - web/deployment.yaml
+  - worker/deployment.yaml
+  - langfuse-app-secret.yaml
+  - validations.yaml
+capabilities:
+  majorVersion: "1"
+  minorVersion: "30"
+tests:
+  - it: renders nothing and leaves web untouched by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: gateway/deployment.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/service.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/ingress.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/hpa.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/pdb.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+            value: "false"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ENABLED
+          any: true
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          any: true
+        template: web/deployment.yaml
+      - notExists:
+          path: data["ai-gateway-service-key"]
+        template: langfuse-app-secret.yaml
+      - notExists:
+          path: data["ai-gateway-jwt-private-key"]
+        template: langfuse-app-secret.yaml
+
+  - it: renders the gateway with defaults and only gateway env
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+    asserts:
+      - isKind:
+          of: Deployment
+        template: gateway/deployment.yaml
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-langfuse-gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.langfuse.com/langfuse/ai-gateway:4.63.0
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 1
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 10
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 350
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].lifecycle.preStop
+          value:
+            sleep:
+              seconds: 10
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: LANGFUSE_AI_GATEWAY_LISTEN_ADDRESS
+              value: "0.0.0.0:8080"
+            - name: LANGFUSE_LOG_LEVEL
+              value: info
+            - name: LANGFUSE_LOG_FORMAT
+              value: text
+            - name: LANGFUSE_AI_GATEWAY_WEB_URL
+              value: http://RELEASE-NAME-langfuse-web.NAMESPACE.svc.cluster.local:3000
+            - name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+              value: "true"
+            - name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: RELEASE-NAME-langfuse-app
+                  key: ai-gateway-service-key
+            - name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
+              value: "300"
+            - name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+              value: "30"
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].ports
+          value:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+        template: gateway/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.type
+          value: ClusterIP
+        template: gateway/service.yaml
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+        template: gateway/service.yaml
+      - equal:
+          path: spec.selector.app
+          value: gateway
+        template: gateway/service.yaml
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
+        template: gateway/pdb.yaml
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: gateway
+        template: gateway/pdb.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/ingress.yaml
+      - hasDocuments:
+          count: 0
+        template: gateway/hpa.yaml
+
+  - it: enables the gateway on web with the generated keys and no JWT overrides
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+            value: "true"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ENABLED
+          any: true
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-langfuse-app
+                key: ai-gateway-service-key
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-langfuse-app
+                key: ai-gateway-jwt-private-key
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY
+          any: true
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_KEY_ID
+          any: true
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ORGANIZATION_ID_ALLOWLIST
+          any: true
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+          any: true
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+          any: true
+        template: worker/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+          any: true
+        template: worker/deployment.yaml
+      - isNotEmpty:
+          path: data["ai-gateway-service-key"]
+        template: langfuse-app-secret.yaml
+      - isNotEmpty:
+          path: data["ai-gateway-jwt-private-key"]
+        template: langfuse-app-secret.yaml
+
+  - it: applies global scheduling and security settings but not global env, sidecars, volumes, or lifecycle
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.podSecurityContext:
+        runAsNonRoot: true
+      langfuse.securityContext:
+        readOnlyRootFilesystem: true
+      langfuse.nodeSelector:
+        pool: shared
+      langfuse.priorityClassName: shared-priority
+      langfuse.dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
+      langfuse.serviceAccount.name: custom-sa
+      langfuse.resources:
+        requests:
+          cpu: 500m
+      langfuse.image.tag: "4.99.0"
+      langfuse.image.pullSecrets:
+        - name: shared-registry
+      langfuse.replicas: 3
+      langfuse.revisionHistoryLimit: 4
+      langfuse.additionalEnv:
+        - name: DATABASE_URL
+          value: postgres://secret
+      langfuse.additionalEnvFrom:
+        - secretRef:
+            name: global-env
+      langfuse.extraContainers:
+        - name: cloud-sql-proxy
+          image: cloud-sql-proxy:2
+      langfuse.extraInitContainers:
+        - name: init
+          image: busybox
+      langfuse.extraVolumes:
+        - name: certs
+          emptyDir: {}
+      langfuse.extraVolumeMounts:
+        - name: certs
+          mountPath: /certs
+      langfuse.extraLifecycle:
+        postStart:
+          exec:
+            command: ["true"]
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            readOnlyRootFilesystem: true
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            pool: shared
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: shared-priority
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.dnsConfig.options[0].name
+          value: ndots
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: custom-sa
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests:
+              cpu: 500m
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.langfuse.com/langfuse/ai-gateway:4.99.0
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: shared-registry
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 3
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 4
+        template: gateway/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 1
+        template: gateway/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: DATABASE_URL
+          any: true
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.template.spec.initContainers
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.template.spec.volumes
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].volumeMounts
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.template.spec.containers[0].lifecycle.postStart
+        template: gateway/deployment.yaml
+
+  - it: maps the trace log level to debug, which the gateway accepts
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.logging.level: trace
+      langfuse.logging.format: json
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_LOG_LEVEL
+            value: debug
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_LOG_FORMAT
+            value: json
+        template: gateway/deployment.yaml
+
+  - it: falls back to an exec sleep preStop hook before Kubernetes 1.30
+    capabilities:
+      majorVersion: "1"
+      minorVersion: "29"
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].lifecycle.preStop
+          value:
+            exec:
+              command: ["sleep", "10"]
+        template: gateway/deployment.yaml
+
+  - it: omits the preStop hook when preStopSleepSeconds is 0
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.preStopSleepSeconds: 0
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].lifecycle
+        template: gateway/deployment.yaml
+
+  - it: renders every value from values.lint.gateway.yaml
+    values:
+      - ../values.lint.yaml
+      - ../values.lint.gateway.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.langfuse.example.com
+        template: web/deployment.yaml
+      # image
+      - equal:
+          path: spec.template.spec.containers[1].image
+          value: registry.example.com/langfuse/ai-gateway:4.70.0
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].imagePullPolicy
+          value: IfNotPresent
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: gateway-registry
+        template: gateway/deployment.yaml
+      # deployment
+      - equal:
+          path: metadata.labels.team
+          value: gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: metadata.annotations["example.com/owner"]
+          value: gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 0
+        template: gateway/deployment.yaml
+      # pod
+      - equal:
+          path: spec.template.metadata.annotations["example.com/scrape"]
+          value: "false"
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.metadata.labels.tier
+          value: gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.nodeSelector.pool
+          value: gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.tolerations[0].value
+          value: gateway
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight
+          value: 100
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].topologyKey
+          value: topology.kubernetes.io/zone
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: gateway-critical
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: gateway-sidecar
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS
+            value: "600"
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].envFrom
+          value:
+            - configMapRef:
+                name: gateway-tuning
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: gateway-init
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: private-ca
+              configMap:
+                name: private-ca
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].volumeMounts
+          value:
+            - name: private-ca
+              mountPath: /etc/ssl/private-ca
+              readOnly: true
+        template: gateway/deployment.yaml
+      # gateway env from first-class values
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_LISTEN_ADDRESS
+            value: "0.0.0.0:8081"
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_WEB_URL
+            value: http://RELEASE-NAME-langfuse-web.NAMESPACE.svc.cluster.local:3000
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+            value: "true"
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: langfuse-gateway
+                key: service-key
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
+            value: "100"
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+            value: "20"
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].ports[0].containerPort
+          value: 8081
+        template: gateway/deployment.yaml
+      # lifecycle and sizing
+      - equal:
+          path: spec.template.spec.containers[1].lifecycle.preStop.sleep.seconds
+          value: 15
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 140
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].resources
+          value:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              memory: 2Gi
+        template: gateway/deployment.yaml
+      - notExists:
+          path: spec.replicas
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 5
+        template: gateway/deployment.yaml
+      # probes
+      - equal:
+          path: spec.template.spec.containers[1].livenessProbe
+          value:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 15
+            timeoutSeconds: 3
+            successThreshold: 1
+            failureThreshold: 4
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].readinessProbe
+          value:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            timeoutSeconds: 2
+            successThreshold: 2
+            failureThreshold: 2
+        template: gateway/deployment.yaml
+      # service
+      - equal:
+          path: spec.ports[0].port
+          value: 8081
+        template: gateway/service.yaml
+      - equal:
+          path: metadata.labels.team
+          value: gateway
+        template: gateway/service.yaml
+      - equal:
+          path: metadata.annotations["example.com/service"]
+          value: gateway
+        template: gateway/service.yaml
+      # ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+        template: gateway/ingress.yaml
+      - equal:
+          path: metadata.labels.team
+          value: gateway
+        template: gateway/ingress.yaml
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/proxy-read-timeout"]
+          value: "620"
+        template: gateway/ingress.yaml
+      - equal:
+          path: spec.tls
+          value:
+            - hosts:
+                - gateway.langfuse.example.com
+              secretName: langfuse-gateway-tls
+        template: gateway/ingress.yaml
+      - equal:
+          path: spec.rules
+          value:
+            - host: gateway.langfuse.example.com
+              http:
+                paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                      service:
+                        name: RELEASE-NAME-langfuse-gateway
+                        port:
+                          name: http
+        template: gateway/ingress.yaml
+      # hpa
+      - equal:
+          path: metadata.annotations["example.com/hpa"]
+          value: gateway
+        template: gateway/hpa.yaml
+      - equal:
+          path: spec.minReplicas
+          value: 2
+        template: gateway/hpa.yaml
+      - equal:
+          path: spec.maxReplicas
+          value: 6
+        template: gateway/hpa.yaml
+      - equal:
+          path: spec.metrics[0].resource.target.averageUtilization
+          value: 60
+        template: gateway/hpa.yaml
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: RELEASE-NAME-langfuse-gateway
+        template: gateway/hpa.yaml
+      # pdb
+      - equal:
+          path: spec.minAvailable
+          value: 1
+        template: gateway/pdb.yaml
+      - notExists:
+          path: spec.maxUnavailable
+        template: gateway/pdb.yaml
+      # web
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_KEY_ID
+            value: langfuse-gateway-2026
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: langfuse-gateway
+                key: jwt-private-key
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY
+            valueFrom:
+              secretKeyRef:
+                name: langfuse-gateway
+                key: jwt-public-key
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+            valueFrom:
+              secretKeyRef:
+                name: langfuse-gateway
+                key: service-key
+        template: web/deployment.yaml
+      # provided keys are not generated
+      - notExists:
+          path: data["ai-gateway-service-key"]
+        template: langfuse-app-secret.yaml
+      - notExists:
+          path: data["ai-gateway-jwt-private-key"]
+        template: langfuse-app-secret.yaml
+
+  - it: uses inline key values instead of the app secret
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.serviceKey.value: inline-service-key
+      langfuse.gateway.jwt.privateKey.value: inline-private-key
+      langfuse.gateway.jwt.publicKey.value: inline-public-key
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+            value: inline-service-key
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+            value: inline-service-key
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+            value: inline-private-key
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY
+            value: inline-public-key
+        template: web/deployment.yaml
+      - notExists:
+          path: data["ai-gateway-service-key"]
+        template: langfuse-app-secret.yaml
+      - notExists:
+          path: data["ai-gateway-jwt-private-key"]
+        template: langfuse-app-secret.yaml
+
+  - it: preserves previously generated gateway keys, even while the gateway is disabled
+    values:
+      - ../values.lint.yaml
+    kubernetesProvider:
+      scheme:
+        "v1/Secret":
+          gvr:
+            version: "v1"
+            resource: "secrets"
+          namespaced: true
+      objects:
+        - apiVersion: v1
+          kind: Secret
+          metadata:
+            name: RELEASE-NAME-langfuse-app
+            namespace: NAMESPACE
+          type: Opaque
+          data:
+            ai-gateway-service-key: ZXhpc3Rpbmctc2VydmljZS1rZXk=
+            ai-gateway-jwt-private-key: ZXhpc3RpbmctcHJpdmF0ZS1rZXk=
+    asserts:
+      - equal:
+          path: data["ai-gateway-service-key"]
+          value: ZXhpc3Rpbmctc2VydmljZS1rZXk=
+        template: langfuse-app-secret.yaml
+      - equal:
+          path: data["ai-gateway-jwt-private-key"]
+          value: ZXhpc3RpbmctcHJpdmF0ZS1rZXk=
+        template: langfuse-app-secret.yaml
+
+  - it: falls back to the main ingress class and sets the legacy class annotation before Kubernetes 1.18
+    capabilities:
+      majorVersion: "1"
+      minorVersion: "17"
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.ingress.className: alb
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - gateway.langfuse.example.com
+    asserts:
+      - equal:
+          path: metadata.annotations["kubernetes.io/ingress.class"]
+          value: alb
+        template: gateway/ingress.yaml
+      - notExists:
+          path: spec.ingressClassName
+        template: gateway/ingress.yaml
+      - notExists:
+          path: spec.tls
+        template: gateway/ingress.yaml
+      - equal:
+          path: spec.rules[0].http.paths[0].backend
+          value:
+            serviceName: RELEASE-NAME-langfuse-gateway
+            servicePort: http
+        template: gateway/ingress.yaml
+
+  - it: uses the main ingress class name as ingressClassName on current Kubernetes
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.ingress.className: nginx
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - gateway.langfuse.example.com
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+        template: gateway/ingress.yaml
+      - notExists:
+          path: metadata.annotations
+        template: gateway/ingress.yaml
+
+  - it: skips the PDB when pdb.create is false and honors maxUnavailable
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.pdb.create: false
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: gateway/pdb.yaml
+
+  - it: sets maxUnavailable on the PDB
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.pdb.maxUnavailable: 2
+    asserts:
+      - equal:
+          path: spec.maxUnavailable
+          value: 2
+        template: gateway/pdb.yaml
+
+  - it: uses per-gateway replicas when the HPA is disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.replicas: 4
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 4
+        template: gateway/deployment.yaml
+
+  - it: keeps an explicit zero replicas and revisionHistoryLimit
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.replicas: 3
+      langfuse.gateway.enabled: true
+      langfuse.gateway.replicas: 0
+      langfuse.gateway.revisionHistoryLimit: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 0
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 0
+        template: gateway/deployment.yaml
+
+  # Validations
+  - it: defaults webUrl to the in-cluster web Service and opts into plain HTTP
+    values:
+      - ../values.lint.yaml
+    release:
+      namespace: langfuse
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.web.service.port: 4000
+    asserts:
+      - notFailedTemplate: {}
+        template: validations.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_WEB_URL
+            value: http://RELEASE-NAME-langfuse-web.langfuse.svc.cluster.local:4000
+        template: gateway/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+            value: "true"
+        template: gateway/deployment.yaml
+
+  - it: uses an explicit HTTPS webUrl without the insecure opt-in
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.webUrl: https://langfuse.example.com
+    asserts:
+      - notFailedTemplate: {}
+        template: validations.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_WEB_URL
+            value: https://langfuse.example.com
+        template: gateway/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+            value: "true"
+        template: gateway/deployment.yaml
+
+  - it: rejects a webUrl that is not an http(s) URL
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.webUrl: https://user:pass@langfuse.example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.webUrl must be an http:// or https:// URL"
+        template: validations.yaml
+
+  # Web flag and public URL
+  - it: does not override LANGFUSE_AI_GATEWAY_DEPLOYED or LANGFUSE_AI_GATEWAY_PUBLIC_URL set in additionalEnv
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: https://llm.example.com
+      langfuse.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_DEPLOYED
+          value: "false"
+      langfuse.web.pod.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          value: https://custom.example.com
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_DEPLOYED")].value
+          value: "false"
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_PUBLIC_URL")].value
+          value: https://custom.example.com
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+            value: "true"
+        template: web/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: passes a user-set LANGFUSE_AI_GATEWAY_ENABLED feature flag through unchanged
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.web.pod.additionalEnv:
+        - name: LANGFUSE_AI_GATEWAY_ENABLED
+          value: "false"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[?(@.name=="LANGFUSE_AI_GATEWAY_ENABLED")].value
+          value: "false"
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_DEPLOYED
+            value: "true"
+        template: web/deployment.yaml
+
+  - it: does not set a public URL on web without publicUrl or a gateway ingress
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+          any: true
+        template: web/deployment.yaml
+
+  - it: passes an explicit publicUrl to web over the ingress host
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: https://llm.example.com
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - gateway.langfuse.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to the first ingress host over https when the ingress terminates TLS
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: http://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+        - llm2.example.com
+      langfuse.gateway.ingress.tls.enabled: true
+      langfuse.gateway.ingress.tls.secretName: gateway-tls
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to https when web is served over https and TLS terminates in front of the ingress
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: https://llm.example.com
+        template: web/deployment.yaml
+
+  - it: defaults the public URL to http without TLS on the ingress or web
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: http://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - llm.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+            value: http://llm.example.com
+        template: web/deployment.yaml
+
+  - it: rejects a publicUrl that is not an http(s) URL
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.publicUrl: llm.example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.publicUrl must be an http:// or https:// URL"
+        template: validations.yaml
+
+  - it: rejects a connection drain timeout below 1
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.connectionDrainTimeoutSeconds: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a connection drain timeout above 300
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.connectionDrainTimeoutSeconds: 301
+      langfuse.gateway.terminationGracePeriodSeconds: 400
+    asserts:
+      - failedTemplate:
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a fractional connection drain timeout
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.connectionDrainTimeoutSeconds: 10.5
+    asserts:
+      - failedTemplate:
+          errorPattern: "connectionDrainTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a telemetry shutdown timeout below 1
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.telemetryShutdownTimeoutSeconds: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "telemetryShutdownTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a telemetry shutdown timeout above 300
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.telemetryShutdownTimeoutSeconds: 301
+      langfuse.gateway.terminationGracePeriodSeconds: 700
+    asserts:
+      - failedTemplate:
+          errorPattern: "telemetryShutdownTimeoutSeconds must be an integer from 1 to 300"
+        template: validations.yaml
+
+  - it: rejects a negative preStop sleep
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.preStopSleepSeconds: -1
+    asserts:
+      - failedTemplate:
+          errorPattern: "preStopSleepSeconds must be a non-negative integer"
+        template: validations.yaml
+
+  - it: rejects a grace period that does not cover preStop, the drain, and the telemetry flush
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.terminationGracePeriodSeconds: 340
+    asserts:
+      - failedTemplate:
+          errorPattern: "terminationGracePeriodSeconds \\(340\\) must be greater than preStopSleepSeconds \\+ connectionDrainTimeoutSeconds \\+ telemetryShutdownTimeoutSeconds \\(340\\)"
+        template: validations.yaml
+
+  - it: requires hosts when the gateway ingress is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.ingress.hosts must list at least one host"
+        template: validations.yaml
+
+  - it: rejects web-style host objects in the gateway ingress
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - host: gateway.langfuse.example.com
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.ingress.hosts must be a list of hostnames"
+        template: validations.yaml
+
+  - it: requires a TLS secret name when gateway ingress TLS is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.ingress.enabled: true
+      langfuse.gateway.ingress.hosts:
+        - gateway.langfuse.example.com
+      langfuse.gateway.ingress.tls.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.ingress.tls.secretName is required"
+        template: validations.yaml
+
+  - it: rejects HPA minReplicas above maxReplicas
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.hpa.enabled: true
+      langfuse.gateway.hpa.minReplicas: 3
+      langfuse.gateway.hpa.maxReplicas: 2
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.hpa.minReplicas must not exceed"
+        template: validations.yaml
+
+  - it: rejects a public key next to a chart-generated private key
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.jwt.publicKey.value: some-public-key
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.gateway.jwt.publicKey requires langfuse.gateway.jwt.privateKey"
+        template: validations.yaml
+
+  - it: rejects both minAvailable and maxUnavailable on the gateway PDB
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.nextauth.url: https://langfuse.example.com
+      langfuse.gateway.enabled: true
+      langfuse.gateway.pdb.minAvailable: 1
+      langfuse.gateway.pdb.maxUnavailable: 1
+    asserts:
+      - failedTemplate:
+          errorMessage: "Pod Disruption Budget for gateway component cannot have both minAvailable and maxUnavailable values"
+        template: validations.yaml
+
+  - it: skips gateway validations while the gateway is disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.terminationGracePeriodSeconds: 1
+      langfuse.gateway.ingress.enabled: true
+    asserts:
+      - notFailedTemplate: {}
+        template: validations.yaml
