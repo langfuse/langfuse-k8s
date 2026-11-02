@@ -32,7 +32,9 @@ For all new setups we recommend these minimum versions for Langfuse v4:
 
 ## ℹ️ ClickHouse 26.8 LTS in v2.2.0
 
-Chart **v2.2.0** bumps the bundled ClickHouse server and Keeper images from `26.4` to **`26.8.36.3-lts`** (`clickhouse.cluster.image.tag` / `clickhouse.keeper.image.tag`). The tag is now pinned to an exact LTS patch release instead of a floating minor tag.
+Chart **v2.2.0** bumps the bundled ClickHouse server and Keeper images from `26.4` to the **26.8 LTS** line, pinned to patch **`26.8.36.3`** (`clickhouse.cluster.image.tag` / `clickhouse.keeper.image.tag`) instead of a floating minor tag. ClickHouse publishes that patch as `26.8.36.3` (and `26.8.36.3-alpine` / `26.8.36.3-distroless`). There is no `-lts` image tag.
+
+**v2.2.1** replaces the `26.8.36.3-lts` default that v2.2.0 shipped. That tag is not on Docker Hub, so ClickHouse and Keeper pods failed with `ImagePullBackOff`. If you copied `26.8.36.3-lts` into your values, set both tags to `26.8.36.3`.
 
 - If you deploy ClickHouse via this chart (`clickhouse.deploy: true`) and do not override the image tags, `helm upgrade` will make the clickhouse-operator roll your ClickHouse and Keeper pods onto 26.8. Plan for a short restart window and take a backup first.
 - To stay on your current version, pin `clickhouse.cluster.image.tag` and `clickhouse.keeper.image.tag` explicitly before upgrading.
