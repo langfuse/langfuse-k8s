@@ -56,7 +56,7 @@ Options:
       --chart REF           Chart ref or path (default: local charts/langfuse or OCI)
       --chart-version VER   Chart version when using OCI (default: 2.0.0)
       --context NAME        kube-context passed to kubectl/helm
-      --image-tag TAG       Pin langfuse.image.tag (default: v1 values or Helm appVersion)
+      --image-tag TAG       Langfuse image tag; must match what v1 web/worker run (default: read from them)
   -y, --yes                 Do not prompt; run every remaining step
       --force               Continue after Postgres lag / readiness / queue-drain failures
       --dry-run             Preflight + plan + generate values; do not change the cluster
@@ -227,10 +227,34 @@ sys.exit(0 if parse(sys.argv[1]) >= parse(sys.argv[2]) else 1)
 PY
 }
 
+# Comparable form of an image tag: no leading "v", no "@digest" suffix.
 normalize_tag() {
-  local t=$1
+  local t=${1%%@*}
   t=${t#v}
   printf '%s\n' "$t"
+}
+
+# Tag of an image reference (repo:tag or repo:tag@digest). Prints nothing for
+# a digest-only reference (repo@digest) and "latest" for a bare repo. A
+# registry port (host:5000/repo) is not a tag.
+image_ref_tag() {
+  local ref=${1%%@*}
+  local last=${ref##*/}
+  case "$last" in
+    *:*) printf '%s\n' "${last##*:}" ;;
+    *) [ "$ref" != "$1" ] || printf 'latest\n' ;;
+  esac
+}
+
+# Image of a named container in a v1 Deployment's pod template. Reads the
+# Deployment rather than its pods, so it also works while v1 is scaled to 0.
+v1_container_image() {
+  local deploy=$1 container=$2 json image
+  json=$(kx -n "$NAMESPACE" get deploy "$deploy" -o json) \
+    || die "cannot read Deployment/$deploy in namespace $NAMESPACE to find the Langfuse version v1 runs (check --source-release and the values file's fullnameOverride / nameOverride)"
+  image=$(printf '%s' "$json" | jq -r --arg c "$container" '.spec.template.spec.containers[]? | select(.name == $c) | .image')
+  [ -n "$image" ] || die "Deployment/$deploy has no container named $container; cannot tell which Langfuse version v1 runs"
+  printf '%s\n' "$image"
 }
 
 fail_or_force() {
@@ -370,27 +394,55 @@ if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ]; then
   semver_ge "$SRC_APP" "3.224.1" || die "source appVersion $SRC_APP is below the minimum supported v3.224.1"
 fi
 
-VALUES_TAG=$(printf '%s' "$V1_JSON" | jq -r '.langfuse.web.image.tag // .langfuse.image.tag // empty')
-if [ -z "$IMAGE_TAG" ]; then
-  IMAGE_TAG=${VALUES_TAG:-$SRC_APP}
-fi
-[ -n "$IMAGE_TAG" ] && [ "$IMAGE_TAG" != "null" ] || die "could not determine Langfuse image tag. Set langfuse.image.tag in the values file or pass --image-tag (must match the running v1 app)."
-if [ -n "$VALUES_TAG" ] && [ "$(normalize_tag "$VALUES_TAG")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
-  die "values langfuse.image.tag ($VALUES_TAG) does not match --image-tag ($IMAGE_TAG)"
-fi
-if [ -n "$SRC_APP" ] && [ "$SRC_APP" != "null" ] && [ "$(normalize_tag "$SRC_APP")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
-  # Expected whenever v1 pinned an image tag newer than its chart appVersion;
-  # the VALUES_TAG consistency check above already guards real mismatches.
-  warn "Helm appVersion $SRC_APP differs from image tag $IMAGE_TAG; continuing with $IMAGE_TAG (the running v1 version wins)"
-fi
-log "pinning langfuse.image.tag=$IMAGE_TAG so v1 and v2 stay on the same application version"
-
 TARGET_RELEASE=${TARGET_RELEASE:-${SOURCE_RELEASE}-v2}
 SRC_FULLNAME=$(src_fullname_of "$SOURCE_RELEASE")
 TGT_FULLNAME=$(tgt_fullname_of "$TARGET_RELEASE")
 V2_WEB="${TGT_FULLNAME}-web"
 V2_WORKER="${TGT_FULLNAME}-worker"
 V1_INGRESS="$SRC_FULLNAME"
+
+# The v2 release must run exactly the Langfuse version v1 runs while data is
+# copied: Postgres logical replication does not copy DDL, and ch-online-sync.sh
+# copies ClickHouse rows with INSERT ... SELECT *. The tag is read from the v1
+# Deployments because neither the values file nor the Helm appVersion sees
+# overrides passed with --set or GitOps parameters.
+V1_WEB_IMAGE=$(v1_container_image "${SRC_FULLNAME}-web" langfuse-web)
+V1_WORKER_IMAGE=$(v1_container_image "${SRC_FULLNAME}-worker" langfuse-worker)
+log "v1 images: web=$V1_WEB_IMAGE worker=$V1_WORKER_IMAGE"
+V1_WEB_TAG=$(image_ref_tag "$V1_WEB_IMAGE")
+V1_WORKER_TAG=$(image_ref_tag "$V1_WORKER_IMAGE")
+if [ -n "$V1_WEB_TAG" ] && [ -n "$V1_WORKER_TAG" ] \
+  && [ "$(normalize_tag "$V1_WEB_TAG")" != "$(normalize_tag "$V1_WORKER_TAG")" ]; then
+  die "v1 web runs $V1_WEB_TAG but v1 worker runs $V1_WORKER_TAG; put both on the same Langfuse version (helm upgrade $SOURCE_RELEASE) and re-run"
+fi
+LIVE_TAG=${V1_WEB_TAG:-$V1_WORKER_TAG}
+if [ -z "$LIVE_TAG" ]; then
+  [ -n "$IMAGE_TAG" ] || die "v1 web and worker images are pinned by digest without a tag, so the Langfuse version cannot be read from them. Pass --image-tag <version> naming the release those digests belong to."
+  # langfuse.image.tag is shared by web and worker, whose digests differ.
+  IMAGE_TAG=${IMAGE_TAG%%@*}
+  warn "v1 images are digest-pinned without a tag; trusting --image-tag $IMAGE_TAG (make sure it is the release those digests belong to)"
+else
+  [ -n "$V1_WEB_TAG" ] || warn "v1 web image is digest-pinned without a tag; assuming it runs $LIVE_TAG like the worker"
+  [ -n "$V1_WORKER_TAG" ] || warn "v1 worker image is digest-pinned without a tag; assuming it runs $LIVE_TAG like web"
+  if [ -n "$IMAGE_TAG" ] && [ "$(normalize_tag "$IMAGE_TAG")" != "$(normalize_tag "$LIVE_TAG")" ]; then
+    die "--image-tag $IMAGE_TAG does not match the tag v1 runs ($LIVE_TAG). v1 and v2 must stay on the same Langfuse version while data is copied; drop --image-tag, or upgrade v1 to $IMAGE_TAG first and re-run."
+  fi
+  IMAGE_TAG=$LIVE_TAG
+fi
+# Per-component tags in the values file are copied into the v2 values and
+# override the pinned langfuse.image.tag, so they must agree with v1 too.
+for component in web worker; do
+  values_tag=$(printf '%s' "$V1_JSON" | jq -r --arg c "$component" '.langfuse[$c].image.tag // .langfuse.image.tag // empty')
+  if [ -n "$values_tag" ] && [ "$(normalize_tag "$values_tag")" != "$(normalize_tag "$IMAGE_TAG")" ]; then
+    die "$VALUES_FILE sets the $component image tag to $values_tag, but v1 runs $IMAGE_TAG (overridden with --set or GitOps parameters?). Update the values file to what v1 runs and re-run."
+  fi
+done
+case "$(normalize_tag "$IMAGE_TAG")" in
+  [0-9]*.[0-9]*.[0-9]*) ;;
+  *) die "v1 runs Langfuse image tag '$IMAGE_TAG', which is not an exact release version (x.y.z) and could resolve to a different version for v2. Pin v1 to its exact release tag (langfuse.image.tag) and re-run." ;;
+esac
+semver_ge "$(normalize_tag "$IMAGE_TAG")" "3.224.1" || die "v1 runs Langfuse $IMAGE_TAG, below the minimum supported v3.224.1"
+log "pinning langfuse.image.tag=$IMAGE_TAG so v1 and v2 stay on the same application version"
 
 V1_PG_DB=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.database // "postgres_langfuse"')
 V1_PG_SECRET=$(printf '%s' "$V1_JSON" | jq -r '.postgresql.auth.existingSecret // empty')
