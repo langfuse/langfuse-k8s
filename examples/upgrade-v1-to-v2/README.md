@@ -64,7 +64,9 @@ Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<s
 `--output-values`, `--output-cutover-values`, `--extra-values` (repeatable), `--context`,
 `--image-tag` (defaults to the v1 Helm `appVersion` / values tag), `--skip-prereqs`,
 `--worker-drain-seconds` (max wait for v1 Redis queues after web scale-down), `--force`
-(continue after lag / readiness / queue-drain failures). Helm **≥ 3.17** is required.
+(continue after lag / readiness / queue-drain failures; this also skips the Postgres lag check
+before `DROP SUBSCRIPTION`), `--skip-queue-drain` (freeze without waiting for the v1 worker;
+jobs still queued in v1 Redis are lost). Helm **≥ 3.17** is required.
 
 | `*.deploy` | Action |
 |------------|--------|
@@ -214,9 +216,22 @@ TARGET_POD=langfuse-v2-clickhouse-0-0-0 TARGET_SECRET=langfuse-v2-clickhouse-aut
 
 ```bash
 kubectl -n langfuse scale deploy/langfuse-web --replicas=0
-# wait until the v1 worker has drained its Redis queues
+# wait until the v1 worker has drained its BullMQ queues (see below)
 kubectl -n langfuse scale deploy/langfuse-worker --replicas=0
 ```
+
+v2 starts on an empty Valkey, so jobs left in v1 Redis are lost. The queues are drained when
+every `<prefix>:<queue>:wait` and `:active` list is empty and each `:delayed` set holds only
+`repeat:…` entries. Those are the next runs of repeatable jobs (PostHog / Mixpanel /
+blob-storage exports, data retention), which BullMQ keeps there for as long as the worker runs.
+`<prefix>` is the worker's `REDIS_KEY_PREFIX`, or `bull` when it is unset.
+
+The script reads that prefix from the v1 worker Deployment. It refuses to start the freeze if it
+finds no queues under the prefix. During the freeze it waits up to `--worker-drain-seconds`. If
+the queues do not drain in time, it prints the remaining jobs per queue, scales v1 web back to
+its previous replica count, and stops before anything is cut over. Re-run with a longer wait, or
+pass `--skip-queue-drain` to freeze without waiting. Do not reach for `--force` here: it also
+skips the Postgres lag check below.
 
 1. **Postgres** — confirm `lag_bytes=0`, then `DROP SUBSCRIPTION lf_sub;` on v2.
 2. **Object storage** — final `mc mirror` (no `--watch`).
