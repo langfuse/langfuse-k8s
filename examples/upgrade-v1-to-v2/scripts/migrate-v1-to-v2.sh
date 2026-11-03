@@ -25,8 +25,11 @@ CHART_VERSION="${CHART_VERSION:-2.0.0}"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
 CLICKHOUSE_OPERATOR_VERSION="${CLICKHOUSE_OPERATOR_VERSION:-0.0.8}"
 WORKER_DRAIN_SECONDS="${WORKER_DRAIN_SECONDS:-60}"
-# Docker Hub's minio/mc is no longer publicly pullable; quay.io is the working source.
-MC_IMAGE="${MC_IMAGE:-quay.io/minio/mc:latest}"
+# Image for the object-storage mirror pod; it must ship `mc`. Defaults to the
+# image of the v1 bundled MinIO Deployment (Bitnami's MinIO image includes
+# `mc`). The pod also reuses that Deployment's imagePullSecrets.
+MC_IMAGE="${MC_IMAGE:-}"
+MC_OVERRIDES=""
 IMAGE_TAG="${IMAGE_TAG:-}"
 MC_POD=""
 RESUME_TARGET=0
@@ -466,6 +469,23 @@ if [ "$NEED_STORES" -eq 1 ] && hx status "$TARGET_RELEASE" -n "$NAMESPACE" >/dev
   warn "target release $TARGET_RELEASE already exists — later steps will reuse it"
 fi
 
+# The object-storage mirror runs `mc` in a throwaway pod. Reuse the v1 MinIO
+# image (already pullable by this cluster) and its imagePullSecrets.
+if [ "$S3_ON" -eq 1 ]; then
+  V1_S3_DEPLOY_JSON=$(kx -n "$NAMESPACE" get deploy "${SRC_FULLNAME}-s3" -o json 2>/dev/null || true)
+  if [ -n "$V1_S3_DEPLOY_JSON" ]; then
+    if [ -z "$MC_IMAGE" ]; then
+      MC_IMAGE=$(printf '%s' "$V1_S3_DEPLOY_JSON" | jq -r '
+        .spec.template.spec.containers | (map(select(.name == "minio")) + .)[0].image // empty')
+    fi
+    MC_OVERRIDES=$(printf '%s' "$V1_S3_DEPLOY_JSON" | jq -c '
+      .spec.template.spec.imagePullSecrets // [] | select(length > 0)
+      | {apiVersion: "v1", spec: {imagePullSecrets: .}}')
+  fi
+  [ -n "$MC_IMAGE" ] || die "could not read the MinIO image from Deployment ${SRC_FULLNAME}-s3 for the object-storage mirror. Set MC_IMAGE to an image that ships the MinIO client (mc), e.g. the bitnamilegacy/minio image your v1 release runs."
+  log "object-storage mirror image: $MC_IMAGE"
+fi
+
 # --- 2. Generate v2 values --------------------------------------------------
 write_values() {
   local mode=$1 dest=$2 header=$3
@@ -733,12 +753,19 @@ if [ "$PG_ON" -eq 1 ]; then
 fi
 
 ensure_mc_pod() {
+  local run_args=()
   if kx -n "$NAMESPACE" get pod "$MC_POD" >/dev/null 2>&1; then
     return
   fi
-  kx -n "$NAMESPACE" run "$MC_POD" --restart=Never --image="$MC_IMAGE" --command -- sleep 86400
+  [ -n "$MC_OVERRIDES" ] && run_args+=(--overrides="$MC_OVERRIDES")
+  kx -n "$NAMESPACE" run "$MC_POD" --restart=Never --image="$MC_IMAGE" \
+    "${run_args[@]+"${run_args[@]}"}" --command -- sleep 86400
   kx -n "$NAMESPACE" wait pod "$MC_POD" --for=condition=Ready --timeout=180s
 }
+
+# Every mc call uses a config dir under /tmp: images such as Bitnami's MinIO run
+# as a non-root user whose HOME (/) may not be writable.
+MC_CONFIG_DIR_FLAG=(--config-dir /tmp/.mc)
 
 mc_import_alias() {
   local alias=$1 endpoint=$2 access_key=$3 secret_key=$4
@@ -750,7 +777,7 @@ mc_import_alias() {
         api: "S3v4",
         path: "auto"
       }' \
-    | kx -n "$NAMESPACE" exec -i "$MC_POD" -- mc alias import "$alias"
+    | kx -n "$NAMESPACE" exec -i "$MC_POD" -- mc "${MC_CONFIG_DIR_FLAG[@]}" alias import "$alias"
 }
 
 mc_mirror() {
@@ -765,9 +792,9 @@ mc_mirror() {
   ensure_mc_pod
   mc_import_alias v1 "http://${V1_S3_SVC}" "$v1_key" "$v1_secret"
   mc_import_alias v2 "http://${V2_S3_SVC}" "$v2_key" "$v2_secret"
-  kx -n "$NAMESPACE" exec "$MC_POD" -- mc mb --ignore-existing "v2/${S3_BUCKET}"
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc "${MC_CONFIG_DIR_FLAG[@]}" mb --ignore-existing "v2/${S3_BUCKET}"
   log "mc mirror v1/${S3_BUCKET} → v2/${S3_BUCKET} ${extra}"
-  kx -n "$NAMESPACE" exec "$MC_POD" -- mc mirror --overwrite $extra "v1/${S3_BUCKET}" "v2/${S3_BUCKET}"
+  kx -n "$NAMESPACE" exec "$MC_POD" -- mc "${MC_CONFIG_DIR_FLAG[@]}" mirror --overwrite $extra "v1/${S3_BUCKET}" "v2/${S3_BUCKET}"
 }
 
 if [ "$S3_ON" -eq 1 ]; then
