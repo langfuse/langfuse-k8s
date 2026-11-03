@@ -1,0 +1,59 @@
+suite: test Gateway API HTTPRoute validations
+templates:
+  - validations.yaml
+tests:
+  - it: should fail when parentRefs is empty
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.httpRoute.enabled: true
+      langfuse.httpRoute.crdCheck: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "langfuse.httpRoute.parentRefs must list at least one Gateway"
+
+  - it: should fail when the Gateway API CRDs are absent and crdCheck is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.httpRoute.enabled: true
+      langfuse.httpRoute.crdCheck: true
+      langfuse.httpRoute.parentRefs:
+        - name: my-gateway
+    asserts:
+      - failedTemplate:
+          errorPattern: "Gateway API CRDs not found"
+
+  - it: should pass when the Gateway API CRDs are registered
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.httpRoute.enabled: true
+      langfuse.httpRoute.crdCheck: true
+      langfuse.httpRoute.parentRefs:
+        - name: my-gateway
+    capabilities:
+      apiVersions:
+        - gateway.networking.k8s.io/v1/HTTPRoute
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip the CRD check when crdCheck is disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.httpRoute.enabled: true
+      langfuse.httpRoute.crdCheck: false
+      langfuse.httpRoute.parentRefs:
+        - name: my-gateway
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should skip all checks when httpRoute is disabled
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
