@@ -58,6 +58,8 @@ tests:
         template: langfuse-app-secret.yaml
 
   - it: renders the gateway with defaults and only gateway env
+    chart:
+      appVersion: 1.2.3
     values:
       - ../values.lint.yaml
     set:
@@ -73,7 +75,7 @@ tests:
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.langfuse.com/langfuse/ai-gateway:4.63.0
+          value: docker.langfuse.com/langfuse/ai-gateway:1.2.3
         template: gateway/deployment.yaml
       - equal:
           path: spec.template.spec.containers[0].imagePullPolicy
