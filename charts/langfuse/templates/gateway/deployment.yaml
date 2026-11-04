@@ -1,0 +1,145 @@
+{{- if .Values.langfuse.gateway.enabled }}
+{{- $gw := .Values.langfuse.gateway }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "langfuse.fullname" . }}-gateway
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+    {{- with $gw.deployment.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with (coalesce $gw.deployment.annotations .Values.langfuse.deployment.annotations) }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not $gw.hpa.enabled }}
+  replicas: {{ ternary .Values.langfuse.replicas $gw.replicas (kindIs "invalid" $gw.replicas) }}
+  {{- end }}
+  revisionHistoryLimit: {{ ternary .Values.langfuse.revisionHistoryLimit $gw.revisionHistoryLimit (kindIs "invalid" $gw.revisionHistoryLimit) }}
+  {{- with (coalesce $gw.deployment.strategy .Values.langfuse.deployment.strategy) }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "langfuse.selectorLabels" . | nindent 6 }}
+      app: gateway
+  template:
+    metadata:
+      {{- $podAnnotations := merge ($gw.pod.annotations | default dict) (.Values.langfuse.pod.annotations | default dict) }}
+      {{- with $podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "langfuse.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+        app: gateway
+        {{- $podLabels := merge ($gw.pod.labels | default dict) (.Values.langfuse.pod.labels | default dict) }}
+        {{- with $podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with ($gw.image.pullSecrets | default .Values.langfuse.image.pullSecrets) }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "langfuse.serviceAccountName" . }}
+      automountServiceAccountToken: {{ .Values.langfuse.serviceAccount.automountServiceAccountToken }}
+      securityContext:
+        {{- toYaml .Values.langfuse.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ $gw.terminationGracePeriodSeconds }}
+      {{- with $gw.pod.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $gw.pod.extraVolumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- with $gw.pod.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        - name: {{ .Chart.Name }}-gateway
+          securityContext:
+            {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
+          image: "{{ $gw.image.repository }}:{{ coalesce $gw.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
+          imagePullPolicy: {{ $gw.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
+          env:
+            {{- include "langfuse.gatewayEnv" . | nindent 12 }}
+            {{- with $gw.pod.additionalEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with $gw.pod.additionalEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $gw.pod.extraVolumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ $gw.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ $gw.livenessProbe.path | default "/health" }}
+              port: http
+            initialDelaySeconds: {{ $gw.livenessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $gw.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ $gw.livenessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ $gw.livenessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ $gw.livenessProbe.failureThreshold | default 3 }}
+          readinessProbe:
+            httpGet:
+              path: {{ $gw.readinessProbe.path | default "/ready" }}
+              port: http
+            initialDelaySeconds: {{ $gw.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ $gw.readinessProbe.periodSeconds | default 5 }}
+            timeoutSeconds: {{ $gw.readinessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ $gw.readinessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ $gw.readinessProbe.failureThreshold | default 3 }}
+          {{- if gt (int $gw.preStopSleepSeconds) 0 }}
+          {{- /* Kubernetes sends SIGTERM while the endpoint is still being removed, so keep accepting connections until it is gone. */}}
+          lifecycle:
+            preStop:
+              {{- if semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version }}
+              sleep:
+                seconds: {{ int $gw.preStopSleepSeconds }}
+              {{- else }}
+              exec:
+                command: ["sleep", {{ int $gw.preStopSleepSeconds | quote }}]
+              {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml ($gw.resources | default .Values.langfuse.resources) | nindent 12 }}
+      {{- with (coalesce $gw.pod.nodeSelector .Values.langfuse.nodeSelector) }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (coalesce $gw.pod.affinity .Values.langfuse.affinity) }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (coalesce $gw.pod.tolerations .Values.langfuse.tolerations) }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (coalesce $gw.pod.topologySpreadConstraints .Values.langfuse.pod.topologySpreadConstraints) }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (coalesce $gw.pod.priorityClassName .Values.langfuse.priorityClassName) }}
+      priorityClassName: {{ . | quote }}
+      {{- end }}
+      {{- with .Values.langfuse.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

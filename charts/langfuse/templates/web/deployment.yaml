@@ -77,6 +77,7 @@ spec:
             - name: PORT
               value: {{ .Values.langfuse.web.service.port | quote }}
             {{- include "langfuse.aiFeaturesMcpWebEnv" . | nindent 12 }}
+            {{- include "langfuse.gatewayWebEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
             {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
             - name: HOSTNAME
