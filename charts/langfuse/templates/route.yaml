@@ -1,0 +1,48 @@
+{{- if .Values.langfuse.route.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "langfuse.fullname" . }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+    {{- with .Values.langfuse.route.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.langfuse.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.langfuse.route.host }}
+  host: {{ .Values.langfuse.route.host | quote }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "langfuse.fullname" . }}-web
+    weight: 100
+  port:
+    targetPort: http
+  {{- if .Values.langfuse.route.tls.enabled }}
+  tls:
+    termination: {{ .Values.langfuse.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ .Values.langfuse.route.tls.insecureEdgeTerminationPolicy }}
+    {{- if .Values.langfuse.route.tls.certificate }}
+    certificate: |
+      {{- .Values.langfuse.route.tls.certificate | nindent 6 }}
+    {{- end }}
+    {{- if .Values.langfuse.route.tls.key }}
+    key: |
+      {{- .Values.langfuse.route.tls.key | nindent 6 }}
+    {{- end }}
+    {{- if .Values.langfuse.route.tls.caCertificate }}
+    caCertificate: |
+      {{- .Values.langfuse.route.tls.caCertificate | nindent 6 }}
+    {{- end }}
+    {{- if .Values.langfuse.route.tls.destinationCACertificate }}
+    destinationCACertificate: |
+      {{- .Values.langfuse.route.tls.destinationCACertificate | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  wildcardPolicy: None
+{{- end }}
