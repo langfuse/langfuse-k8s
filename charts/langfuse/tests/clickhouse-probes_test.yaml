@@ -1,0 +1,137 @@
+suite: test clickhouse probe overrides
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should not render probes by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.containerTemplate.livenessProbe
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.containerTemplate.readinessProbe
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.containerTemplate.startupProbe
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.containerTemplate.livenessProbe
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.containerTemplate.readinessProbe
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.containerTemplate.startupProbe
+        template: clickhouse/keeper.yaml
+
+  - it: should allow overriding the keeper liveness probe
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.livenessProbe:
+        httpGet:
+          path: /ready
+          port: 9123
+        periodSeconds: 30
+    asserts:
+      - equal:
+          path: spec.containerTemplate.livenessProbe
+          value:
+            httpGet:
+              path: /ready
+              port: 9123
+            periodSeconds: 30
+        template: clickhouse/keeper.yaml
+      - equal:
+          path: spec.containerTemplate.resources.requests.cpu
+          value: 250m
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.containerTemplate.livenessProbe
+        template: clickhouse/cluster.yaml
+
+  - it: should allow overriding the keeper readiness and startup probes
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.readinessProbe:
+        httpGet:
+          path: /ready
+          port: 9123
+        periodSeconds: 10
+      clickhouse.keeper.startupProbe:
+        tcpSocket:
+          port: 2181
+        failureThreshold: 30
+    asserts:
+      - equal:
+          path: spec.containerTemplate.readinessProbe
+          value:
+            httpGet:
+              path: /ready
+              port: 9123
+            periodSeconds: 10
+        template: clickhouse/keeper.yaml
+      - equal:
+          path: spec.containerTemplate.startupProbe
+          value:
+            tcpSocket:
+              port: 2181
+            failureThreshold: 30
+        template: clickhouse/keeper.yaml
+
+  - it: should allow overriding the ClickHouse probes without touching keeper
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.livenessProbe:
+        httpGet:
+          path: /ping
+          port: 8123
+        periodSeconds: 30
+      clickhouse.cluster.readinessProbe:
+        httpGet:
+          path: /ping
+          port: 8123
+        periodSeconds: 10
+      clickhouse.cluster.startupProbe:
+        httpGet:
+          path: /ping
+          port: 8123
+        failureThreshold: 30
+    asserts:
+      - equal:
+          path: spec.containerTemplate.livenessProbe
+          value:
+            httpGet:
+              path: /ping
+              port: 8123
+            periodSeconds: 30
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.readinessProbe
+          value:
+            httpGet:
+              path: /ping
+              port: 8123
+            periodSeconds: 10
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.startupProbe
+          value:
+            httpGet:
+              path: /ping
+              port: 8123
+            failureThreshold: 30
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.containerTemplate.livenessProbe
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.containerTemplate.readinessProbe
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.containerTemplate.startupProbe
+        template: clickhouse/keeper.yaml
