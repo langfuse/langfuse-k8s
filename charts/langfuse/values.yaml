@@ -989,6 +989,12 @@ clickhouse:
         memory: 2Gi
       limits:
         memory: 4Gi
+    # -- Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009.
+    livenessProbe: {}
+    # -- Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port.
+    readinessProbe: {}
+    # -- Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for ClickHouse pods.
     nodeSelector: {}
     # -- Tolerations for ClickHouse pods.
@@ -1032,6 +1038,12 @@ clickhouse:
         memory: 256Mi
       limits:
         memory: 1Gi
+    # -- Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe.
+    livenessProbe: {}
+    # -- Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123.
+    readinessProbe: {}
+    # -- Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for Keeper pods.
     nodeSelector: {}
     # -- Tolerations for Keeper pods.
