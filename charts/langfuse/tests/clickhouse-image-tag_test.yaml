@@ -1,0 +1,41 @@
+suite: test ClickHouse and Keeper image tags
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should default to the published 26.8 LTS patch tag
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: clickhouse/clickhouse-server
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.tag
+          value: "26.8.36.3"
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.repository
+          value: clickhouse/clickhouse-keeper
+        template: clickhouse/keeper.yaml
+      - equal:
+          path: spec.containerTemplate.image.tag
+          value: "26.8.36.3"
+        template: clickhouse/keeper.yaml
+
+  - it: should honor image tag overrides
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.image.tag: "26.8.35.10"
+      clickhouse.keeper.image.tag: "26.8.35.10"
+    asserts:
+      - equal:
+          path: spec.containerTemplate.image.tag
+          value: "26.8.35.10"
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.containerTemplate.image.tag
+          value: "26.8.35.10"
+        template: clickhouse/keeper.yaml

@@ -1,0 +1,61 @@
+{{- if and .Values.langfuse.gateway.enabled .Values.langfuse.gateway.ingress.enabled }}
+{{- $ingress := .Values.langfuse.gateway.ingress }}
+{{- $className := $ingress.className | default .Values.langfuse.ingress.className }}
+{{- $annotations := deepCopy ($ingress.annotations | default dict) }}
+{{- if and $className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) (not (hasKey $annotations "kubernetes.io/ingress.class")) }}
+{{- $_ := set $annotations "kubernetes.io/ingress.class" $className }}
+{{- end }}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion }}
+apiVersion: networking.k8s.io/v1beta1
+{{- else }}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ include "langfuse.fullname" . }}-gateway
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+    {{- with $ingress.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if and $className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
+  ingressClassName: {{ $className }}
+  {{- end }}
+  {{- if $ingress.tls.enabled }}
+  tls:
+    - hosts:
+        {{- range $ingress.hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ $ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    {{- range $ingress.hosts }}
+    - host: {{ . | quote }}
+      http:
+        paths:
+          - path: /
+            {{- if semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion }}
+            pathType: Prefix
+            {{- end }}
+            backend:
+              {{- if semverCompare ">=1.19-0" $.Capabilities.KubeVersion.GitVersion }}
+              service:
+                name: {{ include "langfuse.fullname" $ }}-gateway
+                port:
+                  name: http
+              {{- else }}
+              serviceName: {{ include "langfuse.fullname" $ }}-gateway
+              servicePort: http
+              {{- end }}
+    {{- end }}
+{{- end }}
