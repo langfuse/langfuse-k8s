@@ -15,9 +15,9 @@ metadata:
   {{- end }}
 spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
-  replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
+  replicas: {{ ternary .Values.langfuse.replicas .Values.langfuse.web.replicas (kindIs "invalid" .Values.langfuse.web.replicas) }}
   {{- end }}
-  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ ternary .Values.langfuse.revisionHistoryLimit .Values.langfuse.web.revisionHistoryLimit (kindIs "invalid" .Values.langfuse.web.revisionHistoryLimit) }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}

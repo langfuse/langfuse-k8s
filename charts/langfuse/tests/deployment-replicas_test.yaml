@@ -1,0 +1,114 @@
+suite: test web and worker replicas and revisionHistoryLimit
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: falls back to the global replicas and revisionHistoryLimit when unset
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.replicas: 3
+      langfuse.revisionHistoryLimit: 7
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 7
+        template: web/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 3
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 7
+        template: worker/deployment.yaml
+
+  - it: uses per-component replicas and revisionHistoryLimit
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.replicas: 3
+      langfuse.web.replicas: 2
+      langfuse.web.revisionHistoryLimit: 5
+      langfuse.worker.replicas: 4
+      langfuse.worker.revisionHistoryLimit: 6
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 2
+        template: web/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 5
+        template: web/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 4
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 6
+        template: worker/deployment.yaml
+
+  - it: keeps an explicit zero replicas and revisionHistoryLimit
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.replicas: 3
+      langfuse.web.replicas: 0
+      langfuse.web.revisionHistoryLimit: 0
+      langfuse.worker.replicas: 0
+      langfuse.worker.revisionHistoryLimit: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 0
+        template: web/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 0
+        template: web/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 0
+        template: worker/deployment.yaml
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 0
+        template: worker/deployment.yaml
+
+  - it: scales only the worker to zero
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.replicas: 3
+      langfuse.worker.replicas: 0
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+        template: web/deployment.yaml
+      - equal:
+          path: spec.replicas
+          value: 0
+        template: worker/deployment.yaml
+
+  - it: does not render replicas when the HPA is enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.web.replicas: 0
+      langfuse.web.hpa.enabled: true
+      langfuse.worker.replicas: 0
+      langfuse.worker.hpa.enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.replicas
+        template: worker/deployment.yaml
