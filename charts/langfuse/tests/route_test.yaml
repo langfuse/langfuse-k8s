@@ -1,0 +1,129 @@
+suite: test OpenShift Route functionality
+templates:
+  - route.yaml
+tests:
+  - it: should not render route when disabled (default)
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: route.yaml
+
+  - it: should render route with auto-generated host
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: route.yaml
+      - isKind:
+          of: Route
+        template: route.yaml
+      - equal:
+          path: spec.to.kind
+          value: Service
+        template: route.yaml
+      - equal:
+          path: spec.to.name
+          value: RELEASE-NAME-langfuse-web
+        template: route.yaml
+      - equal:
+          path: spec.port.targetPort
+          value: http
+        template: route.yaml
+      - isNull:
+          path: spec.host
+        template: route.yaml
+
+  - it: should render route with explicit host
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+      langfuse.route.host: langfuse.apps.cluster.example.com
+    asserts:
+      - equal:
+          path: spec.host
+          value: langfuse.apps.cluster.example.com
+        template: route.yaml
+
+  - it: should render TLS edge termination by default when route enabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+    asserts:
+      - equal:
+          path: spec.tls.termination
+          value: edge
+        template: route.yaml
+      - equal:
+          path: spec.tls.insecureEdgeTerminationPolicy
+          value: Redirect
+        template: route.yaml
+
+  - it: should render route with passthrough TLS
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+      langfuse.route.tls.termination: passthrough
+      langfuse.route.tls.insecureEdgeTerminationPolicy: None
+    asserts:
+      - equal:
+          path: spec.tls.termination
+          value: passthrough
+        template: route.yaml
+      - equal:
+          path: spec.tls.insecureEdgeTerminationPolicy
+          value: None
+        template: route.yaml
+
+  - it: should render route without TLS when disabled
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+      langfuse.route.tls.enabled: false
+    asserts:
+      - isNull:
+          path: spec.tls
+        template: route.yaml
+
+  - it: should render route with custom annotations and labels
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: true
+      langfuse.route.annotations:
+        haproxy.router.openshift.io/timeout: 60s
+      langfuse.route.additionalLabels:
+        environment: staging
+    asserts:
+      - equal:
+          path: metadata.annotations["haproxy.router.openshift.io/timeout"]
+          value: 60s
+        template: route.yaml
+      - equal:
+          path: metadata.labels.environment
+          value: staging
+        template: route.yaml
+
+  - it: should not render route when ingress is used instead
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.route.enabled: false
+      langfuse.ingress.enabled: true
+      langfuse.ingress.hosts:
+        - host: langfuse.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: route.yaml
