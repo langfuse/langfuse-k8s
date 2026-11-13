@@ -1,0 +1,46 @@
+langfuse:
+  replicas: 1
+  nextauth:
+    url: http://localhost:3000
+  ingress:
+    enabled: false
+  gateway:
+    enabled: false
+  additionalEnv:
+    - name: LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT
+      value: http://langfuse-s3-all-in-one:8333
+    - name: LANGFUSE_S3_BATCH_EXPORT_EXTERNAL_ENDPOINT
+      value: http://localhost:8333
+
+postgresql:
+  storage:
+    requestedSize: 5Gi
+    className: local-path
+
+redis:
+  dataStorage:
+    enabled: true
+    requestedSize: 1Gi
+    className: local-path
+
+clickhouse:
+  cluster:
+    replicas: 1
+    storage:
+      size: 20Gi
+      className: local-path
+  keeper:
+    enabled: true
+    replicas: 1
+    storage:
+      size: 1Gi
+      className: local-path
+
+s3:
+  mediaUpload:
+    endpoint: http://localhost:8333
+  allInOne:
+    data:
+      type: persistentVolumeClaim
+      size: 10Gi
+      storageClass: local-path
