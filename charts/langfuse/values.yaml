@@ -964,6 +964,8 @@ clickhouse:
 
   # Sub-chart settings (rendered as ClickHouseCluster + KeeperCluster CRs by this chart)
   cluster:
+    # -- Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it.
+    serviceAccountName: ""
     # -- Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse.
     enabled: true
     # -- Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled.
