@@ -18,7 +18,7 @@ Langfuse self-hosting documentation: https://langfuse.com/self-hosting
 
 Chart **v2.0.0** ships [Langfuse v4](https://langfuse.com/docs/v4) by default. For new installations we recommend adopting v4.
 
-Please follow the [minimal installation](./examples/minimal-installation/).
+Please follow the [minimal installation](./examples/minimal-installation/). For local evaluation on Apple silicon with Apple's `container` runtime, use the [macOS local values](./examples/macos-local/).
 
 If you want to upgrade an **existing Langfuse application** from v3 to v4, follow the [application upgrade guide](https://langfuse.com/self-hosting/upgrade/upgrade-guides/upgrade-v3-to-v4). That is a separate step from the Helm chart v1 → v2 migration.
 
