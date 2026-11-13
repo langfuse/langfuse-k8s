@@ -42,6 +42,9 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if not (kindIs "invalid" .Values.langfuse.web.terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ .Values.langfuse.web.terminationGracePeriodSeconds }}
+      {{- end }}
       {{- if .Values.langfuse.web.hostAliases }}
       hostAliases:
         {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
