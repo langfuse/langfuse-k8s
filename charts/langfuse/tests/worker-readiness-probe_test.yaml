@@ -1,0 +1,44 @@
+suite: test worker readinessProbe
+templates:
+  - worker/deployment.yaml
+tests:
+  - it: should add a readinessProbe to the worker deployment
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /api/ready
+
+  - it: should allow overriding the worker readinessProbe path
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.worker.readinessProbe.path: /api/health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /api/health
+
+  - it: should allow overriding the worker readinessProbe timing parameters
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.worker.readinessProbe.initialDelaySeconds: 30
+      langfuse.worker.readinessProbe.periodSeconds: 15
+      langfuse.worker.readinessProbe.timeoutSeconds: 10
+      langfuse.worker.readinessProbe.failureThreshold: 6
+      langfuse.worker.readinessProbe.successThreshold: 1
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.initialDelaySeconds
+          value: 30
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.periodSeconds
+          value: 15
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.timeoutSeconds
+          value: 10
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.failureThreshold
+          value: 6
