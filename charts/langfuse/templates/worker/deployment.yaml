@@ -70,7 +70,7 @@ spec:
         - name: {{ .Chart.Name }}-worker
           securityContext:
             {{- toYaml .Values.langfuse.securityContext | nindent 12 }}
-          image: "{{ .Values.langfuse.worker.image.repository }}:{{ coalesce .Values.langfuse.worker.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
+          image: "{{ include "langfuse.imageRepository" (list $ .Values.langfuse.worker.image) }}:{{ coalesce .Values.langfuse.worker.image.tag .Values.langfuse.image.tag .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.langfuse.worker.image.pullPolicy | default .Values.langfuse.image.pullPolicy }}
           env:
             {{- include "langfuse.commonEnv" . | nindent 12 }}
