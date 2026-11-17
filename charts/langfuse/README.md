@@ -265,6 +265,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
+| langfuse.web.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.web.vpa.controlledResources | list | `[]` | The resources to control for the langfuse web pods |
 | langfuse.web.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse web pods |
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
@@ -313,6 +314,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |
