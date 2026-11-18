@@ -48,6 +48,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
+| clickhouse.cluster.tls | object | `{}` | TLS for the ClickHouse server (`spec.settings.tls` on the ClickHouseCluster CR): `enabled` opens the secure ports (HTTPS 8443, native 9440), `required` also closes the plaintext ones, `serverCertSecret.name` is a Secret with the server certificate in `tls.crt` and `tls.key`, `caBundle` is a Secret key with the CA used to verify peers such as a Keeper with TLS. With `enabled: true` and `clickhouse.host` empty, Langfuse connects on the secure ports; set `clickhouse.host` to configure the connection yourself. A private CA must also reach the Langfuse pods, for example through `NODE_EXTRA_CA_CERTS`. |
 | clickhouse.cluster.tolerations | list | `[]` | Tolerations for ClickHouse pods. |
 | clickhouse.clusterDomain | string | `"cluster.local"` | Kubernetes cluster domain suffix the operator uses to build in-cluster DNS names for ClickHouse pods (`spec.clusterDomain` on the ClickHouseCluster CR). Change only if your cluster does not use the default `cluster.local`. |
 | clickhouse.crdCheck | bool | `true` | Require ClickHouse operator CRDs when deploy is true. Disable for offline helm template/GitOps diffs (or pass `--api-versions clickhouse.com/v1alpha1/ClickHouseCluster`). |
@@ -70,6 +71,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.keeper.storage.className | string | `""` | StorageClass for Keeper PVCs. Leave empty to use the cluster default. |
 | clickhouse.keeper.storage.size | string | `"20Gi"` | Persistent volume size for each Keeper pod. |
+| clickhouse.keeper.tls | object | `{}` | TLS for Keeper (`spec.settings.tls` on the KeeperCluster CR), same fields as `clickhouse.cluster.tls`. The ClickHouse server then reaches Keeper on its secure port (2281). |
 | clickhouse.keeper.tolerations | list | `[]` | Tolerations for Keeper pods. |
 | clickhouse.migration.autoMigrate | bool | `true` | Run ClickHouse schema migrations automatically when Langfuse starts. |
 | clickhouse.migration.ssl | bool | `false` | Use SSL for ClickHouse schema migrations. |

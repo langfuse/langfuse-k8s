@@ -997,6 +997,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for ClickHouse pods.
     priorityClassName: ""
+    # -- TLS for the ClickHouse server (`spec.settings.tls` on the ClickHouseCluster CR): `enabled` opens the secure ports (HTTPS 8443, native 9440), `required` also closes the plaintext ones, `serverCertSecret.name` is a Secret with the server certificate in `tls.crt` and `tls.key`, `caBundle` is a Secret key with the CA used to verify peers such as a Keeper with TLS. With `enabled: true` and `clickhouse.host` empty, Langfuse connects on the secure ports; set `clickhouse.host` to configure the connection yourself. A private CA must also reach the Langfuse pods, for example through `NODE_EXTRA_CA_CERTS`.
+    tls: {}
     # -- Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one.
     logger: {}
     # -- Extra ClickHouse server settings applied under the `<clickhouse>` config section.
@@ -1040,6 +1042,8 @@ clickhouse:
     affinity: {}
     # -- PriorityClass for Keeper pods.
     priorityClassName: ""
+    # -- TLS for Keeper (`spec.settings.tls` on the KeeperCluster CR), same fields as `clickhouse.cluster.tls`. The ClickHouse server then reaches Keeper on its secure port (2281).
+    tls: {}
     # -- Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one.
     logger: {}
     # -- Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server.
