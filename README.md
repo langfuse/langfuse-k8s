@@ -406,6 +406,53 @@ clickhouse:
     ssl: true
 ```
 
+##### With TLS on the bundled ClickHouse
+
+The operator serves TLS from a Secret that holds the certificate in `tls.crt` and `tls.key` (the shape cert-manager produces).
+`enabled: true` opens the secure ports and makes Langfuse connect on them (HTTPS 8443, native 9440); `required: true` also closes the plaintext ports.
+`caBundle` is the CA the server verifies its peers with, such as Keeper; without it the system CA bundle is used.
+
+```yaml
+[...]
+clickhouse:
+  cluster:
+    tls:
+      enabled: true
+      required: true
+      serverCertSecret:
+        name: clickhouse-tls
+      caBundle:
+        name: clickhouse-tls
+        key: ca.crt
+  keeper:
+    tls:
+      enabled: true
+      required: true
+      serverCertSecret:
+        name: keeper-tls
+```
+
+If the certificates come from a private CA, Langfuse needs that CA as well. Mount it into the pods and point `NODE_EXTRA_CA_CERTS` at it:
+
+```yaml
+[...]
+langfuse:
+  extraVolumes:
+    - name: clickhouse-ca
+      secret:
+        secretName: clickhouse-tls
+        items:
+          - key: ca.crt
+            path: ca.crt
+  extraVolumeMounts:
+    - name: clickhouse-ca
+      mountPath: /etc/clickhouse-ca
+      readOnly: true
+  additionalEnv:
+    - name: NODE_EXTRA_CA_CERTS
+      value: /etc/clickhouse-ca/ca.crt
+```
+
 ##### With an external S3 bucket
 
 ```yaml

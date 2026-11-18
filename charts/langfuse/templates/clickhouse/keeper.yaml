@@ -26,8 +26,12 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- if or .Values.clickhouse.keeper.logger .Values.clickhouse.keeper.settings }}
+  {{- if or .Values.clickhouse.keeper.tls .Values.clickhouse.keeper.logger .Values.clickhouse.keeper.settings }}
   settings:
+    {{- with .Values.clickhouse.keeper.tls }}
+    tls:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
     {{- with .Values.clickhouse.keeper.logger }}
     logger:
       {{- toYaml . | nindent 6 }}
