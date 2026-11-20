@@ -1,0 +1,16 @@
+# .github/ai-gate.yml - the AI review gate's config for this repo.
+#
+# Presence of this file is the opt-in half of the two-key auto-approval
+# model: auto-approval also needs the central `auto_approve` custom property
+# set to "allowed", which ClickHouse Product Security sets through a reviewed
+# change in ClickHouse/security-integrations. Neither key alone does anything.
+#
+# `reviewers: [bugbot]` spells out the default explicitly - an all-comment
+# file parses to an empty YAML doc, which the gate's loader rejects as a
+# config error. The gate's built-in sensitive-path denylist (workflows,
+# CODEOWNERS, this file, ...) still needs a human regardless.
+#
+# Want a different reviewer, or extra paths that should always need a
+# human? Edit this file - it's yours, reviewed by this repo's CODEOWNERS.
+
+reviewers: [bugbot]
