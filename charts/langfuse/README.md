@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.2.4](https://img.shields.io/badge/Version-2.2.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.77.0](https://img.shields.io/badge/AppVersion-4.77.0-informational?style=flat-square)
+![Version: 2.2.6](https://img.shields.io/badge/Version-2.2.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -44,6 +44,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.serviceAccountName | string | `""` | Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
 | clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
