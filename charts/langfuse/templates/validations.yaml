@@ -445,4 +445,40 @@ what you are doing.
 {{- if and $gwPdb.create $gwMinAvailableSet $gwMaxUnavailableSet -}}
     {{- fail "Pod Disruption Budget for gateway component cannot have both minAvailable and maxUnavailable values" -}}
 {{- end -}}
+{{- $gwRedis := $gateway.redis | default dict -}}
+{{- $gwRedisAuth := $gwRedis.auth | default dict -}}
+{{- $gwRedisAuthRef := $gwRedisAuth.secretKeyRef | default dict -}}
+{{- $gwRedisAuthFieldRef := $gwRedisAuth.fieldRef | default dict -}}
+{{- $gwRedisAuthResRef := $gwRedisAuth.resourceFieldRef | default dict -}}
+{{- $gwRedisAuthSet := or $gwRedisAuth.value $gwRedisAuthRef.name $gwRedisAuthRef.key $gwRedisAuthFieldRef.fieldPath $gwRedisAuthResRef.resource -}}
+{{- $gwAdditionalEnv := ($gateway.pod | default dict).additionalEnv | default list -}}
+{{- $hasAdditionalGatewayRedisUrl := include "langfuse.hasEnvVar" (dict "env" $gwAdditionalEnv "name" "LANGFUSE_AI_GATEWAY_REDIS_URL") -}}
+{{- if $gwRedis.url -}}
+{{- $gwRedisNodes := splitList "," $gwRedis.url -}}
+{{- range $gwRedisNodes -}}
+{{- $node := trim . -}}
+{{- if not (regexMatch "^(?i)rediss?://[^\\s/]+(/[^\\s]*)?$" $node) -}}
+    {{- fail "langfuse.gateway.redis.url must be a redis:// or rediss:// URL (or comma-separated list of URLs)." -}}
+{{- end -}}
+{{- end -}}
+{{- if and (gt (len $gwRedisNodes) 1) (not $gwRedis.clusterEnabled) -}}
+    {{- fail "langfuse.gateway.redis.url lists multiple nodes; set langfuse.gateway.redis.clusterEnabled to true." -}}
+{{- end -}}
+{{- if ne (not $gwRedisAuthRef.name) (not $gwRedisAuthRef.key) -}}
+    {{- fail "langfuse.gateway.redis.auth.secretKeyRef requires both name and key." -}}
+{{- end -}}
+{{- else -}}
+{{- if or $gwRedisAuthSet $gwRedis.clusterEnabled -}}
+    {{- fail "langfuse.gateway.redis.auth and langfuse.gateway.redis.clusterEnabled require langfuse.gateway.redis.url. Set langfuse.gateway.redis.url for a dedicated Redis, or leave langfuse.gateway.redis.* empty to derive Redis settings from redis.*." -}}
+{{- end -}}
+{{- if not $hasAdditionalGatewayRedisUrl -}}
+{{- if $.Values.redis.sentinel.enabled -}}
+    {{- fail "The AI gateway does not support Redis Sentinel (redis.sentinel.enabled is true). Configure a dedicated standalone or cluster Redis via langfuse.gateway.redis.url (and langfuse.gateway.redis.auth / langfuse.gateway.redis.clusterEnabled if needed)." -}}
+{{- else if and $.Values.redis.cluster.enabled (eq (len $.Values.redis.cluster.nodes) 0) -}}
+    {{- fail "Cannot derive AI gateway Redis URL because redis.cluster.nodes is empty (langfuse.additionalEnv does not apply to the gateway). Set redis.cluster.nodes or configure langfuse.gateway.redis.url." -}}
+{{- else if not (include "langfuse.gateway.redisUrl" .) -}}
+    {{- fail "Cannot derive AI gateway Redis URL from redis.* (langfuse.additionalEnv does not apply to the gateway). Set redis.host or configure langfuse.gateway.redis.url." -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}

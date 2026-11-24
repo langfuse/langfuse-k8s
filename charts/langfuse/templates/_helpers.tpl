@@ -245,6 +245,18 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- end -}}
 
 {{/*
+Return "true" if any entry in .env has .name matching .name (with value or valueFrom)
+*/}}
+{{- define "langfuse.hasEnvVar" -}}
+{{- $envVarName := .name -}}
+{{- range .env -}}
+{{- if eq .name $envVarName -}}
+true
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
     Database related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
@@ -958,8 +970,101 @@ debug
 {{- end -}}
 
 {{/*
+Redis URL(s) for AI gateway spend-limit counters. Uses langfuse.gateway.redis.url
+when set; otherwise derives redis:// or rediss:// URL(s) from the top-level redis.*
+values (standalone or cluster; Sentinel is not supported by the gateway).
+*/}}
+{{- define "langfuse.gateway.redisUrl" -}}
+{{- $gwRedis := (.Values.langfuse.gateway | default dict).redis | default dict -}}
+{{- if $gwRedis.url -}}
+{{- $gwRedis.url -}}
+{{- else if .Values.redis.sentinel.enabled -}}
+{{- else -}}
+{{- $scheme := ternary "rediss" "redis" (eq (toString .Values.redis.tls.enabled) "true") -}}
+{{- $username := .Values.redis.auth.username -}}
+{{- /* Omit "default" so the gateway sends AUTH <password>, accepted by both AWS auth tokens and Valkey/Redis default ACL users. */ -}}
+{{- $userPart := "" -}}
+{{- if and $username (ne $username "default") -}}
+{{- $userPart = printf "%s@" $username -}}
+{{- end -}}
+{{- if .Values.redis.cluster.enabled -}}
+{{- $nodes := list -}}
+{{- range .Values.redis.cluster.nodes -}}
+{{- $node := trim (toString .) -}}
+{{- if or (hasPrefix "redis://" (lower $node)) (hasPrefix "rediss://" (lower $node)) -}}
+{{- $nodes = append $nodes $node -}}
+{{- else -}}
+{{- $nodes = append $nodes (printf "%s://%s%s" $scheme $userPart $node) -}}
+{{- end -}}
+{{- end -}}
+{{- join "," $nodes -}}
+{{- else -}}
+{{- $host := include "langfuse.redis.hostname" . -}}
+{{- if $host -}}
+{{- $port := int (.Values.redis.port | default 6379) -}}
+{{- $db := int (.Values.redis.auth.database | default 0) -}}
+{{- $dbPart := ternary (printf "/%d" $db) "" (gt $db 0) -}}
+{{- printf "%s://%s%s:%d%s" $scheme $userPart $host $port $dbPart -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Redis environment variables for AI gateway spend-limit counters.
+Uses langfuse.gateway.redis.* when langfuse.gateway.redis.url is set; skips
+derivation if LANGFUSE_AI_GATEWAY_REDIS_URL is already set in
+langfuse.gateway.pod.additionalEnv; otherwise derives from top-level redis.*.
+*/}}
+{{- define "langfuse.gatewayRedisEnv" -}}
+{{- $gw := .Values.langfuse.gateway | default dict -}}
+{{- $gwRedis := $gw.redis | default dict -}}
+{{- $gwAdditionalEnv := ($gw.pod | default dict).additionalEnv | default list -}}
+{{- if $gwRedis.url }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_URL
+  value: {{ $gwRedis.url | quote }}
+{{- if $gwRedis.clusterEnabled }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED
+  value: "true"
+{{- end }}
+{{- if $gwRedis.auth }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.gateway.redis.auth" "value" $gwRedis.auth)) }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_AUTH
+  {{- . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- else if not (include "langfuse.hasEnvVar" (dict "env" $gwAdditionalEnv "name" "LANGFUSE_AI_GATEWAY_REDIS_URL")) }}
+{{- with (include "langfuse.gateway.redisUrl" .) }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_URL
+  value: {{ . | quote }}
+{{- if $.Values.redis.cluster.enabled }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED
+  value: "true"
+{{- end }}
+{{- if or $.Values.redis.auth.existingSecret $.Values.redis.auth.password $.Values.redis.deploy }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_AUTH
+{{- if $.Values.redis.auth.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.redis.auth.existingSecret }}
+      key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" $.Values.redis.auth.existingSecretPasswordKey }}
+{{- else if $.Values.redis.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.redis.authSecretName" $ | quote }}
+      key: {{ $.Values.redis.auth.username | quote }}
+{{- else }}
+  value: {{ $.Values.redis.auth.password | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
 Environment of the AI gateway container. Deliberately excludes langfuse.commonEnv:
-the gateway needs no database, Redis, ClickHouse, or S3 credentials.
+the gateway needs no Postgres, ClickHouse, or S3 credentials — only its own
+control-plane settings and Redis for spend-limit counters.
 */}}
 {{- define "langfuse.gatewayEnv" -}}
 {{- $gw := .Values.langfuse.gateway -}}
@@ -982,6 +1087,9 @@ the gateway needs no database, Redis, ClickHouse, or S3 credentials.
   value: {{ $gw.connectionDrainTimeoutSeconds | quote }}
 - name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
   value: {{ $gw.telemetryShutdownTimeoutSeconds | quote }}
+{{- with (include "langfuse.gatewayRedisEnv" .) }}
+{{- . }}
+{{- end }}
 {{- end -}}
 
 {{/*

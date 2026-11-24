@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.2.6](https://img.shields.io/badge/Version-2.2.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
+![Version: 2.3.0](https://img.shields.io/badge/Version-2.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -172,6 +172,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.readinessProbe.periodSeconds | int | `5` | [Beta] Period seconds for readinessProbe. |
 | langfuse.gateway.readinessProbe.successThreshold | int | `1` | [Beta] Success threshold for readinessProbe. |
 | langfuse.gateway.readinessProbe.timeoutSeconds | int | `5` | [Beta] Timeout seconds for readinessProbe. |
+| langfuse.gateway.redis.auth | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`. |
+| langfuse.gateway.redis.clusterEnabled | bool | `false` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`. |
+| langfuse.gateway.redis.url | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true, since the gateway does not support Sentinel. |
 | langfuse.gateway.replicas | string | `nil` | [Beta] Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.gateway.resources | object | `{}` | [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi. |
 | langfuse.gateway.revisionHistoryLimit | string | `nil` | [Beta] Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit |
