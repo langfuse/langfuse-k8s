@@ -1702,3 +1702,44 @@ tests:
       - failedTemplate:
           errorPattern: "Cannot derive AI gateway Redis URL because redis.cluster.nodes is empty"
         template: validations.yaml
+
+  - it: skips gateway Redis env and validations when langfuse.gateway.redis.enabled is false (e.g. for additionalEnvFrom)
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.gateway.enabled: true
+      langfuse.gateway.redis.enabled: false
+      redis.deploy: false
+      redis.sentinel.enabled: true
+      redis.sentinel.masterName: mymaster
+      redis.sentinel.nodes: sentinel-1:26379,sentinel-2:26379
+      langfuse.gateway.pod.additionalEnvFrom:
+        - secretRef:
+            name: gateway-redis-env
+    asserts:
+      - notFailedTemplate: {}
+        template: validations.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_REDIS_URL
+          any: true
+        template: gateway/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_REDIS_AUTH
+          any: true
+        template: gateway/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED
+          any: true
+        template: gateway/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].envFrom
+          value:
+            - secretRef:
+                name: gateway-redis-env
+        template: gateway/deployment.yaml

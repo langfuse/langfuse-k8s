@@ -445,6 +445,7 @@ what you are doing.
 {{- if and $gwPdb.create $gwMinAvailableSet $gwMaxUnavailableSet -}}
     {{- fail "Pod Disruption Budget for gateway component cannot have both minAvailable and maxUnavailable values" -}}
 {{- end -}}
+{{- if include "langfuse.gateway.redisEnabled" . -}}
 {{- $gwRedis := $gateway.redis | default dict -}}
 {{- $gwRedisAuth := $gwRedis.auth | default dict -}}
 {{- $gwRedisAuthRef := $gwRedisAuth.secretKeyRef | default dict -}}
@@ -473,11 +474,12 @@ what you are doing.
 {{- end -}}
 {{- if not $hasAdditionalGatewayRedisUrl -}}
 {{- if $.Values.redis.sentinel.enabled -}}
-    {{- fail "The AI gateway does not support Redis Sentinel (redis.sentinel.enabled is true). Configure a dedicated standalone or cluster Redis via langfuse.gateway.redis.url (and langfuse.gateway.redis.auth / langfuse.gateway.redis.clusterEnabled if needed)." -}}
+    {{- fail "The AI gateway does not support Redis Sentinel (redis.sentinel.enabled is true). Configure a dedicated standalone or cluster Redis via langfuse.gateway.redis.url (and langfuse.gateway.redis.auth / langfuse.gateway.redis.clusterEnabled if needed), or set langfuse.gateway.redis.enabled=false." -}}
 {{- else if and $.Values.redis.cluster.enabled (eq (len $.Values.redis.cluster.nodes) 0) -}}
     {{- fail "Cannot derive AI gateway Redis URL because redis.cluster.nodes is empty (langfuse.additionalEnv does not apply to the gateway). Set redis.cluster.nodes or configure langfuse.gateway.redis.url." -}}
 {{- else if not (include "langfuse.gateway.redisUrl" .) -}}
     {{- fail "Cannot derive AI gateway Redis URL from redis.* (langfuse.additionalEnv does not apply to the gateway). Set redis.host or configure langfuse.gateway.redis.url." -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

@@ -970,6 +970,18 @@ debug
 {{- end -}}
 
 {{/*
+Returns "true" when chart-managed Redis env wiring is enabled for the AI gateway
+(default true). Set langfuse.gateway.redis.enabled=false to manage Redis env via
+additionalEnvFrom or to run without spend-limit counters.
+*/}}
+{{- define "langfuse.gateway.redisEnabled" -}}
+{{- $gwRedis := (.Values.langfuse.gateway | default dict).redis | default dict -}}
+{{- if or (not (hasKey $gwRedis "enabled")) (kindIs "invalid" $gwRedis.enabled) (eq (toString $gwRedis.enabled) "true") -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
 Redis URL(s) for AI gateway spend-limit counters. Uses langfuse.gateway.redis.url
 when set; otherwise derives redis:// or rediss:// URL(s) from the top-level redis.*
 values (standalone or cluster; Sentinel is not supported by the gateway).
@@ -1017,6 +1029,7 @@ derivation if LANGFUSE_AI_GATEWAY_REDIS_URL is already set in
 langfuse.gateway.pod.additionalEnv; otherwise derives from top-level redis.*.
 */}}
 {{- define "langfuse.gatewayRedisEnv" -}}
+{{- if include "langfuse.gateway.redisEnabled" . }}
 {{- $gw := .Values.langfuse.gateway | default dict -}}
 {{- $gwRedis := $gw.redis | default dict -}}
 {{- $gwAdditionalEnv := ($gw.pod | default dict).additionalEnv | default list -}}
@@ -1055,6 +1068,7 @@ langfuse.gateway.pod.additionalEnv; otherwise derives from top-level redis.*.
       key: {{ $.Values.redis.auth.username | quote }}
 {{- else }}
   value: {{ $.Values.redis.auth.password | quote }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

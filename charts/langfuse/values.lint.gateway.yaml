@@ -113,6 +113,7 @@ langfuse:
           name: langfuse-gateway
           key: jwt-public-key
     redis:
+      enabled: true
       url: rediss://gateway-redis-1.example.com:6379,rediss://gateway-redis-2.example.com:6379
       auth:
         secretKeyRef:
