@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.2.3](https://img.shields.io/badge/Version-2.2.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.75.0](https://img.shields.io/badge/AppVersion-4.75.0-informational?style=flat-square)
+![Version: 2.2.6](https://img.shields.io/badge/Version-2.2.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -46,6 +46,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.readinessProbe | object | `{}` | Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.serviceAccountName | string | `""` | Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
 | clickhouse.cluster.startupProbe | object | `{}` | Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
@@ -271,6 +272,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
+| langfuse.web.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.web.vpa.controlledResources | list | `[]` | The resources to control for the langfuse web pods |
 | langfuse.web.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse web pods |
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
@@ -319,6 +321,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |
