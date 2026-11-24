@@ -1,0 +1,212 @@
+suite: test clickhouse operator TLS settings
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should not emit TLS settings by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.settings.tls
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.settings
+        template: clickhouse/keeper.yaml
+
+  - it: should render the server TLS settings next to the existing ClickHouseCluster settings
+    template: clickhouse/cluster.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.tls:
+        enabled: true
+        required: true
+        serverCertSecret:
+          name: clickhouse-tls
+        caBundle:
+          name: clickhouse-ca
+          key: ca.crt
+    asserts:
+      - equal:
+          path: spec.settings.tls
+          value:
+            enabled: true
+            required: true
+            serverCertSecret:
+              name: clickhouse-tls
+            caBundle:
+              name: clickhouse-ca
+              key: ca.crt
+      - equal:
+          path: spec.settings.defaultUserPassword.secret.key
+          value: password
+
+  - it: should render the Keeper TLS settings under KeeperCluster spec.settings.tls
+    template: clickhouse/keeper.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.tls:
+        enabled: true
+        required: true
+        serverCertSecret:
+          name: keeper-tls
+    asserts:
+      - equal:
+          path: spec.settings.tls
+          value:
+            enabled: true
+            required: true
+            serverCertSecret:
+              name: keeper-tls
+      - notExists:
+          path: spec.settings.logger
+
+  - it: should connect Langfuse on the plaintext ports by default
+    templates:
+      - web/deployment.yaml
+      - worker/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: http://RELEASE-NAME-langfuse-clickhouse-headless:8123
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_URL
+            value: clickhouse://RELEASE-NAME-langfuse-clickhouse-headless:9000
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_SSL
+            value: "false"
+
+  - it: should connect Langfuse on the secure ports when the bundled ClickHouse has TLS enabled
+    templates:
+      - web/deployment.yaml
+      - worker/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.tls.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: https://RELEASE-NAME-langfuse-clickhouse-headless:8443
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_URL
+            value: clickhouse://RELEASE-NAME-langfuse-clickhouse-headless:9440
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_SSL
+            value: "true"
+
+  - it: should keep an explicit clickhouse.host and its ports when TLS is enabled
+    templates:
+      - web/deployment.yaml
+      - worker/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.tls.enabled: true
+      clickhouse.host: clickhouse.example.com
+      clickhouse.httpPort: 18123
+      clickhouse.nativePort: 19000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: http://clickhouse.example.com:18123
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_URL
+            value: clickhouse://clickhouse.example.com:19000
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_SSL
+            value: "false"
+
+  - it: should keep an explicit clickhouse.migration.url when TLS is enabled
+    templates:
+      - web/deployment.yaml
+      - worker/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.tls.enabled: true
+      clickhouse.migration.url: clickhouse://migrations.example.com:9000
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_URL
+            value: clickhouse://migrations.example.com:9000
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_SSL
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: https://RELEASE-NAME-langfuse-clickhouse-headless:8443
+
+  - it: should keep the default Langfuse connection when only Keeper has TLS
+    templates:
+      - web/deployment.yaml
+      - worker/deployment.yaml
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.tls.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: http://RELEASE-NAME-langfuse-clickhouse-headless:8123
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_MIGRATION_SSL
+            value: "false"
+
+  - it: should pass a disabled TLS block through and keep the default Langfuse connection
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.tls.enabled: false
+    asserts:
+      - equal:
+          path: spec.settings.tls
+          value:
+            enabled: false
+        template: clickhouse/cluster.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: http://RELEASE-NAME-langfuse-clickhouse-headless:8123
+        template: web/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: CLICKHOUSE_URL
+            value: http://RELEASE-NAME-langfuse-clickhouse-headless:8123
+        template: worker/deployment.yaml

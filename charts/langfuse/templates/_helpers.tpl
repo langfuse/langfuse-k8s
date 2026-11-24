@@ -510,6 +510,15 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 
 {{/*
+Return "true" when the bundled ClickHouse runs with TLS, so Langfuse connects on the secure ports.
+*/}}
+{{- define "langfuse.clickhouse.bundledTLS" -}}
+{{- if and .Values.clickhouse.deploy (not .Values.clickhouse.host) (.Values.clickhouse.cluster.tls).enabled -}}
+{{- print "true" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
     Clickhouse related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
@@ -525,17 +534,27 @@ Return ClickHouse protocol (http or https)
   value: {{ .Values.clickhouse.migration.url | quote }}
   {{- else if .Values.clickhouse.host }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
+  {{- else if include "langfuse.clickhouse.bundledTLS" . }}
+  value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:9440"
   {{- else if .Values.clickhouse.deploy }}
   value: "clickhouse://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.nativePort }}"
   {{- end }}
 {{- end }}
 {{- if or (hasKey .Values.clickhouse.migration "ssl") .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_MIGRATION_SSL
+  {{- if and (include "langfuse.clickhouse.bundledTLS" .) (not .Values.clickhouse.migration.url) }}
+  value: "true"
+  {{- else }}
   value: {{ .Values.clickhouse.migration.ssl | quote }}
+  {{- end }}
 {{- end }}
 {{- if or .Values.clickhouse.host .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_URL
+  {{- if include "langfuse.clickhouse.bundledTLS" . }}
+  value: "https://{{ include "langfuse.clickhouse.hostname" . }}:8443"
+  {{- else }}
   value: "{{ include "langfuse.clickhouse.protocol" . }}://{{ include "langfuse.clickhouse.hostname" . }}:{{ .Values.clickhouse.httpPort }}"
+  {{- end }}
 {{- end }}
 {{- if or (hasKey .Values.clickhouse "database") .Values.clickhouse.deploy }}
 - name: CLICKHOUSE_DB
