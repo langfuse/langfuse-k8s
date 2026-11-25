@@ -597,6 +597,20 @@ langfuse:
           name: ""
           key: ""
 
+    redis:
+      # -- [Beta] Set to `false` to skip rendering `LANGFUSE_AI_GATEWAY_REDIS_*` environment variables and Redis validations (e.g. when injecting Redis settings via `langfuse.gateway.pod.additionalEnvFrom` or running without spend limits).
+      enabled: true
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true (unless `langfuse.gateway.redis.enabled` is false), since the gateway does not support Sentinel.
+      url: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`.
+      auth:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`.
+      clusterEnabled: false
+
     # -- [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in.
     connectionDrainTimeoutSeconds: 300
     # -- [Beta] LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway flushes telemetry after the connection drain ends (1-300).
