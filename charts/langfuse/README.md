@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.2.3](https://img.shields.io/badge/Version-2.2.3-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.75.0](https://img.shields.io/badge/AppVersion-4.75.0-informational?style=flat-square)
+![Version: 2.3.0](https://img.shields.io/badge/Version-2.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -40,13 +40,17 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.image.pullSecrets | list | `[]` | Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.8.36.3"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.livenessProbe | object | `{}` | Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009. |
 | clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
 | clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
+| clickhouse.cluster.readinessProbe | object | `{}` | Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.serviceAccountName | string | `""` | Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
+| clickhouse.cluster.startupProbe | object | `{}` | Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
@@ -63,12 +67,15 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.image.pullSecrets | list | `[]` | Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.8.36.3"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.livenessProbe | object | `{}` | Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe. |
 | clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
+| clickhouse.keeper.readinessProbe | object | `{}` | Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
 | clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
 | clickhouse.keeper.settings | object | `{}` | Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server. |
+| clickhouse.keeper.startupProbe | object | `{}` | Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.keeper.storage.className | string | `""` | StorageClass for Keeper PVCs. Leave empty to use the cluster default. |
 | clickhouse.keeper.storage.size | string | `"20Gi"` | Persistent volume size for each Keeper pod. |
@@ -167,6 +174,10 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.gateway.readinessProbe.periodSeconds | int | `5` | [Beta] Period seconds for readinessProbe. |
 | langfuse.gateway.readinessProbe.successThreshold | int | `1` | [Beta] Success threshold for readinessProbe. |
 | langfuse.gateway.readinessProbe.timeoutSeconds | int | `5` | [Beta] Timeout seconds for readinessProbe. |
+| langfuse.gateway.redis.auth | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`. |
+| langfuse.gateway.redis.clusterEnabled | bool | `false` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`. |
+| langfuse.gateway.redis.enabled | bool | `true` | [Beta] Set to `false` to skip rendering `LANGFUSE_AI_GATEWAY_REDIS_*` environment variables and Redis validations (e.g. when injecting Redis settings via `langfuse.gateway.pod.additionalEnvFrom` or running without spend limits). |
+| langfuse.gateway.redis.url | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true (unless `langfuse.gateway.redis.enabled` is false), since the gateway does not support Sentinel. |
 | langfuse.gateway.replicas | string | `nil` | [Beta] Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.gateway.resources | object | `{}` | [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi. |
 | langfuse.gateway.revisionHistoryLimit | string | `nil` | [Beta] Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit |
@@ -267,6 +278,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
+| langfuse.web.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.web.vpa.controlledResources | list | `[]` | The resources to control for the langfuse web pods |
 | langfuse.web.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse web pods |
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
@@ -315,6 +327,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |

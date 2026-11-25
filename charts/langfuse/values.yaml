@@ -205,6 +205,8 @@ langfuse:
 
   # Web deployment configuration
   web:
+    # -- (int) Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination.
+    terminationGracePeriodSeconds: null
     image:
       # -- The image repository to use for the langfuse web pods.
       repository: docker.langfuse.com/langfuse/langfuse
@@ -355,6 +357,8 @@ langfuse:
 
   # Worker deployment configuration
   worker:
+    # -- (int) Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination.
+    terminationGracePeriodSeconds: null
     # -- Adding records to /etc/hosts in the worker pod's network.
     hostAliases: []
     image:
@@ -592,6 +596,20 @@ langfuse:
         secretKeyRef:
           name: ""
           key: ""
+
+    redis:
+      # -- [Beta] Set to `false` to skip rendering `LANGFUSE_AI_GATEWAY_REDIS_*` environment variables and Redis validations (e.g. when injecting Redis settings via `langfuse.gateway.pod.additionalEnvFrom` or running without spend limits).
+      enabled: true
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true (unless `langfuse.gateway.redis.enabled` is false), since the gateway does not support Sentinel.
+      url: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`.
+      auth:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`.
+      clusterEnabled: false
 
     # -- [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in.
     connectionDrainTimeoutSeconds: 300
@@ -964,6 +982,8 @@ clickhouse:
 
   # Sub-chart settings (rendered as ClickHouseCluster + KeeperCluster CRs by this chart)
   cluster:
+    # -- Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it.
+    serviceAccountName: ""
     # -- Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse.
     enabled: true
     # Externally managed Secret used by the ClickHouse operator for Keeper identity, interserver authentication, and cluster secrets.
@@ -995,6 +1015,12 @@ clickhouse:
         memory: 2Gi
       limits:
         memory: 4Gi
+    # -- Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009.
+    livenessProbe: {}
+    # -- Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port.
+    readinessProbe: {}
+    # -- Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for ClickHouse pods.
     nodeSelector: {}
     # -- Tolerations for ClickHouse pods.
@@ -1038,6 +1064,12 @@ clickhouse:
         memory: 256Mi
       limits:
         memory: 1Gi
+    # -- Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe.
+    livenessProbe: {}
+    # -- Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123.
+    readinessProbe: {}
+    # -- Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for Keeper pods.
     nodeSelector: {}
     # -- Tolerations for Keeper pods.

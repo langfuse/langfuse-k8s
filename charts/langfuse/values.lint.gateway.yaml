@@ -112,6 +112,14 @@ langfuse:
         secretKeyRef:
           name: langfuse-gateway
           key: jwt-public-key
+    redis:
+      enabled: true
+      url: rediss://gateway-redis-1.example.com:6379,rediss://gateway-redis-2.example.com:6379
+      auth:
+        secretKeyRef:
+          name: langfuse-gateway
+          key: redis-password
+      clusterEnabled: true
     connectionDrainTimeoutSeconds: 100
     telemetryShutdownTimeoutSeconds: 20
     preStopSleepSeconds: 15

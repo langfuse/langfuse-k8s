@@ -1,0 +1,79 @@
+suite: test application termination grace periods
+templates:
+  - web/deployment.yaml
+  - worker/deployment.yaml
+tests:
+  - it: should preserve the Kubernetes default when unset
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.template.spec.terminationGracePeriodSeconds
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.terminationGracePeriodSeconds
+        template: worker/deployment.yaml
+
+  - it: should configure each component independently
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.web.terminationGracePeriodSeconds: 60
+      langfuse.worker.terminationGracePeriodSeconds: 120
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 60
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 120
+        template: worker/deployment.yaml
+
+  - it: should preserve the worker default when only web is set
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.web.terminationGracePeriodSeconds: 60
+    asserts:
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 60
+        template: web/deployment.yaml
+      - notExists:
+          path: spec.template.spec.terminationGracePeriodSeconds
+        template: worker/deployment.yaml
+
+  - it: should support zero without treating it as unset
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.worker.terminationGracePeriodSeconds: 0
+    asserts:
+      - notExists:
+          path: spec.template.spec.terminationGracePeriodSeconds
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.terminationGracePeriodSeconds
+          value: 0
+        template: worker/deployment.yaml
+
+  - it: should retain the global lifecycle hook with separate grace periods
+    values:
+      - ../values.lint.yaml
+    set:
+      langfuse.web.terminationGracePeriodSeconds: 60
+      langfuse.worker.terminationGracePeriodSeconds: 120
+      langfuse.extraLifecycle:
+        preStop:
+          exec:
+            command: [node, '-e', 'setTimeout(() => {}, 5000)']
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].lifecycle.preStop.exec.command
+          value: [node, '-e', 'setTimeout(() => {}, 5000)']
+        template: web/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].lifecycle.preStop.exec.command
+          value: [node, '-e', 'setTimeout(() => {}, 5000)']
+        template: worker/deployment.yaml
