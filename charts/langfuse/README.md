@@ -38,6 +38,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.externalSecret.name | string | `""` | Name of an existing Secret in the release namespace. Leave empty to let the operator generate and own the Secret. It must contain `interserver-password`, `management-password`, `cluster-secret`, `keeper-identity` (format `clickhouse:<password>`), and `named-collections-key` on ClickHouse >= 25.12 (the default image); see the operator's [required keys](https://github.com/ClickHouse/clickhouse-operator/blob/v0.0.8/docs/guides/configuration.mdx#external-secret-required-keys). For existing installs, seed it from the operator-generated `<fullname>-clickhouse` Secret first, otherwise pods roll with a new keeper identity and fail with "Not authenticated". |
 | clickhouse.cluster.externalSecret.policy | string | `"Observe"` | Operator policy for the external Secret. `Observe` blocks reconciliation until every required key is present and never changes the Secret. `Manage` generates missing keys into the existing Secret. |
 | clickhouse.cluster.image.pullSecrets | list | `[]` | Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
+| clickhouse.cluster.image.registry | string | `""` | ClickHouse server image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.8.36.3"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
 | clickhouse.cluster.livenessProbe | object | `{}` | Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009. |
@@ -65,6 +66,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.clusterDomain | string | `"cluster.local"` | Kubernetes cluster domain suffix the operator uses to build in-cluster DNS names for Keeper pods (`spec.clusterDomain` on the KeeperCluster CR). Keep aligned with `clickhouse.clusterDomain`. |
 | clickhouse.keeper.enabled | bool | `true` | Deploy a KeeperCluster alongside ClickHouse. Must stay enabled while clickhouse.deploy is true — the ClickHouseCluster CRD requires a keeperClusterRef even for a single replica. Run ClickHouse externally (clickhouse.deploy=false + clickhouse.host) to avoid Keeper. |
 | clickhouse.keeper.image.pullSecrets | list | `[]` | Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
+| clickhouse.keeper.image.registry | string | `""` | ClickHouse Keeper image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.8.36.3"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
 | clickhouse.keeper.livenessProbe | object | `{}` | Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe. |
@@ -86,6 +88,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.nativePort | int | `9000` | Native TCP port Langfuse uses to talk to ClickHouse. |
 | extraManifests | list | `[]` |  |
 | fullnameOverride | string | `""` | Override the full name of the deployed resources, defaults to a combination of the release name and the name for the selector labels |
+| global.imageRegistry | string | `""` | Registry for all images, taking precedence over each `image.registry`. Langfuse and ClickHouse repositories that already include a registry are used as is. Not honored by the bundled Postgres; set `postgresql.image.registry` too. Langfuse and ClickHouse don't use `global.imagePullSecrets`; set `langfuse.image.pullSecrets` and `clickhouse.*.image.pullSecrets`. |
 | langfuse.additionalEnv | list | `[]` | List of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.additionalEnvFrom | list | `[]` | Secrets or ConfigMap of additional environment variables to be added to all langfuse deployments. See [documentation](https://langfuse.com/docs/deployment/self-host#configuring-environment-variables) for details. |
 | langfuse.affinity | object | `{}` | Affinity for all langfuse deployments |
@@ -234,7 +237,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse web pods |
 | langfuse.web.image.pullPolicy | string | `nil` | The pull policy to use for the langfuse web pods. Using `langfuse.image.pullPolicy` if not set. |
 | langfuse.web.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse web pods. Using `langfuse.image.pullSecrets` if not set. |
-| langfuse.web.image.repository | string | `"docker.langfuse.com/langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
+| langfuse.web.image.registry | string | `"docker.langfuse.com"` | The image registry to use for the langfuse web pods. `global.imageRegistry` takes precedence when set. |
+| langfuse.web.image.repository | string | `"langfuse/langfuse"` | The image repository to use for the langfuse web pods. |
 | langfuse.web.image.tag | string | `nil` | The tag to use for the langfuse web pods. Using `langfuse.image.tag` if not set. |
 | langfuse.web.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
 | langfuse.web.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse web pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
@@ -295,7 +299,8 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.hpa.targetCPUUtilizationPercentage | int | `50` | The target CPU utilization percentage for the langfuse worker pods |
 | langfuse.worker.image.pullPolicy | string | `nil` | The pull policy to use for the langfuse worker pods. Using `langfuse.image.pullPolicy` if not set. |
 | langfuse.worker.image.pullSecrets | string | `nil` | The pull secrets to use for the langfuse worker pods. Using `langfuse.image.pullSecrets` if not set. |
-| langfuse.worker.image.repository | string | `"docker.langfuse.com/langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
+| langfuse.worker.image.registry | string | `"docker.langfuse.com"` | The image registry to use for the langfuse worker pods. `global.imageRegistry` takes precedence when set. |
+| langfuse.worker.image.repository | string | `"langfuse/langfuse-worker"` | The image repository to use for the langfuse worker pods |
 | langfuse.worker.image.tag | string | `nil` | The tag to use for the langfuse worker pods. Using `langfuse.image.tag` if not set. |
 | langfuse.worker.keda.containerName | string | `""` | Optional container name to target for metrics (leave empty to target all containers) |
 | langfuse.worker.keda.enabled | bool | `false` | Set to `true` to enable KEDA for the langfuse worker pods Note: When both KEDA and HPA are enabled, the deployment will fail. |
@@ -346,6 +351,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | postgresql.directUrl | string | `""` | If `postgresql.deploy` is set to false, Connection string of your Postgres database used for database migrations. Use this if you want to use a different user for migrations or use connection pooling on DATABASE_URL. For large deployments, configure the database user with long timeouts as migrations might need a while to complete. |
 | postgresql.host | string | `""` | PostgreSQL host to connect to. If postgresql.deploy is true, this will be set automatically based on the release name. |
 | postgresql.image.pullPolicy | string | `"IfNotPresent"` |  |
+| postgresql.image.registry | string | `"docker.io"` | Postgres image registry. The Postgres sub-chart ignores `global.imageRegistry`, so set this too when using one. |
 | postgresql.image.repository | string | `"postgres"` | Postgres image. Defaults to the upstream Docker Hub image (Apache 2.0 / PostgreSQL license). |
 | postgresql.image.tag | string | `"18"` |  |
 | postgresql.livenessProbe | object | `{}` | Liveness / readiness probe customisations (see groundhog2k/postgres docs). |
