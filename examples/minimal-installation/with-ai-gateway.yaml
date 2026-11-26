@@ -1,0 +1,22 @@
+langfuse:
+  gateway:
+    enabled: true
+    serviceKey:
+      secretKeyRef:
+        name: langfuse
+        key: ai-gateway-service-key
+    jwt:
+      privateKey:
+        secretKeyRef:
+          name: langfuse
+          key: ai-gateway-jwt-private-key
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        # Streamed responses can stay quiet for up to 120 s and run up to 600 s.
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "620"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+        nginx.ingress.kubernetes.io/proxy-body-size: "17m"
+      hosts:
+      - gateway.langfuse.example.com

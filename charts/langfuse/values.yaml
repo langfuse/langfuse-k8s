@@ -209,6 +209,8 @@ langfuse:
 
   # Web deployment configuration
   web:
+    # -- (int) Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination.
+    terminationGracePeriodSeconds: null
     image:
       # -- The image registry to use for the langfuse web pods. `global.imageRegistry` takes precedence when set.
       registry: docker.langfuse.com
@@ -361,6 +363,8 @@ langfuse:
 
   # Worker deployment configuration
   worker:
+    # -- (int) Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination.
+    terminationGracePeriodSeconds: null
     # -- Adding records to /etc/hosts in the worker pod's network.
     hostAliases: []
     image:
@@ -480,6 +484,207 @@ langfuse:
       # -- Failure threshold for livenessProbe.
       failureThreshold: 3
       # -- Success threshold for livenessProbe.
+      successThreshold: 1
+
+  # AI gateway configuration.
+  #
+  # BETA: `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees and may change in minor releases.
+  #
+  # The gateway pod only receives gateway settings: the global
+  # `langfuse.additionalEnv`, `additionalEnvFrom`, `extraContainers`, `extraVolumes`, `extraVolumeMounts`,
+  # `extraInitContainers`, and `extraLifecycle` do not apply to it, so it never sees database or storage credentials.
+  # Use the `langfuse.gateway.pod.*` equivalents instead. Lifecycle hooks are not configurable: the chart owns the
+  # gateway's preStop hook (see `preStopSleepSeconds`).
+  # Global scheduling, security context, service account, and DNS settings do apply.
+  gateway:
+    # -- [Beta] Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided.
+    enabled: false
+    image:
+      # -- [Beta] The image repository to use for the AI gateway pods.
+      repository: docker.langfuse.com/langfuse/ai-gateway
+      # -- [Beta] The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set.
+      tag: Null
+      # -- [Beta] The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set.
+      pullPolicy: Null
+      # -- [Beta] The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set.
+      pullSecrets: Null
+    deployment:
+      # -- [Beta] Additional labels for the AI gateway deployment
+      additionalLabels: {}
+      # -- [Beta] Annotations for the AI gateway deployment
+      annotations: {}
+      # -- [Beta] Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy
+      strategy: {}
+    pod:
+      # -- [Beta] Annotations for the AI gateway pods
+      annotations: {}
+      # -- [Beta] Labels for the AI gateway pods
+      labels: {}
+      # -- [Beta] Node selector for the AI gateway pods. Overrides the global nodeSelector
+      nodeSelector: null
+      # -- [Beta] Tolerations for the AI gateway pods. Overrides the global tolerations
+      tolerations: null
+      # -- [Beta] Affinity for the AI gateway pods. Overrides the global affinity
+      affinity: null
+      # -- [Beta] Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints
+      topologySpreadConstraints: null
+      # -- [Beta] PriorityClass for the AI gateway pods. Overrides the global priorityClassName
+      priorityClassName: null
+      # -- [Beta] Additional containers for the AI gateway pods. The global `langfuse.extraContainers` do not apply.
+      extraContainers: []
+      # -- [Beta] Additional environment variables for the AI gateway pods, e.g. the tuning knobs `LANGFUSE_AI_GATEWAY_MAX_REQUEST_BYTES`, `LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, `LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS`, and `LANGFUSE_AI_GATEWAY_STALL_TIMEOUT_SECONDS`. The global `langfuse.additionalEnv` does not apply.
+      additionalEnv: []
+      # -- [Beta] Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply.
+      additionalEnvFrom: []
+      # -- [Beta] Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply.
+      extraInitContainers: []
+      # -- [Beta] Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply.
+      extraVolumes: []
+      # -- [Beta] Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply.
+      extraVolumeMounts: []
+    service:
+      # -- [Beta] The type of service to use for the AI gateway
+      type: ClusterIP
+      # -- [Beta] The port the AI gateway listens on and the service exposes
+      port: 8080
+      # -- [Beta] Additional labels for the AI gateway service
+      additionalLabels: {}
+      # -- [Beta] Annotations for the AI gateway service
+      annotations: {}
+
+    # The gateway gets its own Ingress on a dedicated host (e.g. `gateway.langfuse.example.com`), which needs a DNS record
+    # and a certificate covering that host. Proxy timeouts and buffering are controller-specific and not set by default.
+    # Streams can run up to 600 s (LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS) and must survive at least the 120 s stall timeout.
+    # Example for ingress-nginx:
+    # annotations:
+    #   nginx.ingress.kubernetes.io/proxy-read-timeout: "620"
+    #   nginx.ingress.kubernetes.io/proxy-send-timeout: "620"
+    #   nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    #   nginx.ingress.kubernetes.io/proxy-request-buffering: "off"
+    #   nginx.ingress.kubernetes.io/proxy-body-size: "17m"
+    ingress:
+      # -- [Beta] Set to `true` to create an Ingress for the AI gateway
+      enabled: false
+      # -- [Beta] The class name for the AI gateway ingress. Using `langfuse.ingress.className` if not set.
+      className: ""
+      # -- [Beta] Additional labels for the AI gateway ingress
+      additionalLabels: {}
+      # -- [Beta] Annotations for the AI gateway ingress
+      annotations: {}
+      # -- [Beta] Hostnames for the AI gateway ingress, e.g. `["gateway.langfuse.example.com"]`. Each host routes `/` to the gateway service.
+      hosts: []
+      tls:
+        # -- [Beta] Set to `true` to enable HTTPS on the AI gateway ingress
+        enabled: false
+        # -- [Beta] The name of the TLS secret for the AI gateway hosts. Use a different secret than `langfuse.ingress.tls.secretName` when cert-manager issues it.
+        secretName: ""
+
+    # -- [Beta] LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`).
+    webUrl: ""
+    # -- [Beta] LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins.
+    publicUrl: ""
+    # -- [Beta] LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin.
+    serviceKey:
+      value: ""
+      secretKeyRef:
+        name: ""
+        key: ""
+    jwt:
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_KEY_ID set on web. Optional; web defaults it to the RFC 7638 thumbprint of the public key.
+      keyId: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY: ES256 (P-256) PEM private key (SEC1 or PKCS8) web signs ingestion tokens with. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl ecparam -name prime256v1 -genkey -noout`.
+      privateKey:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY: PEM public key matching `privateKey`. Optional; web derives it from the private key when unset. Requires `privateKey` to be provided.
+      publicKey:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+
+    redis:
+      # -- [Beta] Set to `false` to skip rendering `LANGFUSE_AI_GATEWAY_REDIS_*` environment variables and Redis validations (e.g. when injecting Redis settings via `langfuse.gateway.pod.additionalEnvFrom` or running without spend limits).
+      enabled: true
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true (unless `langfuse.gateway.redis.enabled` is false), since the gateway does not support Sentinel.
+      url: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`.
+      auth:
+        value: ""
+        secretKeyRef:
+          name: ""
+          key: ""
+      # -- [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`.
+      clusterEnabled: false
+
+    # -- [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in.
+    connectionDrainTimeoutSeconds: 300
+    # -- [Beta] LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway flushes telemetry after the connection drain ends (1-300).
+    telemetryShutdownTimeoutSeconds: 30
+    # -- [Beta] Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook.
+    preStopSleepSeconds: 10
+    # -- [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `connectionDrainTimeoutSeconds` + `telemetryShutdownTimeoutSeconds`.
+    terminationGracePeriodSeconds: 350
+
+    # -- [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi.
+    resources: {}
+
+    # -- [Beta] Number of replicas to use if HPA is not enabled. Defaults to the global replicas
+    replicas: null
+
+    # -- [Beta] Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit
+    revisionHistoryLimit: null
+
+    # Horizontal Pod Autoscaler configuration
+    hpa:
+      # -- [Beta] Set to `true` to enable HPA for the AI gateway pods
+      enabled: false
+      # -- [Beta] Annotations for the AI gateway HPA
+      annotations: {}
+      # -- [Beta] The minimum number of replicas to use for the AI gateway pods
+      minReplicas: 1
+      # -- [Beta] The maximum number of replicas to use for the AI gateway pods
+      maxReplicas: 2
+      # -- [Beta] The target CPU utilization percentage for the AI gateway pods
+      targetCPUUtilizationPercentage: 50
+
+    # Pod Disruption Budget configuration for the AI gateway deployment
+    pdb:
+      # -- [Beta] Set to `true` to create a Pod Disruption Budget for the AI gateway pods
+      create: true
+      # -- [Beta] Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable.
+      minAvailable: ""
+      # -- [Beta] Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set.
+      maxUnavailable: ""
+
+    livenessProbe:
+      # -- [Beta] Path to check for liveness. Returns 200 while the process runs, including while draining.
+      path: "/health"
+      # -- [Beta] Initial delay seconds for livenessProbe.
+      initialDelaySeconds: 5
+      # -- [Beta] Period seconds for livenessProbe.
+      periodSeconds: 10
+      # -- [Beta] Timeout seconds for livenessProbe.
+      timeoutSeconds: 5
+      # -- [Beta] Failure threshold for livenessProbe.
+      failureThreshold: 3
+      # -- [Beta] Success threshold for livenessProbe.
+      successThreshold: 1
+
+    readinessProbe:
+      # -- [Beta] Path to check for readiness. Returns 503 while draining or when web is not configured.
+      path: "/ready"
+      # -- [Beta] Initial delay seconds for readinessProbe.
+      initialDelaySeconds: 5
+      # -- [Beta] Period seconds for readinessProbe.
+      periodSeconds: 5
+      # -- [Beta] Timeout seconds for readinessProbe.
+      timeoutSeconds: 5
+      # -- [Beta] Failure threshold for readinessProbe.
+      failureThreshold: 3
+      # -- [Beta] Success threshold for readinessProbe.
       successThreshold: 1
 
   # -- Allow helm upgrade that would replace leftover v1 Bitnami stores (CH STS, PG PVC, MinIO Deploy) with empty v2 volumes. Default false. The supported path is examples/upgrade-v1-to-v2 (in-place only when stores are external; otherwise a sibling v2 release).
@@ -787,8 +992,16 @@ clickhouse:
 
   # Sub-chart settings (rendered as ClickHouseCluster + KeeperCluster CRs by this chart)
   cluster:
+    # -- Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it.
+    serviceAccountName: ""
     # -- Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse.
     enabled: true
+    # Externally managed Secret used by the ClickHouse operator for Keeper identity, interserver authentication, and cluster secrets.
+    externalSecret:
+      # -- Name of an existing Secret in the release namespace. Leave empty to let the operator generate and own the Secret. It must contain `interserver-password`, `management-password`, `cluster-secret`, `keeper-identity` (format `clickhouse:<password>`), and `named-collections-key` on ClickHouse >= 25.12 (the default image); see the operator's [required keys](https://github.com/ClickHouse/clickhouse-operator/blob/v0.0.8/docs/guides/configuration.mdx#external-secret-required-keys). For existing installs, seed it from the operator-generated `<fullname>-clickhouse` Secret first, otherwise pods roll with a new keeper identity and fail with "Not authenticated".
+      name: ""
+      # -- Operator policy for the external Secret. `Observe` blocks reconciliation until every required key is present and never changes the Secret. `Manage` generates missing keys into the existing Secret.
+      policy: Observe
     # -- Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled.
     replicas: 1
     image:
@@ -797,7 +1010,7 @@ clickhouse:
       # -- ClickHouse server image repository.
       repository: clickhouse/clickhouse-server
       # -- ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4.
-      tag: "26.4"
+      tag: "26.8.36.3"
       # -- Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry.
       pullSecrets: []
     storage:
@@ -814,6 +1027,12 @@ clickhouse:
         memory: 2Gi
       limits:
         memory: 4Gi
+    # -- Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009.
+    livenessProbe: {}
+    # -- Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port.
+    readinessProbe: {}
+    # -- Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for ClickHouse pods.
     nodeSelector: {}
     # -- Tolerations for ClickHouse pods.
@@ -842,7 +1061,7 @@ clickhouse:
       # -- ClickHouse Keeper image repository.
       repository: clickhouse/clickhouse-keeper
       # -- ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag.
-      tag: "26.4"
+      tag: "26.8.36.3"
       # -- Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry.
       pullSecrets: []
     storage:
@@ -859,6 +1078,12 @@ clickhouse:
         memory: 256Mi
       limits:
         memory: 1Gi
+    # -- Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe.
+    livenessProbe: {}
+    # -- Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123.
+    readinessProbe: {}
+    # -- Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default.
+    startupProbe: {}
     # -- Node selector for Keeper pods.
     nodeSelector: {}
     # -- Tolerations for Keeper pods.
@@ -1030,13 +1255,18 @@ s3:
   s3:
     enabled: false
 
+  # SeaweedFS image, rendered as `[registry/]repository:tag`. The sub-chart reads these top-level keys, not `allInOne.image`.
+  # Pull policy comes from `s3.global.seaweedfs.imagePullPolicy` (default `IfNotPresent`).
+  image:
+    # -- SeaweedFS image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set.
+    registry: ""
+    # -- SeaweedFS image repository. Empty uses the sub-chart default `chrislusf/seaweedfs`.
+    repository: ""
+    # -- SeaweedFS image tag. Empty uses the sub-chart appVersion (`4.23` for seaweedfs 4.23.0).
+    tag: ""
+
   allInOne:
     enabled: true
-    image:
-      registry: docker.io
-      repository: chrislusf/seaweedfs
-      tag: "3.95"
-      pullPolicy: IfNotPresent
     s3:
       enabled: true
       port: 8333

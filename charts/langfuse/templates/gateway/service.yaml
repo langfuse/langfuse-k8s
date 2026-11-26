@@ -1,0 +1,27 @@
+{{- if .Values.langfuse.gateway.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "langfuse.fullname" . }}-gateway
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "langfuse.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+    {{- with .Values.langfuse.gateway.service.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.langfuse.gateway.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.langfuse.gateway.service.type }}
+  ports:
+    - port: {{ .Values.langfuse.gateway.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "langfuse.selectorLabels" . | nindent 4 }}
+    app: gateway
+{{- end }}

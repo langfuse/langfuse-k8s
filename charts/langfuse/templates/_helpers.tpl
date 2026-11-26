@@ -260,6 +260,18 @@ Get value of a specific environment variable from additionalEnv if it exists
 {{- end -}}
 
 {{/*
+Return "true" if any entry in .env has .name matching .name (with value or valueFrom)
+*/}}
+{{- define "langfuse.hasEnvVar" -}}
+{{- $envVarName := .name -}}
+{{- range .env -}}
+{{- if eq .name $envVarName -}}
+true
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
     Database related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
@@ -607,6 +619,20 @@ Return ClickHouse protocol (http or https)
 {{- end -}}
 
 {{/*
+    Effective forcePathStyle for an upload type: the per-type value when it is set (including false),
+    otherwise the global s3.forcePathStyle. Takes (dict "values" .Values.s3 "bucket" "<type>").
+*/}}
+{{- define "langfuse.s3.forcePathStyle" -}}
+{{- $value := index .values .bucket "forcePathStyle" -}}
+{{- if kindIs "invalid" $value -}}
+{{- $value = .values.forcePathStyle -}}
+{{- end -}}
+{{- if not (kindIs "invalid" $value) -}}
+{{- $value -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
     S3/MinIO related configurations by environment variables
     Compare with https://langfuse.com/self-hosting/configuration#environment-variables
 */}}
@@ -681,7 +707,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.eventUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE
-  value: {{ .Values.s3.eventUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "eventUpload") | quote }}
 {{- end }}
 - name: LANGFUSE_S3_BATCH_EXPORT_ENABLED
   value: {{ .Values.s3.batchExport.enabled | quote }}
@@ -744,7 +770,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.batchExport "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_BATCH_EXPORT_FORCE_PATH_STYLE
-  value: {{ .Values.s3.batchExport.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "batchExport") | quote }}
 {{- end }}
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_BUCKET
@@ -805,7 +831,7 @@ Return ClickHouse protocol (http or https)
 {{- end }}
 {{- if or (hasKey .Values.s3.mediaUpload "forcePathStyle") (hasKey .Values.s3 "forcePathStyle") }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE
-  value: {{ .Values.s3.mediaUpload.forcePathStyle | default .Values.s3.forcePathStyle | quote }}
+  value: {{ include "langfuse.s3.forcePathStyle" (dict "values" .Values.s3 "bucket" "mediaUpload") | quote }}
 {{- end }}
 - name: LANGFUSE_S3_MEDIA_UPLOAD_MAX_CONTENT_LENGTH
   value: {{ .Values.s3.mediaUpload.maxContentLength | quote }}
@@ -922,6 +948,229 @@ has to stay externally resolvable.
 {{- if $mcp.useInternalWebUrl }}
 - name: LANGFUSE_MCP_BASE_URL
   value: {{ printf "http://%s-web:%v" (include "langfuse.fullname" .) (.Values.langfuse.web.service.port) | quote }}
+{{- end }}
+{{- end -}}
+
+{{/*
+"true" if the value is a whole number. YAML values arrive as float64,
+--set values as int64.
+*/}}
+{{- define "langfuse.isInteger" -}}
+{{- if or (kindIs "int" .) (kindIs "int64" .) (and (kindIs "float64" .) (eq (float64 (int .)) .)) -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+URL the AI gateway calls web on. Defaults to the in-cluster web Service, so
+gateway traffic and telemetry never pass through web's Ingress.
+*/}}
+{{- define "langfuse.gateway.webUrl" -}}
+{{- if .Values.langfuse.gateway.webUrl -}}
+{{- .Values.langfuse.gateway.webUrl -}}
+{{- else -}}
+{{- printf "http://%s-web.%s.svc.cluster.local:%v" (include "langfuse.fullname" .) .Release.Namespace (.Values.langfuse.web.service.externalPort | default .Values.langfuse.web.service.port) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+The gateway accepts debug, info, warn, error, and fatal, and exits on trace.
+*/}}
+{{- define "langfuse.gateway.logLevel" -}}
+{{- if eq .Values.langfuse.logging.level "trace" -}}
+debug
+{{- else -}}
+{{- .Values.langfuse.logging.level -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Returns "true" when chart-managed Redis env wiring is enabled for the AI gateway
+(default true). Set langfuse.gateway.redis.enabled=false to manage Redis env via
+additionalEnvFrom or to run without spend-limit counters.
+*/}}
+{{- define "langfuse.gateway.redisEnabled" -}}
+{{- $gwRedis := (.Values.langfuse.gateway | default dict).redis | default dict -}}
+{{- if or (not (hasKey $gwRedis "enabled")) (kindIs "invalid" $gwRedis.enabled) (eq (toString $gwRedis.enabled) "true") -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Redis URL(s) for AI gateway spend-limit counters. Uses langfuse.gateway.redis.url
+when set; otherwise derives redis:// or rediss:// URL(s) from the top-level redis.*
+values (standalone or cluster; Sentinel is not supported by the gateway).
+*/}}
+{{- define "langfuse.gateway.redisUrl" -}}
+{{- $gwRedis := (.Values.langfuse.gateway | default dict).redis | default dict -}}
+{{- if $gwRedis.url -}}
+{{- $gwRedis.url -}}
+{{- else if .Values.redis.sentinel.enabled -}}
+{{- else -}}
+{{- $scheme := ternary "rediss" "redis" (eq (toString .Values.redis.tls.enabled) "true") -}}
+{{- $username := .Values.redis.auth.username -}}
+{{- /* Omit "default" so the gateway sends AUTH <password>, accepted by both AWS auth tokens and Valkey/Redis default ACL users. */ -}}
+{{- $userPart := "" -}}
+{{- if and $username (ne $username "default") -}}
+{{- $userPart = printf "%s@" $username -}}
+{{- end -}}
+{{- if .Values.redis.cluster.enabled -}}
+{{- $nodes := list -}}
+{{- range .Values.redis.cluster.nodes -}}
+{{- $node := trim (toString .) -}}
+{{- if or (hasPrefix "redis://" (lower $node)) (hasPrefix "rediss://" (lower $node)) -}}
+{{- $nodes = append $nodes $node -}}
+{{- else -}}
+{{- $nodes = append $nodes (printf "%s://%s%s" $scheme $userPart $node) -}}
+{{- end -}}
+{{- end -}}
+{{- join "," $nodes -}}
+{{- else -}}
+{{- $host := include "langfuse.redis.hostname" . -}}
+{{- if $host -}}
+{{- $port := int (.Values.redis.port | default 6379) -}}
+{{- $db := int (.Values.redis.auth.database | default 0) -}}
+{{- $dbPart := ternary (printf "/%d" $db) "" (gt $db 0) -}}
+{{- printf "%s://%s%s:%d%s" $scheme $userPart $host $port $dbPart -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Redis environment variables for AI gateway spend-limit counters.
+Uses langfuse.gateway.redis.* when langfuse.gateway.redis.url is set; skips
+derivation if LANGFUSE_AI_GATEWAY_REDIS_URL is already set in
+langfuse.gateway.pod.additionalEnv; otherwise derives from top-level redis.*.
+*/}}
+{{- define "langfuse.gatewayRedisEnv" -}}
+{{- if include "langfuse.gateway.redisEnabled" . }}
+{{- $gw := .Values.langfuse.gateway | default dict -}}
+{{- $gwRedis := $gw.redis | default dict -}}
+{{- $gwAdditionalEnv := ($gw.pod | default dict).additionalEnv | default list -}}
+{{- if $gwRedis.url }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_URL
+  value: {{ $gwRedis.url | quote }}
+{{- if $gwRedis.clusterEnabled }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED
+  value: "true"
+{{- end }}
+{{- if $gwRedis.auth }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.gateway.redis.auth" "value" $gwRedis.auth)) }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_AUTH
+  {{- . | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- else if not (include "langfuse.hasEnvVar" (dict "env" $gwAdditionalEnv "name" "LANGFUSE_AI_GATEWAY_REDIS_URL")) }}
+{{- with (include "langfuse.gateway.redisUrl" .) }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_URL
+  value: {{ . | quote }}
+{{- if $.Values.redis.cluster.enabled }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED
+  value: "true"
+{{- end }}
+{{- if or $.Values.redis.auth.existingSecret $.Values.redis.auth.password $.Values.redis.deploy }}
+- name: LANGFUSE_AI_GATEWAY_REDIS_AUTH
+{{- if $.Values.redis.auth.existingSecret }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.redis.auth.existingSecret }}
+      key: {{ required "redis.auth.existingSecretPasswordKey is required when using an existing secret" $.Values.redis.auth.existingSecretPasswordKey }}
+{{- else if $.Values.redis.deploy }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ include "langfuse.redis.authSecretName" $ | quote }}
+      key: {{ $.Values.redis.auth.username | quote }}
+{{- else }}
+  value: {{ $.Values.redis.auth.password | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Environment of the AI gateway container. Deliberately excludes langfuse.commonEnv:
+the gateway needs no Postgres, ClickHouse, or S3 credentials — only its own
+control-plane settings and Redis for spend-limit counters.
+*/}}
+{{- define "langfuse.gatewayEnv" -}}
+{{- $gw := .Values.langfuse.gateway -}}
+- name: LANGFUSE_AI_GATEWAY_LISTEN_ADDRESS
+  value: {{ printf "0.0.0.0:%v" $gw.service.port | quote }}
+- name: LANGFUSE_LOG_LEVEL
+  value: {{ include "langfuse.gateway.logLevel" . | quote }}
+- name: LANGFUSE_LOG_FORMAT
+  value: {{ .Values.langfuse.logging.format | quote }}
+- name: LANGFUSE_AI_GATEWAY_WEB_URL
+  value: {{ include "langfuse.gateway.webUrl" . | quote }}
+{{- if hasPrefix "http://" (include "langfuse.gateway.webUrl" . | lower) }}
+{{- /* The gateway refuses non-loopback plain-HTTP web URLs unless opted in; /resolve responses carry provider API keys. */}}
+- name: LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL
+  value: "true"
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
+- name: LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS
+  value: {{ $gw.connectionDrainTimeoutSeconds | quote }}
+- name: LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS
+  value: {{ $gw.telemetryShutdownTimeoutSeconds | quote }}
+{{- with (include "langfuse.gatewayRedisEnv" .) }}
+{{- . }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Public gateway URL web shows users. Defaults to the first gateway ingress host,
+over https when the ingress terminates TLS or web itself is served over https
+(TLS terminated in front of the ingress, e.g. an ALB certificate annotation).
+*/}}
+{{- define "langfuse.gateway.publicUrl" -}}
+{{- $gw := .Values.langfuse.gateway -}}
+{{- if $gw.publicUrl -}}
+{{- $gw.publicUrl -}}
+{{- else if and $gw.ingress.enabled $gw.ingress.hosts -}}
+{{- $scheme := ternary "https" "http" (or $gw.ingress.tls.enabled (hasPrefix "https://" (.Values.langfuse.nextauth.url | default "" | lower))) -}}
+{{- printf "%s://%v" $scheme (first $gw.ingress.hosts) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+AI gateway settings on web: whether a gateway is deployed (always rendered, "true"
+or "false"; the LANGFUSE_AI_GATEWAY_ENABLED feature flag is left to the user), the
+public gateway URL, the HMAC service key it verifies gateway calls with, and
+the ES256 key pair it signs and verifies ingestion tokens with. Web derives the
+public key and key id from the private key unless they are overridden. The
+gateway never holds the JWT keys. LANGFUSE_AI_GATEWAY_DEPLOYED and
+LANGFUSE_AI_GATEWAY_PUBLIC_URL are skipped when already set in additionalEnv.
+*/}}
+{{- define "langfuse.gatewayWebEnv" -}}
+{{- $gw := (.Values.langfuse.gateway | default dict) -}}
+{{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list) (.Values.langfuse.web.pod.additionalEnv | default list) -}}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_DEPLOYED")) }}
+- name: LANGFUSE_AI_GATEWAY_DEPLOYED
+  value: {{ ternary "true" "false" (eq (toString $gw.enabled) "true") | quote }}
+{{- end }}
+{{- if $gw.enabled }}
+{{- with (include "langfuse.gateway.publicUrl" .) }}
+{{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "LANGFUSE_AI_GATEWAY_PUBLIC_URL")) }}
+- name: LANGFUSE_AI_GATEWAY_PUBLIC_URL
+  value: {{ . | quote }}
+{{- end }}
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_SERVICE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.serviceKey" "value" $gw.serviceKey "secretKey" "ai-gateway-service-key") | nindent 2 }}
+{{- if $gw.jwt.keyId }}
+- name: LANGFUSE_AI_GATEWAY_JWT_KEY_ID
+  value: {{ $gw.jwt.keyId | quote }}
+{{- end }}
+- name: LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY
+  {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.gateway.jwt.privateKey" "value" $gw.jwt.privateKey "secretKey" "ai-gateway-jwt-private-key") | nindent 2 }}
+{{- with (include "langfuse.getValueOrSecret" (dict "key" "langfuse.gateway.jwt.publicKey" "value" $gw.jwt.publicKey)) }}
+- name: LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY
+  {{- . | nindent 2 }}
+{{- end }}
 {{- end }}
 {{- end -}}
 

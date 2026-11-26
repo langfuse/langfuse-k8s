@@ -1,6 +1,6 @@
 # langfuse
 
-![Version: 2.1.5](https://img.shields.io/badge/Version-2.1.5-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.56.0](https://img.shields.io/badge/AppVersion-4.56.0-informational?style=flat-square)
+![Version: 2.3.0](https://img.shields.io/badge/Version-2.3.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 4.83.0](https://img.shields.io/badge/AppVersion-4.83.0-informational?style=flat-square)
 
 Open source LLM engineering platform - LLM observability, metrics, evaluations, prompt management.
 
@@ -35,17 +35,23 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.auth.username | string | `"default"` | Username Langfuse uses to authenticate to ClickHouse. |
 | clickhouse.cluster.affinity | object | `{}` | Affinity rules for ClickHouse pods. |
 | clickhouse.cluster.enabled | bool | `true` | Enable ON CLUSTER DDL in Langfuse (CLICKHOUSE_CLUSTER_ENABLED). Disable only for an external non-clustered ClickHouse. |
+| clickhouse.cluster.externalSecret.name | string | `""` | Name of an existing Secret in the release namespace. Leave empty to let the operator generate and own the Secret. It must contain `interserver-password`, `management-password`, `cluster-secret`, `keeper-identity` (format `clickhouse:<password>`), and `named-collections-key` on ClickHouse >= 25.12 (the default image); see the operator's [required keys](https://github.com/ClickHouse/clickhouse-operator/blob/v0.0.8/docs/guides/configuration.mdx#external-secret-required-keys). For existing installs, seed it from the operator-generated `<fullname>-clickhouse` Secret first, otherwise pods roll with a new keeper identity and fail with "Not authenticated". |
+| clickhouse.cluster.externalSecret.policy | string | `"Observe"` | Operator policy for the external Secret. `Observe` blocks reconciliation until every required key is present and never changes the Secret. `Manage` generates missing keys into the existing Secret. |
 | clickhouse.cluster.image.pullSecrets | list | `[]` | Image pull secrets for ClickHouse pods (`spec.podTemplate.imagePullSecrets` on the ClickHouseCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.cluster.image.registry | string | `""` | ClickHouse server image registry. Overridden by `global.imageRegistry`. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
-| clickhouse.cluster.image.tag | string | `"26.4"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.image.tag | string | `"26.8.36.3"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.livenessProbe | object | `{}` | Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009. |
 | clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
 | clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
+| clickhouse.cluster.readinessProbe | object | `{}` | Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.serviceAccountName | string | `""` | Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
+| clickhouse.cluster.startupProbe | object | `{}` | Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.cluster.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.cluster.storage.className | string | `""` | StorageClass for ClickHouse PVCs. Leave empty to use the cluster default. |
 | clickhouse.cluster.storage.size | string | `"100Gi"` | Persistent volume size for each ClickHouse pod. |
@@ -62,13 +68,16 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.image.pullSecrets | list | `[]` | Image pull secrets for Keeper pods (`spec.podTemplate.imagePullSecrets` on the KeeperCluster CR), e.g. `[{name: my-registry-secret}]`. Required when pulling from a private registry. |
 | clickhouse.keeper.image.registry | string | `""` | ClickHouse Keeper image registry. Overridden by `global.imageRegistry`. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
-| clickhouse.keeper.image.tag | string | `"26.4"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.image.tag | string | `"26.8.36.3"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.livenessProbe | object | `{}` | Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe. |
 | clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
+| clickhouse.keeper.readinessProbe | object | `{}` | Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
 | clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
 | clickhouse.keeper.settings | object | `{}` | Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server. |
+| clickhouse.keeper.startupProbe | object | `{}` | Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
 | clickhouse.keeper.storage.className | string | `""` | StorageClass for Keeper PVCs. Leave empty to use the cluster default. |
 | clickhouse.keeper.storage.size | string | `"20Gi"` | Persistent volume size for each Keeper pod. |
@@ -114,6 +123,75 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.features.experimentalFeaturesEnabled | bool | `false` | Enable experimental features |
 | langfuse.features.signUpDisabled | bool | `false` | Disable public sign up |
 | langfuse.features.telemetryEnabled | bool | `true` | Whether or not to report basic usage statistics to a centralized server. |
+| langfuse.gateway.connectionDrainTimeoutSeconds | int | `300` | [Beta] LANGFUSE_AI_GATEWAY_CONNECTION_DRAIN_TIMEOUT_SECONDS: how long the gateway drains in-flight requests after SIGTERM (1-300). On Kubernetes this is the only stream drain, so streams longer than this are cut on every rollout and scale-in. |
+| langfuse.gateway.deployment.additionalLabels | object | `{}` | [Beta] Additional labels for the AI gateway deployment |
+| langfuse.gateway.deployment.annotations | object | `{}` | [Beta] Annotations for the AI gateway deployment |
+| langfuse.gateway.deployment.strategy | object | `{}` | [Beta] Deployment strategy for the AI gateway deployment. Overrides the global deployment strategy |
+| langfuse.gateway.enabled | bool | `false` | [Beta] Set to `true` to deploy the Langfuse AI gateway. Web always gets `LANGFUSE_AI_GATEWAY_DEPLOYED` set to `"true"` or `"false"` to match, unless `additionalEnv` already sets it. The chart does not set web's `LANGFUSE_AI_GATEWAY_ENABLED` feature flag (web defaults it to `true`); set it through `additionalEnv` to turn the gateway features off. Requires a Langfuse release that has `LANGFUSE_AI_GATEWAY_DEPLOYED`. Also generates the gateway's service key and JWT private key into `<release>-app` unless provided. |
+| langfuse.gateway.hpa.annotations | object | `{}` | [Beta] Annotations for the AI gateway HPA |
+| langfuse.gateway.hpa.enabled | bool | `false` | [Beta] Set to `true` to enable HPA for the AI gateway pods |
+| langfuse.gateway.hpa.maxReplicas | int | `2` | [Beta] The maximum number of replicas to use for the AI gateway pods |
+| langfuse.gateway.hpa.minReplicas | int | `1` | [Beta] The minimum number of replicas to use for the AI gateway pods |
+| langfuse.gateway.hpa.targetCPUUtilizationPercentage | int | `50` | [Beta] The target CPU utilization percentage for the AI gateway pods |
+| langfuse.gateway.image.pullPolicy | string | `nil` | [Beta] The pull policy to use for the AI gateway pods. Using `langfuse.image.pullPolicy` if not set. |
+| langfuse.gateway.image.pullSecrets | string | `nil` | [Beta] The pull secrets to use for the AI gateway pods. Using `langfuse.image.pullSecrets` if not set. |
+| langfuse.gateway.image.repository | string | `"docker.langfuse.com/langfuse/ai-gateway"` | [Beta] The image repository to use for the AI gateway pods. |
+| langfuse.gateway.image.tag | string | `nil` | [Beta] The tag to use for the AI gateway pods. Using `langfuse.image.tag` if not set. |
+| langfuse.gateway.ingress.additionalLabels | object | `{}` | [Beta] Additional labels for the AI gateway ingress |
+| langfuse.gateway.ingress.annotations | object | `{}` | [Beta] Annotations for the AI gateway ingress |
+| langfuse.gateway.ingress.className | string | `""` | [Beta] The class name for the AI gateway ingress. Using `langfuse.ingress.className` if not set. |
+| langfuse.gateway.ingress.enabled | bool | `false` | [Beta] Set to `true` to create an Ingress for the AI gateway |
+| langfuse.gateway.ingress.hosts | list | `[]` | [Beta] Hostnames for the AI gateway ingress, e.g. `["gateway.langfuse.example.com"]`. Each host routes `/` to the gateway service. |
+| langfuse.gateway.ingress.tls.enabled | bool | `false` | [Beta] Set to `true` to enable HTTPS on the AI gateway ingress |
+| langfuse.gateway.ingress.tls.secretName | string | `""` | [Beta] The name of the TLS secret for the AI gateway hosts. Use a different secret than `langfuse.ingress.tls.secretName` when cert-manager issues it. |
+| langfuse.gateway.jwt.keyId | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_JWT_KEY_ID set on web. Optional; web defaults it to the RFC 7638 thumbprint of the public key. |
+| langfuse.gateway.jwt.privateKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_JWT_PRIVATE_KEY: ES256 (P-256) PEM private key (SEC1 or PKCS8) web signs ingestion tokens with. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl ecparam -name prime256v1 -genkey -noout`. |
+| langfuse.gateway.jwt.publicKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_JWT_PUBLIC_KEY: PEM public key matching `privateKey`. Optional; web derives it from the private key when unset. Requires `privateKey` to be provided. |
+| langfuse.gateway.livenessProbe.failureThreshold | int | `3` | [Beta] Failure threshold for livenessProbe. |
+| langfuse.gateway.livenessProbe.initialDelaySeconds | int | `5` | [Beta] Initial delay seconds for livenessProbe. |
+| langfuse.gateway.livenessProbe.path | string | `"/health"` | [Beta] Path to check for liveness. Returns 200 while the process runs, including while draining. |
+| langfuse.gateway.livenessProbe.periodSeconds | int | `10` | [Beta] Period seconds for livenessProbe. |
+| langfuse.gateway.livenessProbe.successThreshold | int | `1` | [Beta] Success threshold for livenessProbe. |
+| langfuse.gateway.livenessProbe.timeoutSeconds | int | `5` | [Beta] Timeout seconds for livenessProbe. |
+| langfuse.gateway.pdb.create | bool | `true` | [Beta] Set to `true` to create a Pod Disruption Budget for the AI gateway pods |
+| langfuse.gateway.pdb.maxUnavailable | string | `""` | [Beta] Maximum number of unavailable pods during disruptions. Cannot be set simultaneously with minAvailable. Defaults to 1 if neither is set. |
+| langfuse.gateway.pdb.minAvailable | string | `""` | [Beta] Minimum number of available pods during disruptions. Cannot be set simultaneously with maxUnavailable. |
+| langfuse.gateway.pod.additionalEnv | list | `[]` | [Beta] Additional environment variables for the AI gateway pods, e.g. the tuning knobs `LANGFUSE_AI_GATEWAY_MAX_REQUEST_BYTES`, `LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES`, `LANGFUSE_AI_GATEWAY_MAX_EXECUTION_SECONDS`, and `LANGFUSE_AI_GATEWAY_STALL_TIMEOUT_SECONDS`. The global `langfuse.additionalEnv` does not apply. |
+| langfuse.gateway.pod.additionalEnvFrom | list | `[]` | [Beta] Secrets or ConfigMaps of additional environment variables for the AI gateway pods. The global `langfuse.additionalEnvFrom` does not apply. |
+| langfuse.gateway.pod.affinity | string | `nil` | [Beta] Affinity for the AI gateway pods. Overrides the global affinity |
+| langfuse.gateway.pod.annotations | object | `{}` | [Beta] Annotations for the AI gateway pods |
+| langfuse.gateway.pod.extraContainers | list | `[]` | [Beta] Additional containers for the AI gateway pods. The global `langfuse.extraContainers` do not apply. |
+| langfuse.gateway.pod.extraInitContainers | list | `[]` | [Beta] Additional init containers for the AI gateway pods. The global `langfuse.extraInitContainers` do not apply. |
+| langfuse.gateway.pod.extraVolumeMounts | list | `[]` | [Beta] Additional volume mounts for the AI gateway container. The global `langfuse.extraVolumeMounts` do not apply. |
+| langfuse.gateway.pod.extraVolumes | list | `[]` | [Beta] Additional volumes for the AI gateway pods, e.g. a private CA bundle. The global `langfuse.extraVolumes` do not apply. |
+| langfuse.gateway.pod.labels | object | `{}` | [Beta] Labels for the AI gateway pods |
+| langfuse.gateway.pod.nodeSelector | string | `nil` | [Beta] Node selector for the AI gateway pods. Overrides the global nodeSelector |
+| langfuse.gateway.pod.priorityClassName | string | `nil` | [Beta] PriorityClass for the AI gateway pods. Overrides the global priorityClassName |
+| langfuse.gateway.pod.tolerations | string | `nil` | [Beta] Tolerations for the AI gateway pods. Overrides the global tolerations |
+| langfuse.gateway.pod.topologySpreadConstraints | string | `nil` | [Beta] Topology spread constraints for the AI gateway pods. Overrides the global topologySpreadConstraints |
+| langfuse.gateway.preStopSleepSeconds | int | `10` | [Beta] Seconds the preStop hook sleeps before SIGTERM, so the endpoint is removed from the Service and ingress while the gateway still accepts connections. Set to 0 to disable the hook. |
+| langfuse.gateway.publicUrl | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_PUBLIC_URL on web: the gateway base URL web shows users in the UI and setup snippets, e.g. `https://llm.example.com`. When empty and the gateway ingress is enabled with hosts, defaults to the first host, over `https` when `ingress.tls.enabled` is set or `langfuse.nextauth.url` is `https://` (TLS terminated in front of the ingress), else `http`. When empty without a gateway ingress, web derives `gateway.<host of nextauth.url>`. Requires a Langfuse release that supports `LANGFUSE_AI_GATEWAY_PUBLIC_URL` (older releases ignore it); a value already set in `additionalEnv` wins. |
+| langfuse.gateway.readinessProbe.failureThreshold | int | `3` | [Beta] Failure threshold for readinessProbe. |
+| langfuse.gateway.readinessProbe.initialDelaySeconds | int | `5` | [Beta] Initial delay seconds for readinessProbe. |
+| langfuse.gateway.readinessProbe.path | string | `"/ready"` | [Beta] Path to check for readiness. Returns 503 while draining or when web is not configured. |
+| langfuse.gateway.readinessProbe.periodSeconds | int | `5` | [Beta] Period seconds for readinessProbe. |
+| langfuse.gateway.readinessProbe.successThreshold | int | `1` | [Beta] Success threshold for readinessProbe. |
+| langfuse.gateway.readinessProbe.timeoutSeconds | int | `5` | [Beta] Timeout seconds for readinessProbe. |
+| langfuse.gateway.redis.auth | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_AUTH: password or auth token for the dedicated Redis at `langfuse.gateway.redis.url`. Only used when `langfuse.gateway.redis.url` is set; leave empty for a passwordless Redis or when credentials are in the URL. Prefer `secretKeyRef`. |
+| langfuse.gateway.redis.clusterEnabled | bool | `false` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_CLUSTER_ENABLED: connect to `langfuse.gateway.redis.url` as a Redis Cluster. Only used when `langfuse.gateway.redis.url` is set; otherwise derived from `redis.cluster.enabled`. |
+| langfuse.gateway.redis.enabled | bool | `true` | [Beta] Set to `false` to skip rendering `LANGFUSE_AI_GATEWAY_REDIS_*` environment variables and Redis validations (e.g. when injecting Redis settings via `langfuse.gateway.pod.additionalEnvFrom` or running without spend limits). |
+| langfuse.gateway.redis.url | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_REDIS_URL: dedicated Redis URL (`redis://` or `rediss://`, or comma-separated cluster node URLs) for spend-limit counters. When empty, derived from `redis.*`. Required when `redis.sentinel.enabled` is true (unless `langfuse.gateway.redis.enabled` is false), since the gateway does not support Sentinel. |
+| langfuse.gateway.replicas | string | `nil` | [Beta] Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
+| langfuse.gateway.resources | object | `{}` | [Beta] Resources for the AI gateway pods. Defaults to the global resources. Recommended: 1 CPU and a memory limit of at least the memory budget (LANGFUSE_AI_GATEWAY_MEMORY_BUDGET_BYTES, 1 GiB by default) plus 512 Mi, e.g. 2Gi. |
+| langfuse.gateway.revisionHistoryLimit | string | `nil` | [Beta] Number of old ReplicaSets to retain to allow rollback. Defaults to the global revisionHistoryLimit |
+| langfuse.gateway.service.additionalLabels | object | `{}` | [Beta] Additional labels for the AI gateway service |
+| langfuse.gateway.service.annotations | object | `{}` | [Beta] Annotations for the AI gateway service |
+| langfuse.gateway.service.port | int | `8080` | [Beta] The port the AI gateway listens on and the service exposes |
+| langfuse.gateway.service.type | string | `"ClusterIP"` | [Beta] The type of service to use for the AI gateway |
+| langfuse.gateway.serviceKey | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | [Beta] LANGFUSE_AI_GATEWAY_SERVICE_KEY: HMAC key shared by the gateway and web. Leave empty to auto-generate when the gateway is enabled (persisted in `<release>-app`); override with value/secretKeyRef to pin. |
+| langfuse.gateway.telemetryShutdownTimeoutSeconds | int | `30` | [Beta] LANGFUSE_AI_GATEWAY_TELEMETRY_SHUTDOWN_TIMEOUT_SECONDS: how long the gateway flushes telemetry after the connection drain ends (1-300). |
+| langfuse.gateway.terminationGracePeriodSeconds | int | `350` | [Beta] Termination grace period for the AI gateway pods. Must be greater than `preStopSleepSeconds` + `connectionDrainTimeoutSeconds` + `telemetryShutdownTimeoutSeconds`. |
+| langfuse.gateway.webUrl | string | `""` | [Beta] LANGFUSE_AI_GATEWAY_WEB_URL: the Langfuse web URL the gateway calls for request resolution and telemetry. Defaults to the in-cluster web Service (`http://<fullname>-web.<namespace>.svc.cluster.local:<port>`). For an `http://` URL the chart sets `LANGFUSE_AI_GATEWAY_ALLOW_HTTP_WEB_URL=true` on the gateway. Plain HTTP is only meant for this internal in-cluster Service default, since web's responses carry provider API keys; an explicit `webUrl` that crosses a public network must be `https://` (for example `langfuse.nextauth.url`). |
 | langfuse.image.pullPolicy | string | `"Always"` | The pull policy to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.pullSecrets | list | `[]` | The pull secrets to use for all langfuse deployments. Can be overridden by the individual deployments. |
 | langfuse.image.tag | string | `nil` | The image tag to use for all langfuse deployments. Can be overridden by the individual deployments. Falls back to appVersion if not set. |
@@ -204,6 +282,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.web.service.nodePort | string | `nil` | The node port to use for the langfuse web application |
 | langfuse.web.service.port | int | `3000` | The port to use for the langfuse web application |
 | langfuse.web.service.type | string | `"ClusterIP"` | The type of service to use for the langfuse web application |
+| langfuse.web.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.web.vpa.controlledResources | list | `[]` | The resources to control for the langfuse web pods |
 | langfuse.web.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse web pods |
 | langfuse.web.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse web pods |
@@ -253,6 +332,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.worker.replicas | string | `nil` | Number of replicas to use if HPA is not enabled. Defaults to the global replicas |
 | langfuse.worker.resources | object | `{}` | Resources for the langfuse worker pods. Defaults to the global resources |
 | langfuse.worker.revisionHistoryLimit | string | `nil` | Number of old ReplicaSets to retain to allow rollback. |
+| langfuse.worker.terminationGracePeriodSeconds | int | `nil` | Pod termination grace period in seconds, including preStop hooks. Leave null to use the Kubernetes default; 0 requests immediate termination. |
 | langfuse.worker.vpa.controlledResources | list | `[]` | The resources to control for the langfuse worker pods |
 | langfuse.worker.vpa.enabled | bool | `false` | Set to `true` to enable VPA for the langfuse worker pods |
 | langfuse.worker.vpa.maxAllowed | object | `{}` | The maximum allowed resources for the langfuse worker pods |
@@ -342,10 +422,6 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.allInOne.data.storageClass | string | `""` |  |
 | s3.allInOne.data.type | string | `"persistentVolumeClaim"` | Persistence for the SeaweedFS data directory. |
 | s3.allInOne.enabled | bool | `true` |  |
-| s3.allInOne.image.pullPolicy | string | `"IfNotPresent"` |  |
-| s3.allInOne.image.registry | string | `"docker.io"` |  |
-| s3.allInOne.image.repository | string | `"chrislusf/seaweedfs"` |  |
-| s3.allInOne.image.tag | string | `"3.95"` |  |
 | s3.allInOne.resources.limits.cpu | int | `2` |  |
 | s3.allInOne.resources.limits.memory | string | `"2Gi"` |  |
 | s3.allInOne.resources.requests.cpu | string | `"500m"` |  |
@@ -387,6 +463,9 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | s3.filer.enabled | bool | `false` |  |
 | s3.forcePathStyle | bool | `true` | Whether to force path style on requests. Required for SeaweedFS / MinIO. Can be overridden per upload type. |
 | s3.gcs.credentials | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | GCS credentials JSON (or secretKeyRef). Falls back to the pod's environment/service account credentials if unset. |
+| s3.image.registry | string | `""` | SeaweedFS image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
+| s3.image.repository | string | `""` | SeaweedFS image repository. Empty uses the sub-chart default `chrislusf/seaweedfs`. |
+| s3.image.tag | string | `""` | SeaweedFS image tag. Empty uses the sub-chart appVersion (`4.23` for seaweedfs 4.23.0). |
 | s3.master.enabled | bool | `false` |  |
 | s3.mediaUpload.accessKeyId | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | S3 accessKeyId to use for media uploads. |
 | s3.mediaUpload.bucket | string | `""` | S3 bucket to use for media uploads. |

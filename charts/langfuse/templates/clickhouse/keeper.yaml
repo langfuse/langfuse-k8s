@@ -26,6 +26,18 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    {{- with .Values.clickhouse.keeper.livenessProbe }}
+    livenessProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.readinessProbe }}
+    readinessProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.keeper.startupProbe }}
+    startupProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   {{- if or .Values.clickhouse.keeper.logger .Values.clickhouse.keeper.settings }}
   settings:
     {{- with .Values.clickhouse.keeper.logger }}

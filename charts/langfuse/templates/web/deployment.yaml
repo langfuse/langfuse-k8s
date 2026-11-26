@@ -15,9 +15,9 @@ metadata:
   {{- end }}
 spec:
   {{- if not (or .Values.langfuse.web.hpa.enabled .Values.langfuse.web.keda.enabled) }}
-  replicas: {{ .Values.langfuse.web.replicas | default .Values.langfuse.replicas }}
+  replicas: {{ ternary .Values.langfuse.replicas .Values.langfuse.web.replicas (kindIs "invalid" .Values.langfuse.web.replicas) }}
   {{- end }}
-  revisionHistoryLimit: {{ .Values.langfuse.web.revisionHistoryLimit | default .Values.langfuse.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ ternary .Values.langfuse.revisionHistoryLimit .Values.langfuse.web.revisionHistoryLimit (kindIs "invalid" .Values.langfuse.web.revisionHistoryLimit) }}
   {{- with (coalesce .Values.langfuse.web.deployment.strategy .Values.langfuse.deployment.strategy) }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -42,6 +42,9 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if not (kindIs "invalid" .Values.langfuse.web.terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ .Values.langfuse.web.terminationGracePeriodSeconds }}
+      {{- end }}
       {{- if .Values.langfuse.web.hostAliases }}
       hostAliases:
         {{- toYaml .Values.langfuse.web.hostAliases | nindent 8 }}
@@ -77,6 +80,7 @@ spec:
             - name: PORT
               value: {{ .Values.langfuse.web.service.port | quote }}
             {{- include "langfuse.aiFeaturesMcpWebEnv" . | nindent 12 }}
+            {{- include "langfuse.gatewayWebEnv" . | nindent 12 }}
             {{- $additionalEnv := concat (.Values.langfuse.additionalEnv | default list ) (.Values.langfuse.web.pod.additionalEnv | default list )}}
             {{- if not (include "langfuse.getEnvVar" (dict "env" $additionalEnv "name" "HOSTNAME")) }}
             - name: HOSTNAME

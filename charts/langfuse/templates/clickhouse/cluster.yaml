@@ -13,6 +13,12 @@ spec:
   {{- /* Required by the CRD — a keeper-less deploy is rejected in validations.yaml */}}
   keeperClusterRef:
     name: {{ include "langfuse.fullname" . }}
+  {{- $ext := .Values.clickhouse.cluster.externalSecret | default dict }}
+  {{- with $ext.name }}
+  externalSecret:
+    name: {{ . | quote }}
+    policy: {{ $ext.policy | default "Observe" | quote }}
+  {{- end }}
   dataVolumeClaimSpec:
     accessModes:
       {{- toYaml .Values.clickhouse.cluster.storage.accessModes | nindent 6 }}
@@ -30,8 +36,23 @@ spec:
     resources:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-  {{- if or .Values.clickhouse.cluster.image.pullSecrets .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName }}
+    {{- with .Values.clickhouse.cluster.livenessProbe }}
+    livenessProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.readinessProbe }}
+    readinessProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.clickhouse.cluster.startupProbe }}
+    startupProbe:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- if or .Values.clickhouse.cluster.image.pullSecrets .Values.clickhouse.cluster.nodeSelector .Values.clickhouse.cluster.tolerations .Values.clickhouse.cluster.affinity .Values.clickhouse.cluster.priorityClassName .Values.clickhouse.cluster.serviceAccountName }}
   podTemplate:
+    {{- with .Values.clickhouse.cluster.serviceAccountName }}
+    serviceAccountName: {{ . | quote }}
+    {{- end }}
     {{- with .Values.clickhouse.cluster.image.pullSecrets }}
     imagePullSecrets:
       {{- toYaml . | nindent 6 }}
