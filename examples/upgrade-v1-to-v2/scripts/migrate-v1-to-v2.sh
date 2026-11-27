@@ -12,6 +12,9 @@ YES=0
 DRY_RUN=0
 SKIP_PREREQS=0
 FORCE=0
+SKIP_QUEUE_DRAIN=0
+V1_WEB_REPLICAS=""
+FREEZE_RESTORE_WEB=0
 NAMESPACE="${NAMESPACE:-langfuse}"
 SOURCE_RELEASE="${SOURCE_RELEASE:-}"
 TARGET_RELEASE="${TARGET_RELEASE:-}"
@@ -58,10 +61,15 @@ Options:
       --context NAME        kube-context passed to kubectl/helm
       --image-tag TAG       Pin langfuse.image.tag (default: v1 values or Helm appVersion)
   -y, --yes                 Do not prompt; run every remaining step
-      --force               Continue after Postgres lag / readiness / queue-drain failures
+      --force               Continue after Postgres lag / readiness / queue-drain failures.
+                            This also skips the lag check before DROP SUBSCRIPTION;
+                            for a queue that will not drain use --skip-queue-drain
       --dry-run             Preflight + plan + generate values; do not change the cluster
       --skip-prereqs        Do not install cert-manager / ClickHouse operator
-      --worker-drain-seconds N  Max seconds to wait for v1 Redis queues after scaling web down (default: 60)
+      --worker-drain-seconds N  Max seconds to wait for v1 Redis queues after scaling web down;
+                            on timeout v1 web is scaled back and the script stops (default: 60)
+      --skip-queue-drain    Freeze without waiting for the v1 worker to drain its Redis queues
+                            (jobs still queued in v1 Redis are not carried over to v2)
   -h, --help                Show this help
 
 Environment: KUBECTL, HELM, KCTX, NAMESPACE, WORKER_DRAIN_SECONDS, MC_IMAGE, IMAGE_TAG
@@ -242,6 +250,7 @@ fail_or_force() {
 }
 
 cleanup() {
+  [ "$FREEZE_RESTORE_WEB" -eq 0 ] || restore_v1_web
   if [ -n "$MC_POD" ] && [ "$DRY_RUN" -eq 0 ]; then
     kx -n "$NAMESPACE" delete pod "$MC_POD" --wait=false >/dev/null 2>&1 || true
   fi
@@ -278,6 +287,7 @@ while [ $# -gt 0 ]; do
     --worker-drain-seconds) WORKER_DRAIN_SECONDS=$2; shift 2 ;;
     --image-tag) IMAGE_TAG=$2; shift 2 ;;
     --force) FORCE=1; shift ;;
+    --skip-queue-drain) SKIP_QUEUE_DRAIN=1; shift ;;
     -h|--help) usage; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
@@ -820,24 +830,192 @@ v1_redis_pod() {
   return 1
 }
 
-v1_queue_depth() {
-  local pod=$1 pw=$2
-  kx_exec_with_secret_env "$NAMESPACE" "$pod" REDISCLI_AUTH "$pw" sh -c '
-    depth=0
-    for k in $(redis-cli --no-auth-warning --scan --pattern "bull:*:wait"; redis-cli --no-auth-warning --scan --pattern "bull:*:active"); do
-      n=$(redis-cli --no-auth-warning LLEN "$k" 2>/dev/null || echo 0)
-      depth=$((depth + ${n:-0}))
+V1_REDIS_POD=""
+V1_REDIS_PW=""
+V1_BULLMQ_PREFIX=bull
+
+# Returns "+<value>" when ConfigMap/Secret <name> has <key>, nothing otherwise.
+k8s_ref_value() {
+  local kind=$1 name=$2 key=$3
+  kx -n "$NAMESPACE" get "$kind" "$name" -o json 2>/dev/null | jq -r --arg k "$key" --arg kind "$kind" '
+    (.data // {}) as $d
+    | if ($d | has($k)) then "+" + (if $kind == "secret" then ($d[$k] | @base64d) else $d[$k] end)
+      else empty end' 2>/dev/null || true
+}
+
+# BullMQ prefixes every queue key with REDIS_KEY_PREFIX (default "bull"), so
+# read it from the v1 worker container: a literal value, a valueFrom
+# ConfigMap/Secret key, or an envFrom ConfigMap/Secret. Anything else falls
+# back to "bull"; prepare_v1_queue_drain then fails if no queues match.
+resolve_v1_bullmq_prefix() {
+  local deploy="${SRC_FULLNAME}-worker" plan origin kind name key value found="" source=default
+  V1_BULLMQ_PREFIX=bull
+  if ! plan=$(kx -n "$NAMESPACE" get deploy "$deploy" -o json | jq -r '
+      .spec.template.spec.containers
+      | (map(select(.name | endswith("-worker"))) + [last]) | first
+      | ([.env[]? | select(.name == "REDIS_KEY_PREFIX")] | last) as $e
+      | if $e then
+          if $e.valueFrom == null then ["env", "value", "-", ($e.value // "")]
+          elif $e.valueFrom.configMapKeyRef then ["env", "configmap", $e.valueFrom.configMapKeyRef.name, $e.valueFrom.configMapKeyRef.key]
+          elif $e.valueFrom.secretKeyRef then ["env", "secret", $e.valueFrom.secretKeyRef.name, $e.valueFrom.secretKeyRef.key]
+          else ["env", "unsupported", "-", "-"] end
+        else
+          .envFrom[]? | (.prefix // "") as $p
+          | select("REDIS_KEY_PREFIX" | startswith($p))
+          | ("REDIS_KEY_PREFIX" | ltrimstr($p)) as $k
+          | if .configMapRef then ["envFrom", "configmap", .configMapRef.name, $k]
+            elif .secretRef then ["envFrom", "secret", .secretRef.name, $k]
+            else empty end
+        end
+      | join("\t")'); then
+    warn "could not read Deployment/$deploy; assuming BullMQ prefix 'bull'"
+    return 0
+  fi
+  # Later envFrom sources override earlier ones, as in Kubernetes.
+  while IFS=$'\t' read -r origin kind name key; do
+    case "$kind" in
+      value) found="+$key"; source="literal env value" ;;
+      configmap|secret)
+        value=$(k8s_ref_value "$kind" "$name" "$key")
+        if [ -n "$value" ]; then
+          found=$value
+          source="$origin $kind/$name key $key"
+        elif [ "$origin" = env ]; then
+          warn "REDIS_KEY_PREFIX on Deployment/$deploy references $kind/$name key $key, which could not be read; assuming 'bull'"
+        fi
+        ;;
+      unsupported) warn "REDIS_KEY_PREFIX on Deployment/$deploy uses an unsupported valueFrom; assuming 'bull'" ;;
+    esac
+  done <<EOF
+$plan
+EOF
+  # Langfuse treats an empty REDIS_KEY_PREFIX as unset.
+  value=${found#+}
+  [ -z "$value" ] || V1_BULLMQ_PREFIX=$value
+  log "v1 BullMQ key prefix: '$V1_BULLMQ_PREFIX' ($source)"
+}
+
+# Counts the members of a BullMQ delayed zset that are not repeatable-job
+# iterations. BullMQ ids those "repeat:<key>:<millis>" and keeps the next one
+# per schedule in delayed while the worker runs, so they never drain.
+V1_DELAYED_JOBS_LUA='local n = 0
+for _, id in ipairs(redis.call("ZRANGE", KEYS[1], 0, -1)) do
+  if string.sub(id, 1, 7) ~= "repeat:" then n = n + 1 end
+end
+return n'
+
+# Prints one "<wait|active|delayed> <queue> <count>" line per BullMQ list or
+# zset under the prefix ("?" when a count fails), then "queues <n>" with the
+# number of queues found. Output without the final line is incomplete.
+v1_queue_snapshot() {
+  kx_exec_with_secret_env "$NAMESPACE" "$V1_REDIS_POD" REDISCLI_AUTH "$V1_REDIS_PW" sh -c '
+    set -f
+    prefix=$1
+    lua=$2
+    keys=$(redis-cli --no-auth-warning --scan --pattern "$prefix:*") || exit 1
+    queues=0
+    for k in $keys; do
+      rest=${k#"$prefix:"}
+      case "$rest" in
+        *:*:*) continue ;;
+        *:meta) queues=$((queues + 1)); continue ;;
+        *:wait|*:active) n=$(redis-cli --no-auth-warning LLEN "$k" 2>&1) ;;
+        *:delayed) n=$(redis-cli --no-auth-warning EVAL "$lua" 1 "$k" 2>&1) ;;
+        *) continue ;;
+      esac
+      case "$n" in
+        ""|*[!0-9]*) n="?" ;;
+      esac
+      echo "${rest##*:} ${rest%:*} $n"
     done
-    for k in $(redis-cli --no-auth-warning --scan --pattern "bull:*:delayed"); do
-      n=$(redis-cli --no-auth-warning ZCARD "$k" 2>/dev/null || echo 0)
-      depth=$((depth + ${n:-0}))
-    done
-    echo "$depth"
-  ' | tr -d '[:space:]'
+    echo "queues $queues"
+  ' sh "$V1_BULLMQ_PREFIX" "$V1_DELAYED_JOBS_LUA"
+}
+
+# Total pending jobs in a snapshot, or "unknown" if it is incomplete.
+queue_snapshot_depth() {
+  printf '%s\n' "$1" | awk '
+    $1 == "queues" { complete = 1; next }
+    NF == 0 { next }
+    NF != 3 || $3 !~ /^[0-9]+$/ { bad = 1; next }
+    { total += $3 }
+    END { if (bad || !complete) print "unknown"; else print total + 0 }'
+}
+
+queue_snapshot_queues() {
+  printf '%s\n' "$1" | awk '$1 == "queues" { print $2 }'
+}
+
+# Per-queue "wait / active / delayed" for the queues that still hold jobs.
+queue_snapshot_breakdown() {
+  printf '%s\n' "$1" | awk '
+    NF == 3 && $1 != "queues" { c[$2, $1] = $3; if ($3 != "0") busy[$2] = 1 }
+    END {
+      for (n in busy) {
+        w = ((n, "wait") in c) ? c[n, "wait"] : 0
+        a = ((n, "active") in c) ? c[n, "active"] : 0
+        d = ((n, "delayed") in c) ? c[n, "delayed"] : 0
+        printf "  %s: wait=%s active=%s delayed=%s\n", n, w, a, d
+      }
+    }' | sort
+}
+
+# Runs before downtime starts: finds the v1 Redis pod, password and BullMQ
+# prefix, and checks that queues exist under that prefix, so a wrong prefix
+# cannot pass as "drained".
+prepare_v1_queue_drain() {
+  local snap queues depth
+  [ "$SKIP_QUEUE_DRAIN" -eq 0 ] || return 0
+  [ "$REDIS_ON" -eq 1 ] || return 0
+  V1_REDIS_POD=$(v1_redis_pod) || {
+    V1_REDIS_POD=""
+    warn "could not find a v1 Redis pod; the freeze will wait a fixed ${WORKER_DRAIN_SECONDS}s for the worker"
+    return 0
+  }
+  V1_REDIS_PW=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" "$V1_REDIS_PW_KEY" 2>/dev/null || true)
+  # Bitnami valkey (the v1 redis alias) stores the password under valkey-password
+  [ -n "$V1_REDIS_PW" ] || V1_REDIS_PW=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" valkey-password 2>/dev/null || true)
+  [ -n "$V1_REDIS_PW" ] || V1_REDIS_PW=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" password 2>/dev/null || true)
+  if [ -z "$V1_REDIS_PW" ]; then
+    V1_REDIS_POD=""
+    warn "could not read v1 Redis password; the freeze will wait a fixed ${WORKER_DRAIN_SECONDS}s for the worker"
+    return 0
+  fi
+  resolve_v1_bullmq_prefix
+  snap=$(v1_queue_snapshot || true)
+  queues=$(queue_snapshot_queues "$snap")
+  depth=$(queue_snapshot_depth "$snap")
+  if [ "${queues:-0}" -gt 0 ] && [ "$depth" != unknown ]; then
+    log "v1 Redis $V1_REDIS_POD: $queues BullMQ queue(s) under '$V1_BULLMQ_PREFIX:', $depth job(s) pending"
+    return 0
+  fi
+  local reason
+  if [ -z "$queues" ] || [ "$depth" = unknown ]; then
+    reason="could not read BullMQ queues from v1 Redis pod $V1_REDIS_POD"
+  else
+    reason="no BullMQ queues found under prefix '$V1_BULLMQ_PREFIX:' in v1 Redis pod $V1_REDIS_POD (does the v1 worker set REDIS_KEY_PREFIX in a way this script cannot read?)"
+  fi
+  V1_REDIS_POD=""
+  if [ "$FORCE" -eq 1 ]; then
+    warn "$reason (--force: the freeze will wait a fixed ${WORKER_DRAIN_SECONDS}s for the worker)"
+    return 0
+  fi
+  die "$reason. Nothing was frozen. Pass --skip-queue-drain to freeze without waiting for the v1 worker."
+}
+
+restore_v1_web() {
+  FREEZE_RESTORE_WEB=0
+  log "scaling ${SRC_FULLNAME}-web back to ${V1_WEB_REPLICAS} replica(s)"
+  kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-web" --replicas="$V1_WEB_REPLICAS" >/dev/null \
+    || warn "could not scale ${SRC_FULLNAME}-web back; run: kubectl -n $NAMESPACE scale deploy/${SRC_FULLNAME}-web --replicas=${V1_WEB_REPLICAS}"
 }
 
 drain_v1_queues() {
-  local pod pw depth i
+  local snap depth deadline
+  if [ "$SKIP_QUEUE_DRAIN" -eq 1 ]; then
+    warn "--skip-queue-drain: not waiting for the v1 worker; jobs still queued in v1 Redis are not carried over to v2"
+    return 0
+  fi
   if [ "$REDIS_ON" -ne 1 ]; then
     if [ "$YES" -eq 1 ]; then
       log "v1 Redis is external — waiting ${WORKER_DRAIN_SECONDS}s for the worker to drain"
@@ -848,34 +1026,44 @@ drain_v1_queues() {
     fi
     return 0
   fi
-  pod=$(v1_redis_pod) || {
-    warn "could not find a v1 Redis pod; falling back to a ${WORKER_DRAIN_SECONDS}s wait"
-    sleep "$WORKER_DRAIN_SECONDS"
-    return 0
-  }
-  pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" "$V1_REDIS_PW_KEY" 2>/dev/null || true)
-  # Bitnami valkey (the v1 redis alias) stores the password under valkey-password
-  [ -n "$pw" ] || pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" valkey-password 2>/dev/null || true)
-  [ -n "$pw" ] || pw=$(secret_data "$NAMESPACE" "$V1_REDIS_SECRET" password 2>/dev/null || true)
-  if [ -z "$pw" ]; then
-    warn "could not read v1 Redis password; falling back to a ${WORKER_DRAIN_SECONDS}s wait"
+  if [ -z "$V1_REDIS_POD" ]; then
+    log "waiting ${WORKER_DRAIN_SECONDS}s for the v1 worker to drain"
     sleep "$WORKER_DRAIN_SECONDS"
     return 0
   fi
-  log "waiting up to ${WORKER_DRAIN_SECONDS}s for v1 Redis BullMQ queues on $pod to drain"
-  for i in $(seq 1 "$WORKER_DRAIN_SECONDS"); do
-    depth=$(v1_queue_depth "$pod" "$pw" || echo 999)
-    [ "${depth:-999}" = "0" ] && { log "v1 Redis queues are empty"; return 0; }
+  log "waiting up to ${WORKER_DRAIN_SECONDS}s for v1 BullMQ queues on $V1_REDIS_POD to drain (repeatable-job schedules are not counted)"
+  deadline=$((SECONDS + WORKER_DRAIN_SECONDS))
+  while :; do
+    snap=$(v1_queue_snapshot || true)
+    depth=$(queue_snapshot_depth "$snap")
+    [ "$depth" = "0" ] && { log "v1 Redis queues are empty"; return 0; }
+    [ "$SECONDS" -lt "$deadline" ] || break
     sleep 1
   done
-  fail_or_force "v1 Redis queue depth is still ${depth:-unknown} after ${WORKER_DRAIN_SECONDS}s"
+  if [ "$depth" = unknown ]; then
+    warn "could not read the v1 Redis queue depth on $V1_REDIS_POD within ${WORKER_DRAIN_SECONDS}s"
+  else
+    warn "v1 Redis still holds $depth job(s) after ${WORKER_DRAIN_SECONDS}s:"
+  fi
+  queue_snapshot_breakdown "$snap" >&2
+  if [ "$FORCE" -eq 1 ]; then
+    warn "--force: continuing the freeze; these jobs are not carried over to v2"
+    return 0
+  fi
+  restore_v1_web
+  die "v1 Redis queues did not drain. Freeze aborted: v1 is still the live writer and nothing was cut over to $TARGET_RELEASE. Re-run with a larger --worker-drain-seconds, or pass --skip-queue-drain to freeze without waiting (jobs left in v1 Redis are not carried over)."
 }
 
 # --- 7. Freeze & final delta ------------------------------------------------
+prepare_v1_queue_drain
 confirm "FREEZE window: scale down v1 web (then worker) and run final deltas? This starts application downtime."
 
+V1_WEB_REPLICAS=$(kx -n "$NAMESPACE" get deploy "${SRC_FULLNAME}-web" -o jsonpath='{.spec.replicas}')
+[ "${V1_WEB_REPLICAS:-0}" != "0" ] || warn "${SRC_FULLNAME}-web is already at 0 replicas; an aborted freeze leaves it there"
+FREEZE_RESTORE_WEB=1
 kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-web" --replicas=0
 drain_v1_queues
+FREEZE_RESTORE_WEB=0
 kx -n "$NAMESPACE" scale deploy/"${SRC_FULLNAME}-worker" --replicas=0
 
 if [ "$PG_ON" -eq 1 ]; then
