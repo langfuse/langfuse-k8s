@@ -486,6 +486,20 @@ langfuse:
       # -- Success threshold for livenessProbe.
       successThreshold: 1
 
+    readinessProbe:
+      # -- Path to check for readiness. `/api/ready` checks Postgres and Redis connectivity and fails after SIGTERM, ensuring the pod is drained before shutdown.
+      path: "/api/ready"
+      # -- Initial delay seconds for readinessProbe.
+      initialDelaySeconds: 20
+      # -- Period seconds for readinessProbe.
+      periodSeconds: 10
+      # -- Timeout seconds for readinessProbe.
+      timeoutSeconds: 5
+      # -- Failure threshold for readinessProbe.
+      failureThreshold: 3
+      # -- Success threshold for readinessProbe.
+      successThreshold: 1
+
   # AI gateway configuration.
   #
   # BETA: `langfuse.gateway.*` values are excluded from the chart's SemVer guarantees and may change in minor releases.

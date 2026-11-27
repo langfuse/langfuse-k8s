@@ -105,6 +105,15 @@ spec:
             timeoutSeconds: {{ .Values.langfuse.worker.livenessProbe.timeoutSeconds | default 5 }}
             successThreshold: {{ .Values.langfuse.worker.livenessProbe.successThreshold | default 1 }}
             failureThreshold: {{ .Values.langfuse.worker.livenessProbe.failureThreshold | default 5 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.langfuse.worker.readinessProbe.path | default "/api/ready" }}
+              port: http
+            initialDelaySeconds: {{ .Values.langfuse.worker.readinessProbe.initialDelaySeconds | default 20 }}
+            periodSeconds: {{ .Values.langfuse.worker.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.langfuse.worker.readinessProbe.timeoutSeconds | default 5 }}
+            successThreshold: {{ .Values.langfuse.worker.readinessProbe.successThreshold | default 1 }}
+            failureThreshold: {{ .Values.langfuse.worker.readinessProbe.failureThreshold | default 5 }}
           {{- if .Values.langfuse.extraLifecycle }}
           lifecycle:
             {{- with .Values.langfuse.extraLifecycle }}
