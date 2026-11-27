@@ -41,14 +41,17 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.cluster.image.registry | string | `""` | ClickHouse server image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
 | clickhouse.cluster.image.repository | string | `"clickhouse/clickhouse-server"` | ClickHouse server image repository. |
 | clickhouse.cluster.image.tag | string | `"26.8.36.3"` | ClickHouse server image tag. Keep aligned with the version recommended for Langfuse v4. |
+| clickhouse.cluster.labels | object | `{}` | Additional labels added to ClickHouse resources (`spec.labels` on the ClickHouseCluster CR). |
 | clickhouse.cluster.livenessProbe | object | `{}` | Liveness probe for ClickHouse pods (`spec.containerTemplate.livenessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the interserver port 9009. |
 | clickhouse.cluster.logger | object | `{}` | Operator logger settings for the ClickHouse server (`spec.settings.logger` on the ClickHouseCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to the very verbose `trace`, so set `level` explicitly if you run one. |
 | clickhouse.cluster.nodeSelector | object | `{}` | Node selector for ClickHouse pods. |
+| clickhouse.cluster.podSecurityContext | object | `{}` | Pod-level security context for ClickHouse pods (`spec.podTemplate.securityContext` on the ClickHouseCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved. |
 | clickhouse.cluster.priorityClassName | string | `""` | PriorityClass for ClickHouse pods. |
 | clickhouse.cluster.profileSettings | object | `{}` | Extra ClickHouse user profile settings mounted into users.xml. |
 | clickhouse.cluster.readinessProbe | object | `{}` | Readiness probe for ClickHouse pods (`spec.containerTemplate.readinessProbe` on the ClickHouseCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ping` on the management HTTP port. |
 | clickhouse.cluster.replicas | int | `1` | Number of ClickHouse replicas. 1 is a valid single-pod cluster; 2+ requires Keeper enabled. |
 | clickhouse.cluster.resources | object | `{"limits":{"memory":"4Gi"},"requests":{"cpu":"1","memory":"2Gi"}}` | CPU/memory for ClickHouse pods. Non-empty defaults avoid the operator's ~1Gi fallback that OOMs under load. |
+| clickhouse.cluster.securityContext | object | `{}` | Container-level security context for the ClickHouse server container (`spec.containerTemplate.securityContext` on the ClickHouseCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved. |
 | clickhouse.cluster.serviceAccountName | string | `""` | Existing ServiceAccount for ClickHouse pods (`spec.podTemplate.serviceAccountName`). Leave empty to preserve the operator default. The account must exist in the release namespace; this value does not create it. |
 | clickhouse.cluster.settings | object | `{}` | Extra ClickHouse server settings applied under the `<clickhouse>` config section. |
 | clickhouse.cluster.startupProbe | object | `{}` | Startup probe for ClickHouse pods (`spec.containerTemplate.startupProbe` on the ClickHouseCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
@@ -69,13 +72,16 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | clickhouse.keeper.image.registry | string | `""` | ClickHouse Keeper image registry. Empty pulls from Docker Hub. `global.imageRegistry` takes precedence when set. |
 | clickhouse.keeper.image.repository | string | `"clickhouse/clickhouse-keeper"` | ClickHouse Keeper image repository. |
 | clickhouse.keeper.image.tag | string | `"26.8.36.3"` | ClickHouse Keeper image tag. Keep aligned with the ClickHouse server tag. |
+| clickhouse.keeper.labels | object | `{}` | Additional labels added to Keeper resources (`spec.labels` on the KeeperCluster CR). |
 | clickhouse.keeper.livenessProbe | object | `{}` | Liveness probe for Keeper pods (`spec.containerTemplate.livenessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is a TCP check on the client port (2181, or 2281 when TLS is required) that logs a `Client has not sent any data` warning on every probe. |
 | clickhouse.keeper.logger | object | `{}` | Operator logger settings for Keeper (`spec.settings.logger` on the KeeperCluster CR): `level`, `jsonLogs`, `logToFile`, `size`, `count`. clickhouse-operator 0.0.8+ defaults to `level: information`; older operators default to `trace`, which logs every Raft heartbeat and probe, so set `level` explicitly if you run one. |
 | clickhouse.keeper.nodeSelector | object | `{}` | Node selector for Keeper pods. |
+| clickhouse.keeper.podSecurityContext | object | `{}` | Pod-level security context for Keeper pods (`spec.podTemplate.securityContext` on the KeeperCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved. |
 | clickhouse.keeper.priorityClassName | string | `""` | PriorityClass for Keeper pods. |
 | clickhouse.keeper.readinessProbe | object | `{}` | Readiness probe for Keeper pods (`spec.containerTemplate.readinessProbe` on the KeeperCluster CR). A full Kubernetes Probe that replaces the operator default entirely (no merge); the default is an HTTP GET on `/ready` on the http_control port 9123. |
 | clickhouse.keeper.replicas | int | `3` | Keeper replica count (must be odd: 1, 3, or 5). Use 3 for production HA. |
 | clickhouse.keeper.resources | object | `{"limits":{"memory":"1Gi"},"requests":{"cpu":"250m","memory":"256Mi"}}` | CPU/memory requests and limits for Keeper pods. |
+| clickhouse.keeper.securityContext | object | `{}` | Container-level security context for the Keeper container (`spec.containerTemplate.securityContext` on the KeeperCluster CR). A non-nil SecurityContext fully replaces operator defaults; the user owns the entire struct. When nil, operator defaults are preserved. |
 | clickhouse.keeper.settings | object | `{}` | Extra Keeper configuration merged with the operator-generated one (`spec.settings.extraConfig`), like `clickhouse.cluster.settings` for the server. |
 | clickhouse.keeper.startupProbe | object | `{}` | Startup probe for Keeper pods (`spec.containerTemplate.startupProbe` on the KeeperCluster CR, requires clickhouse-operator 0.0.8+). A full Kubernetes Probe; the operator sets no startup probe by default. |
 | clickhouse.keeper.storage.accessModes[0] | string | `"ReadWriteOnce"` |  |
