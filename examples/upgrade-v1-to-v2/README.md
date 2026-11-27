@@ -35,9 +35,9 @@ HTTPRoute you manage yourself is treated like the no-Ingress case.
 > ([Backup Strategies](https://langfuse.com/self-hosting/configuration/backups)).
 > Reuse the same Langfuse `salt`, `encryptionKey` and `nextauth.secret` on v2 — otherwise encrypted
 > Postgres columns become undecryptable. Keep the **same Langfuse application version** on the v1
-> source and the v2 sibling while copying data — that means both the chart `appVersion` **and** any
-> `langfuse.image.tag` overwrite must match. Minimum supported source version for this guide:
-> **v3.224.1**.
+> source and the v2 sibling while copying data — the image tag v1 web and worker actually run,
+> however it was set (chart `appVersion`, values file, `--set` or GitOps parameters). Minimum
+> supported source version for this guide: **v3.224.1**.
 
 ## Automated migration
 
@@ -62,7 +62,7 @@ cd examples/upgrade-v1-to-v2/scripts
 
 Useful flags: `--namespace`, `--source-release`, `--target-release` (default `<source>-v2`),
 `--output-values`, `--output-cutover-values`, `--extra-values` (repeatable), `--context`,
-`--image-tag` (defaults to the v1 Helm `appVersion` / values tag), `--skip-prereqs`,
+`--image-tag` (optional; must match the tag v1 web / worker run), `--skip-prereqs`,
 `--worker-drain-seconds` (max wait for v1 Redis queues after web scale-down), `--force`
 (continue after lag / readiness / queue-drain failures). Helm **≥ 3.17** is required.
 
