@@ -373,7 +373,7 @@ true
 */}}
 {{- define "langfuse.nextauthEnv" -}}
 - name: NEXTAUTH_URL
-  value: {{ .Values.langfuse.nextauth.url | quote }}
+  value: {{ tpl (.Values.langfuse.nextauth.url | default "" | toString) . | quote }}
 - name: NEXTAUTH_SECRET
   {{- include "langfuse.getAppSecretValue" (dict "root" . "key" "langfuse.nextauth.secret" "value" .Values.langfuse.nextauth.secret "secretKey" "nextauth-secret") | nindent 2 }}
 {{- if and (hasKey .Values.langfuse "auth") (hasKey .Values.langfuse.auth "disableUsernamePassword") }}
