@@ -226,7 +226,7 @@ Open source LLM engineering platform - LLM observability, metrics, evaluations, 
 | langfuse.salt | object | `{"secretKeyRef":{"key":"","name":""},"value":""}` | Salt used to hash API keys. Leave empty to auto-generate on first install (persisted in `<release>-app`); override with value/secretKeyRef to pin. Generate via `openssl rand -base64 32`. |
 | langfuse.securityContext | object | `{}` | Security context for all langfuse deployments |
 | langfuse.serviceAccount.annotations | object | `{}` | Annotations for the service account |
-| langfuse.serviceAccount.automountServiceAccountToken | bool | `true` | Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token. |
+| langfuse.serviceAccount.automountServiceAccountToken | bool | `false` | Whether to mount the service account token in the web, worker and gateway pods and set it on the created service account. Off by default, as Langfuse only reads the token for OKE Workload Identity (`LANGFUSE_OCI_AUTH_TYPE=workload_identity`). Set it to `true` for that, or if a sidecar or init container needs the token. |
 | langfuse.serviceAccount.create | bool | `true` | Whether to create a service account for all langfuse deployments |
 | langfuse.serviceAccount.name | string | `""` | Override the name of the service account to use, discovered automatically if not set |
 | langfuse.smtp.connectionUrl | string | `""` | SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails) |

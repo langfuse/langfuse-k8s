@@ -77,8 +77,8 @@ langfuse:
     annotations: {}
     # -- Override the name of the service account to use, discovered automatically if not set
     name: ""
-    # -- Whether to automount service account token in pods. Set to false to disable automatic mounting of the service account token.
-    automountServiceAccountToken: true
+    # -- Whether to mount the service account token in the web, worker and gateway pods and set it on the created service account. Off by default, as Langfuse only reads the token for OKE Workload Identity (`LANGFUSE_OCI_AUTH_TYPE=workload_identity`). Set it to `true` for that, or if a sidecar or init container needs the token.
+    automountServiceAccountToken: false
 
   smtp:
     # -- SMTP connection URL. See [documentation](https://langfuse.com/self-hosting/transactional-emails)
