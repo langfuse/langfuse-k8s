@@ -1,0 +1,68 @@
+suite: test clickhouse annotations
+templates:
+  - clickhouse/cluster.yaml
+  - clickhouse/keeper.yaml
+tests:
+  - it: should not render annotations by default
+    values:
+      - ../values.lint.yaml
+    asserts:
+      - notExists:
+          path: spec.annotations
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.annotations
+        template: clickhouse/keeper.yaml
+
+  - it: should render ClickHouseCluster annotations when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.annotations:
+        ad.datadoghq.com/clickhouse.checks: |
+          {"http_check": {"instances": [{"name": "clickhouse", "url": "http://%%host%%:8123/ping"}]}}
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+    asserts:
+      - equal:
+          path: spec.annotations["cluster-autoscaler.kubernetes.io/safe-to-evict"]
+          value: "false"
+        template: clickhouse/cluster.yaml
+      - isNotEmpty:
+          path: spec.annotations["ad.datadoghq.com/clickhouse.checks"]
+        template: clickhouse/cluster.yaml
+      - notExists:
+          path: spec.annotations
+        template: clickhouse/keeper.yaml
+
+  - it: should render KeeperCluster annotations when set
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.keeper.annotations:
+        ad.datadoghq.com/clickhouse-keeper.checks: |
+          {"http_check": {"instances": [{"name": "keeper", "url": "http://%%host%%:9123/ready"}]}}
+    asserts:
+      - isNotEmpty:
+          path: spec.annotations["ad.datadoghq.com/clickhouse-keeper.checks"]
+        template: clickhouse/keeper.yaml
+      - notExists:
+          path: spec.annotations
+        template: clickhouse/cluster.yaml
+
+  - it: should render annotations alongside labels without conflict
+    values:
+      - ../values.lint.yaml
+    set:
+      clickhouse.cluster.annotations:
+        team: platform
+      clickhouse.cluster.labels:
+        team: platform
+    asserts:
+      - equal:
+          path: spec.annotations.team
+          value: platform
+        template: clickhouse/cluster.yaml
+      - equal:
+          path: spec.labels.team
+          value: platform
+        template: clickhouse/cluster.yaml

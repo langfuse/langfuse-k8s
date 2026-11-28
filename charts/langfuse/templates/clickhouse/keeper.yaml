@@ -9,6 +9,10 @@ metadata:
 spec:
   clusterDomain: {{ .Values.clickhouse.keeper.clusterDomain | default "cluster.local" }}
   replicas: {{ .Values.clickhouse.keeper.replicas }}
+  {{- with .Values.clickhouse.keeper.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   dataVolumeClaimSpec:
     accessModes:
       {{- toYaml .Values.clickhouse.keeper.storage.accessModes | nindent 6 }}

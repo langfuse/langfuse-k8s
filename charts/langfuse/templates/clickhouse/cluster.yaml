@@ -13,6 +13,10 @@ spec:
   {{- /* Required by the CRD — a keeper-less deploy is rejected in validations.yaml */}}
   keeperClusterRef:
     name: {{ include "langfuse.fullname" . }}
+  {{- with .Values.clickhouse.cluster.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   {{- $ext := .Values.clickhouse.cluster.externalSecret | default dict }}
   {{- with $ext.name }}
   externalSecret:
