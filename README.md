@@ -139,6 +139,8 @@ Upgrading a **v1 (Bitnami) release to v2** onto empty v2 volumes is blocked. Fol
 
 The web, worker, ClickHouse and Keeper images now honor `global.imageRegistry`. If a parent chart already sets it, make sure that registry has these images before upgrading. A web or worker `image.repository` without a registry (e.g. `langfuse/langfuse`) now gets `image.registry` (default `docker.langfuse.com`) in front; set `image.registry: docker.io` to keep Docker Hub.
 
+The web, worker and gateway pods no longer mount a service account token, and the service account the chart creates has `automountServiceAccountToken: false`. Set `langfuse.serviceAccount.automountServiceAccountToken: true` if you use Oracle OKE Workload Identity for object storage (`LANGFUSE_OCI_AUTH_TYPE=workload_identity`), which reads this token, or if a sidecar or init container needs it (for example the Vault Agent injector with Kubernetes auth). IRSA, EKS Pod Identity and Azure Workload Identity inject their own projected token, and GKE Workload Identity uses the metadata server, so they do not depend on this setting. The pods are recreated once on upgrade.
+
 ### Sizing
 
 By default, the chart will run with the minimum resources to provide a stable experience.
